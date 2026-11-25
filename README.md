@@ -11,11 +11,11 @@ A crew of agents you can talk to, a Brain that actually remembers, a Board that 
 
 ## Stop renting your intelligence.
 
-ChatGPT and Claude are brilliant at answering. They are also just **sessions** — throwaway conversations with no memory, no team, no access to your machine, and a monthly bill for a text box.
+The big AI apps are brilliant at answering. They are also just **sessions** — throwaway conversations with no memory, no team, no access to your machine, and a monthly bill for a text box.
 
 CaesarOS is the turn. Your agents live **on your hardware**, remember **everything you decided**, work **as a crew**, and can **act** on your computer — with you in control of every step.
 
-Everything is plug-and-play with what you already run. Hermes, Claude Code, Codex, a local model, every profile you have becomes a **crew member** in minutes.
+Everything is plug-and-play with what you already run. Hermes, command-line coding tools, or a local model — every agent profile you have becomes a **crew member** in minutes.
 
 ---
 
@@ -63,7 +63,7 @@ The first run walks you through picking an engine (Ollama, OpenRouter, or a loca
 
 ## Why CaesarOS, not other AI apps
 
-ChatGPT, Claude, and the like are fine as text boxes, but calling out any vendor misses the point. The other AI apps are just **sessions** — throwaway conversations with no memory, no team, no access to your machine, and a monthly bill.
+The big AI apps are fine as text boxes, but calling out any vendor misses the point. The other apps are just **sessions** — throwaway conversations with no memory, no team, no access to your machine, and a monthly bill.
 
 | CaesarOS | Other AI apps |
 |---|---|
