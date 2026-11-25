@@ -61,9 +61,11 @@ The first run walks you through picking an engine (Ollama, OpenRouter, or a loca
 
 ---
 
-## Why CaesarOS and not a big-tech chat app
+## Why CaesarOS, not other AI apps
 
-| CaesarOS | ChatGPT · Claude |
+ChatGPT, Claude, and the like are fine as text boxes, but calling out any vendor misses the point. The other AI apps are just **sessions** — throwaway conversations with no memory, no team, no access to your machine, and a monthly bill.
+
+| CaesarOS | Other AI apps |
 |---|---|
 | A crew of named agents with memory and skills | One chatbot, one session |
 | Brain: remembers decisions across sessions | Forgets when the window closes |
