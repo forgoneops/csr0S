@@ -1,0 +1,82 @@
+/* Neutral theme: graphite and cool slate, one calm cyan accent. Same holographic panels, cut corners and glow as
+   CaesarOS; no Roman meander, no portraits, no scene art (gradient and grid only). Sits after neo.css so it wins. */
+html[data-skin=neo][data-theme=neutral]{
+ --bg:#0f1216;--surface:#171b21;--surface-2:#1e242b;--line:#333c46;
+ --text:#e8edf2;--muted:#9eabb8;
+ --accent:#5fd6d1;--accent-ink:#061412;--signal:#8fb3c9;--cx-mag:#5fd6d1;--cx-gold:#7fa9b8;
+ --p1:#5fd6d1;--p1r:95,214,209;--p2:#8fb3c9;--p2r:143,179,201;
+ --g1:95,214,209;--g2:143,179,201;--g3:127,169,184;--g4:158,171,184;
+ --a08:color-mix(in srgb,var(--accent) 8%,transparent);--a16:color-mix(in srgb,var(--accent) 16%,transparent);
+ --a30:color-mix(in srgb,var(--accent) 30%,transparent);--a55:color-mix(in srgb,var(--accent) 55%,transparent);
+ --meander:none;--art-bg:#12161b;--art-ink:#9eabb8;
+ --tint-ember:#5fd6d1;--tint-gold:#8fb3c9;--tint-crimson:#9ea7c9;--tint-magenta:#a7a9c9;--tint-toxic:#7fb8a8;--tint-signal:#8f9ec9;--tint-sky:#6bb9d6;--tint-sand:#a8b4c2;
+ --neutral-mark:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='1.25' y='1.25' width='21.5' height='21.5' fill='none' stroke='%235fd6d1' stroke-width='1.5'/><rect x='6' y='6' width='12' height='12' transform='rotate(45 12 12)' fill='%235fd6d1'/></svg>")}
+html[data-skin=neo][data-theme=neutral]{background:radial-gradient(120% 80% at 50% 0,#1a2029 0,#0f1216 55%,#0a0c0f 100%) fixed}
+html[data-skin=neo][data-theme=neutral] .shell:before{background:radial-gradient(60% 40% at 15% 90%,rgba(var(--p1r),.10),transparent 70%),radial-gradient(50% 40% at 90% 10%,rgba(var(--p2r),.10),transparent 70%)!important;opacity:1!important}
+
+/* holo glass panels, same recipe as neo.css, neutral glass */
+html[data-skin=neo][data-theme=neutral] .panel,
+html[data-skin=neo][data-theme=neutral] .dw,
+html[data-skin=neo][data-theme=neutral] .og-card{
+ --g:var(--g2);border:0;
+ background:
+  linear-gradient(var(--cx-gold),var(--cx-gold)) 0 0/14px 1px no-repeat,linear-gradient(var(--cx-gold),var(--cx-gold)) 0 0/1px 14px no-repeat,
+  linear-gradient(var(--cx-gold),var(--cx-gold)) 100% 100%/14px 1px no-repeat,linear-gradient(var(--cx-gold),var(--cx-gold)) 100% 100%/1px 14px no-repeat,
+  repeating-linear-gradient(0deg,#ffffff06 0 1px,transparent 1px 3px),
+  radial-gradient(120% 90% at 100% 0,rgba(var(--g),.10),transparent 55%),
+  linear-gradient(160deg,#1a1f26cc,#10141ad9);
+ -webkit-backdrop-filter:blur(10px) saturate(1.15);backdrop-filter:blur(10px) saturate(1.15);
+ box-shadow:inset 0 0 0 1px rgba(var(--g),.28),inset 0 1px #ffffff14,-1px 0 10px -4px rgba(var(--p1r),.35),1px 0 10px -4px rgba(var(--p2r),.35),0 20px 50px -34px #000}
+html[data-skin=neo][data-theme=neutral] .atrium-top{background:linear-gradient(180deg,#161b22e6,#0f1216d9)!important}
+html[data-skin=neo][data-theme=neutral] .atrium-top:after{display:none}
+html[data-skin=neo][data-theme=neutral] .ns-side{background:
+  linear-gradient(rgba(var(--p2r),.8),rgba(var(--p2r),.8)) 0 0/12px 1px no-repeat,linear-gradient(rgba(var(--p2r),.8),rgba(var(--p2r),.8)) 0 0/1px 12px no-repeat,
+  linear-gradient(rgba(var(--p2r),.8),rgba(var(--p2r),.8)) 100% 100%/12px 1px no-repeat,linear-gradient(rgba(var(--p2r),.8),rgba(var(--p2r),.8)) 100% 100%/1px 12px no-repeat,
+  repeating-linear-gradient(0deg,rgba(var(--p2r),.04) 0 1px,transparent 1px 3px),
+  linear-gradient(90deg,rgba(var(--p2r),.08),rgba(var(--p2r),.02) 60%,transparent),
+  linear-gradient(180deg,#161b22cc,#0f1216bf)}
+
+/* accent as a light tint, never a filled button */
+html[data-skin=neo][data-theme=neutral] .btn{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--text);border-color:color-mix(in srgb,var(--accent) 50%,var(--line));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent)}
+html[data-skin=neo][data-theme=neutral] .btn:hover{background:color-mix(in srgb,var(--accent) 20%,transparent);box-shadow:inset 0 0 0 1px var(--accent),0 0 14px -4px rgba(var(--p1r),.5)}
+html[data-skin=neo][data-theme=neutral] .nx-send{background:color-mix(in srgb,var(--accent) 16%,var(--surface-2));color:var(--accent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 55%,transparent)}
+html[data-skin=neo][data-theme=neutral] .nx-seg button.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent)}
+html[data-skin=neo][data-theme=neutral] .og-seg button.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent)}
+
+/* no scene art, no banners: a subtle grid and a calm glow */
+html[data-skin=neo][data-theme=neutral] .at-hero-art{
+ background:
+  radial-gradient(70% 120% at 80% 10%,rgba(var(--p1r),.12),transparent 60%),
+  repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 28px),
+  repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 1px,transparent 1px 28px),
+  linear-gradient(160deg,#161b22,#0f1216);
+ -webkit-mask-image:none;mask-image:none;filter:none}
+html[data-skin=neo][data-theme=neutral] .at-hero-art img,
+html[data-skin=neo][data-theme=neutral] .nx-scene .ascii,
+html[data-skin=neo][data-theme=neutral] .dw-head>img{display:none}
+html[data-skin=neo][data-theme=neutral] .at-hero-art:after{background:linear-gradient(90deg,var(--bg) 0,color-mix(in srgb,var(--bg) 45%,transparent) 40%,transparent 75%)}
+html[data-skin=neo][data-theme=neutral] .nx-scene{background:
+  radial-gradient(90% 160% at var(--fx,25%) 110%,rgba(var(--p1r),.16),transparent 70%),
+  repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 1px,transparent 1px 22px),
+  repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 1px,transparent 1px 22px),
+  linear-gradient(160deg,#161b22,#0f1216)}
+
+/* neutral mark where a portrait or brand art would be */
+html[data-skin=neo][data-theme=neutral] :is(.atrium-brand-mark,.cx-logo){display:none}
+html[data-skin=neo][data-theme=neutral] .atrium-brand:before{content:"";flex:none;width:34px;height:34px;background:var(--neutral-mark) center/contain no-repeat;filter:drop-shadow(0 0 6px rgba(var(--p1r),.45))}
+html[data-skin=neo][data-theme=neutral] .ns-brand:before{content:"";flex:none;width:30px;height:30px;background:var(--neutral-mark) center/contain no-repeat;filter:drop-shadow(0 0 6px rgba(var(--p1r),.45))}
+html[data-skin=neo][data-theme=neutral] .nx-chead img{display:none}
+html[data-skin=neo][data-theme=neutral] .nx-chead:before{content:"";flex:none;width:40px;height:40px;background:var(--neutral-mark) center/contain no-repeat}
+html[data-skin=neo][data-theme=neutral] .nx-cr img{display:none}
+html[data-skin=neo][data-theme=neutral] .nx-cr:before{content:"";position:absolute;inset:4px;background:var(--neutral-mark) center/contain no-repeat}
+html[data-skin=neo][data-theme=neutral] .ns-crew button{background-image:var(--neutral-mark)!important;background-size:22px!important;background-position:center!important;background-repeat:no-repeat!important;background-color:var(--surface-2)}
+html[data-skin=neo][data-theme=neutral] .boot-mark{border:0;filter:drop-shadow(0 0 18px rgba(var(--p1r),.45))}
+html[data-skin=neo][data-theme=neutral] .boot-mark>*{display:none}
+html[data-skin=neo][data-theme=neutral] .boot-mark:before{content:"";width:72px;height:72px;background:var(--neutral-mark) center/contain no-repeat}
+html[data-skin=neo][data-theme=neutral] .at-hero-signature{display:none}
+
+/* warm glow out of type and widget heads */
+html[data-skin=neo][data-theme=neutral] :is(.at-hero h1,.at-hero h1 strong){color:var(--text);text-shadow:0 1px #000000a6,0 0 22px rgba(var(--p1r),.18)}
+html[data-skin=neo][data-theme=neutral] :is(.at-hero-kicker,.status-line,.dw-index,.at-workspace-index,.brain-what-now-kind,.brain-what-now-count,.t-mini,kbd){text-shadow:0 0 7px rgba(var(--p1r),.22)}
+html[data-skin=neo][data-theme=neutral] .at-hero{border-color:var(--line)}
+html[data-skin=neo][data-theme=neutral] .dw-head:before{background:radial-gradient(22% 130% at 50% 0,rgba(var(--p1r),.18),transparent 100%) 0 0/300% 100% no-repeat}

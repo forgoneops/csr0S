@@ -1,0 +1,205 @@
+/* CaesarOS new shell (prototype). Grouped left menu inspired by the behaviour of a local-first AI desktop app; our look, our names. DEMO DATA. */
+html .nx-body{grid-template-columns:64px minmax(0,1fr)!important}
+html.ns-pinned .nx-body{grid-template-columns:268px minmax(0,1fr)!important}
+.ns-wrap{position:relative;z-index:60;min-height:0}
+.ns-side{position:absolute;left:0;top:0;bottom:0;width:100%;display:flex;flex-direction:column;background:linear-gradient(180deg,var(--surface),var(--bg));border-right:1px solid var(--line);overflow:hidden;transition:width .24s var(--ease,ease),box-shadow .24s}
+.ns-wrap:hover .ns-side,.ns-wrap:focus-within .ns-side{width:268px;box-shadow:14px 0 40px rgba(0,0,0,.55)}
+html.ns-pinned .ns-side{width:100%;box-shadow:none}
+.ns-side:before{content:"";position:absolute;right:-1px;top:0;bottom:0;width:1px;background:linear-gradient(180deg,transparent,var(--accent),transparent);opacity:.5}
+.ns-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding-bottom:8px}
+.ns-lab{opacity:0;white-space:nowrap;transition:opacity .16s;pointer-events:none}
+.ns-wrap:hover .ns-lab,.ns-wrap:focus-within .ns-lab,html.ns-pinned .ns-lab{opacity:1;pointer-events:auto}
+.ns-brand{display:flex;align-items:center;gap:12px;height:56px;padding:0 17px;flex:none;border-bottom:1px solid var(--line)}
+.ns-brand img{width:30px;height:30px;flex:none}
+.ns-brand b{font:500 14px var(--font-display);letter-spacing:.28em;flex:1}
+.ns-pin{all:unset;cursor:pointer;width:26px;height:26px;display:grid;place-items:center;color:var(--muted)}
+.ns-pin:hover,.ns-pin.on{color:var(--accent)}
+.ns-it{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:13px;height:36px;width:100%;padding:0 20px;cursor:pointer;color:var(--muted);position:relative;font:13px var(--font-body)}
+.ns-it .icon{flex:none;width:20px;height:20px}
+.ns-it span{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis}
+.ns-it small{font:500 9px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;opacity:.55;flex:none}
+.ns-it:hover{color:var(--text);background:var(--a08,rgba(255,255,255,.04))}
+.ns-it.on{color:var(--accent);background:linear-gradient(90deg,var(--a16,rgba(255,140,60,.16)),transparent)}
+.ns-it.on:before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:3px;background:var(--accent)}
+.ns-it .bd{position:absolute;left:30px;top:3px;min-width:15px;height:15px;background:var(--accent);color:var(--accent-ink);font:600 9px/15px var(--font-mono);text-align:center;padding:0 3px}
+.ns-gh{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:13px;height:30px;width:100%;padding:0 20px;margin-top:6px;cursor:pointer;color:var(--muted);font:500 10px var(--font-mono);letter-spacing:.18em;text-transform:uppercase}
+.ns-gh .icon{width:20px;height:20px;opacity:.7}
+.ns-gh span{flex:1;text-align:left}
+.ns-gh i{font-style:normal;opacity:.6;font-size:9px}
+.ns-gh em{font-style:normal;transition:transform .2s;display:inline-block}
+.ns-gh.open em{transform:rotate(90deg)}
+.ns-gh:hover{color:var(--text)}
+.ns-gl{display:none}.ns-gl.open{display:block}
+.ns-crew{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px 18px 8px}
+.ns-crew button{all:unset;cursor:pointer;position:relative;aspect-ratio:1;border:1px solid var(--line);background-size:cover;background-position:center;clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))}
+.ns-crew button:hover{border-color:var(--accent)}
+.ns-crew button i{position:absolute;right:2px;bottom:2px;width:7px;height:7px;transform:rotate(45deg);background:var(--muted)}
+.ns-crew button i.work{background:#4fbf8f}.ns-crew button i.wait{background:var(--accent)}
+.ns-sep{height:1px;background:var(--line);margin:8px 18px;flex:none}
+.ns-foot{flex:none;border-top:1px solid var(--line);padding:6px 0}
+.ns-chip{display:flex;align-items:center;gap:12px;padding:8px 22px;font:500 10px var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ns-chip .d{width:8px;height:8px;transform:rotate(45deg);background:#4fbf8f;flex:none}
+.ns-chip .d.off{background:var(--muted)}.ns-chip .d.loc{background:var(--accent)}
+.ns-chip b{color:var(--text);font-weight:500}
+.ns-eng{display:grid;grid-template-columns:150px repeat(4,minmax(0,1fr));gap:6px;align-items:center}
+.ns-eng .h{font:500 10px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:4px}
+.ns-eng .r{font:13px var(--font-body);padding:4px}
+.ns-cell{all:unset;cursor:pointer;text-align:center;padding:9px 6px;border:1px solid var(--line);font:11px var(--font-body);color:var(--muted);background:var(--bg)}
+.ns-cell small{display:block;font:9px var(--font-mono);letter-spacing:.1em;opacity:.7;margin-top:2px;text-transform:uppercase}
+.ns-cell.on{border-color:var(--accent);color:var(--accent);background:var(--a08,rgba(255,140,60,.08))}
+.ns-cell.dis{opacity:.35;cursor:not-allowed}
+.ns-mode{border:1px solid var(--line);background:var(--surface);padding:14px;display:grid;gap:6px;cursor:pointer;position:relative}
+.ns-mode.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.ns-mode h4{margin:0;font:500 15px var(--font-display);letter-spacing:.08em}
+.ns-mode p{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+
+/* ---------- CaesarOS Evolve: cut corners everywhere (top right and bottom left), the same cut as the approved baseline ---------- */
+.btn,.og-seg button,.og-chip,.og-tag,.og-lay,.og-menu button,.ns-cell,.og-mode,.og-mode button,.ws,.ws-options,.shell-search,.motion-switch,.nx-tab,.act-btn,.ns-it,.og-sw,.og-input,.ns-pin,.live-piece,.nx-seg button,.dock-toggle,.dock-grab{--cut:7px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.og-card,.og-list,.og-banner,.og-code,.og-lock,.og-pane,.og-menu,.ns-mode,.og-seg,.og-term,.cx-panel{--cut:14px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.og-seg{--cut:9px}.og-sw{--cut:4px}.og-tag{--cut:5px}.ns-it{--cut:9px}.og-mode{--cut:10px}
+.og-card,.og-banner,.ns-mode{position:relative}
+.og-card:before,.og-banner:before,.ns-mode:before{content:"";position:absolute;top:0;right:0;width:14px;height:14px;background:linear-gradient(225deg,var(--accent) 0,var(--accent) 1px,transparent 1px);opacity:.55;pointer-events:none}
+.og-pane{overflow:visible}
+/* the evolved mark */
+.cx-logo{width:36px;height:36px;flex:none;display:block;object-fit:cover;object-position:50% 25%;clip-path:polygon(18% 0,100% 0,100% 82%,82% 100%,0 100%,0 18%)}
+.cx-logo .gem{animation:cxgem 3.4s ease-in-out infinite}
+.cx-logo .scar{animation:cxscar 5s steps(1) infinite}
+@keyframes cxgem{0%,100%{opacity:.82}50%{opacity:1}}
+@keyframes cxscar{0%,92%,100%{opacity:1}94%{opacity:.2}96%{opacity:1}98%{opacity:.35}}
+html[data-motion=off] .cx-logo .gem,html[data-motion=off] .cx-logo .scar,html[data-motion=reduced] .cx-logo .gem,html[data-motion=reduced] .cx-logo .scar{animation:none}
+.cx-brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text)}
+.cx-brand b{font:500 15px var(--font-display);letter-spacing:.3em;display:block;line-height:1}
+.cx-brand small{display:block;margin-top:5px;font:500 8px var(--font-mono);letter-spacing:.34em;color:var(--accent);text-transform:uppercase}
+/* generic pages */
+.pg-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pg-bar .og-input{flex:1;min-width:200px}
+.pg-split{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px}
+.pg-lanes{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(210px,1fr);gap:10px;overflow-x:auto;padding-bottom:6px}
+.pg-lane{border:1px solid var(--line);background:var(--bg);padding:10px;display:grid;gap:8px;align-content:start;--cut:12px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.pg-lane h5{margin:0;font:500 10px var(--font-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between}
+.pg-tile{display:grid;gap:4px;border:1px solid var(--line);background:var(--surface);padding:12px 14px;--cut:12px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.pg-tile b{font:500 26px var(--font-display);letter-spacing:.02em}
+.pg-tile small{font:500 9px var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.pg-tile i{font-style:normal;font-size:11px;color:var(--accent)}
+.pg-bars{display:grid;gap:7px}
+.pg-bars div{display:grid;grid-template-columns:130px 1fr 54px;gap:10px;align-items:center;font-size:12px}
+.pg-bars span.b{height:8px;background:var(--line);position:relative;--cut:4px;clip-path:polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))}
+.pg-bars span.b i{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
+.pg-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.pg-cal div{min-height:62px;border:1px solid var(--line);background:var(--bg);padding:5px;font:10px var(--font-mono);color:var(--muted);position:relative;--cut:8px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.pg-cal div b{display:block;margin-top:4px;font:11px var(--font-body);color:var(--text);background:var(--a16,rgba(255,140,60,.18));padding:2px 4px}
+.pg-cal div.h{min-height:0;border:0;background:transparent;text-transform:uppercase;letter-spacing:.14em}
+.pg-media{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pg-media div{aspect-ratio:4/3;background-size:cover;background-position:center;border:1px solid var(--line);position:relative;--cut:12px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.pg-media div span{position:absolute;left:0;right:0;bottom:0;padding:5px 8px;background:linear-gradient(0deg,rgba(0,0,0,.8),transparent);font:10px var(--font-mono);letter-spacing:.08em;text-transform:uppercase}
+.pg-doc{font:14px/1.7 var(--font-body);color:var(--text);padding:6px 4px}
+.pg-doc h3{margin:0 0 8px;font:500 18px var(--font-display);letter-spacing:.05em}
+.pg-crew{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.pg-crew .og-card{grid-template-columns:64px 1fr;align-items:center}
+.pg-crew img{width:64px;height:64px;object-fit:cover;clip-path:polygon(14% 0,100% 0,100% 86%,86% 100%,0 100%,0 14%);border:1px solid var(--line)}
+
+/* ---------- first run: Incipit ---------- */
+#ob{position:fixed;inset:0;z-index:300;display:none;flex-direction:column;background:radial-gradient(ellipse at 50% 30%,rgba(255,120,50,.14),transparent 60%),linear-gradient(180deg,rgba(8,6,5,.6),rgba(8,6,5,.96)),url(art/caesaros-banner-command.webp) center/cover,#0a0807;color:var(--text)}
+#ob.open{display:flex}
+.ob-top{display:flex;align-items:center;justify-content:space-between;padding:18px 28px}
+.ob-main{flex:1;min-height:0;overflow:auto;display:grid;place-items:center;padding:10px 28px}
+.ob-col{width:min(940px,100%);display:grid;gap:18px;text-align:center;justify-items:center}
+.ob-h{margin:0;font:500 clamp(30px,5vw,60px)/1.05 var(--font-display);letter-spacing:.12em;text-transform:uppercase}
+.ob-h small{display:block;margin-top:12px;font:500 11px var(--font-mono);letter-spacing:.4em;color:var(--accent)}
+.ob-p{margin:0;max-width:640px;color:var(--muted);font-size:15px;line-height:1.55}
+.ob-p b{color:var(--accent);font-weight:500}
+.ob-grid{display:grid;gap:12px;width:100%;text-align:left}
+.ob-foot{display:grid;gap:14px;justify-items:center;padding:14px 28px 26px}
+.ob-prog{display:flex;gap:6px;align-items:center}
+.ob-prog i{display:block;height:4px;width:14px;background:var(--line);--cut:3px;clip-path:polygon(0 0,calc(100% - 3px) 0,100% 3px,100% 100%,3px 100%,0 calc(100% - 3px));transition:all .25s}
+.ob-prog i.on{width:34px;background:var(--accent)}.ob-prog i.done{background:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.ob-step{font:500 10px var(--font-mono);letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+.ob-btns{display:flex;gap:12px;align-items:center}
+.ob-btns .btn{height:44px;padding:0 28px;font-size:12px}
+.ob-pick{border:1px solid var(--line);background:rgba(20,16,14,.78);padding:14px;display:grid;gap:6px;cursor:pointer;position:relative;--cut:14px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.ob-pick.on{border-color:var(--accent);background:rgba(40,24,16,.85);box-shadow:inset 0 0 0 1px var(--accent)}
+.ob-pick h4{margin:0;font:500 15px var(--font-display);letter-spacing:.08em}
+.ob-pick p{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+.ob-pick .ck{position:absolute;right:20px;top:12px;width:16px;height:16px;border:1px solid var(--line);display:grid;place-items:center;font-size:11px;color:var(--accent-ink)}
+.ob-pick.on .ck{background:var(--accent);border-color:var(--accent)}
+.ob-qr{width:150px;height:150px;background:repeating-conic-gradient(var(--text) 0 25%,transparent 0 50%) 0 0/20px 20px;border:8px solid var(--text);opacity:.9;--cut:12px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+
+/* ---- audit pass: cut-corner workspace and page tabs, Caesar palette (magenta crystal + laurel gold) ---- */
+:root{--cx-mag:#ff3fb4;--cx-gold:#e0b45a}
+.ws-bar .ws{border:0;min-height:44px;padding:0 18px;margin-right:2px;position:relative;color:var(--muted);background:linear-gradient(180deg,#ffffff08,#ffffff02);clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);transition:color .16s,background .16s}
+.ws-bar .ws:hover{color:var(--text);background:linear-gradient(180deg,#ffffff12,#ffffff04)}
+.ws-bar .ws.on{color:var(--text);background:linear-gradient(135deg,color-mix(in srgb,var(--cx-mag) 30%,transparent),color-mix(in srgb,var(--accent) 12%,transparent) 70%);box-shadow:inset 0 -2px var(--cx-mag),inset 0 0 0 1px color-mix(in srgb,var(--cx-mag) 45%,transparent)}
+.ws-bar .ws.on b{color:var(--cx-gold);text-shadow:0 0 10px var(--cx-mag)}
+.ws-bar .ws b{font-weight:600}
+.nx-tabs .nx-tab{clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.nx-tabs .nx-tab[aria-selected=true],.nx-tabs .nx-tab.on{box-shadow:inset 0 -2px var(--cx-mag)}
+html .ns-it{height:44px}html .ns-gh{height:36px}
+.ns-it.on{background:linear-gradient(90deg,color-mix(in srgb,var(--cx-mag) 22%,transparent),transparent)}
+.ns-it.on:before{background:var(--cx-mag)}
+@media(max-width:900px){
+ html .nx-body,html.ns-pinned .nx-body{grid-template-columns:minmax(0,1fr)!important}
+ .ns-wrap{position:fixed;z-index:70;top:var(--nx-top,64px);bottom:0;left:0;width:min(300px,86vw);transform:translateX(-100%);transition:transform .22s}
+ .ns-wrap.open{transform:none}.ns-wrap .ns-side{width:100%}.ns-wrap .ns-lab{opacity:1;pointer-events:auto}
+}
+
+/* ---- surfaces: deep glass instead of one brown texture. Calm, one soft glow per panel, tint varies by slot ---- */
+html[data-theme=caesaros]{--g1:255,63,180;--g2:201,113,67;--g3:121,193,193;--g4:224,180,90;--ease-out:cubic-bezier(.23,1,.32,1)}
+html[data-theme=caesaros] .panel,html[data-theme=caesaros] .dw{
+ --g:var(--g2);
+ border-color:color-mix(in srgb,var(--line) 78%,rgb(var(--g)));
+ background:
+  radial-gradient(120% 90% at 100% 0,rgba(var(--g),.10),transparent 55%),
+  radial-gradient(90% 70% at 0 100%,rgba(var(--g),.05),transparent 60%),
+  linear-gradient(160deg,#17181cf0,#0f1013f5),
+  url(art/caesaros-basalt-texture.webp) 50%/720px 720px;
+ background-blend-mode:normal,normal,normal,soft-light;
+ box-shadow:inset 0 1px #ffffff12,inset 0 0 0 1px rgba(var(--g),.07),0 18px 40px -30px #000}
+html[data-theme=caesaros] .dw:nth-child(4n+1){--g:var(--g2)}
+html[data-theme=caesaros] .dw:nth-child(4n+2){--g:var(--g1)}
+html[data-theme=caesaros] .dw:nth-child(4n+3){--g:var(--g3)}
+html[data-theme=caesaros] .dw:nth-child(4n){--g:var(--g4)}
+html[data-theme=caesaros] .panel:first-of-type{--g:var(--g1)}
+/* once-only entrance, cascading; transform+opacity only; keyboard-driven re-renders skip it via .enter being absent */
+html[data-motion=on] .nx-view.enter .dw,html[data-motion=on] .nx-view.enter .panel{animation:cxin 260ms var(--ease-out) both}
+html[data-motion=on] .nx-view.enter .dw:nth-child(2),html[data-motion=on] .nx-view.enter .panel:nth-child(2){animation-delay:50ms}
+html[data-motion=on] .nx-view.enter .dw:nth-child(3),html[data-motion=on] .nx-view.enter .panel:nth-child(3){animation-delay:100ms}
+html[data-motion=on] .nx-view.enter .dw:nth-child(n+4),html[data-motion=on] .nx-view.enter .panel:nth-child(n+4){animation-delay:150ms}
+@keyframes cxin{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+@media (hover:hover) and (pointer:fine){html[data-motion=on] .dw{transition:border-color .2s,transform .2s var(--ease-out)}html[data-motion=on] .dw:hover{border-color:rgba(var(--g),.5);transform:translateY(-2px)}}
+.og-card,.nx-card{background:linear-gradient(160deg,#ffffff0a,#ffffff03);box-shadow:inset 0 1px #ffffff10}
+.nx-card:active,.og-card:active{transform:scale(.99)}
+
+/* engine switch: small and quiet. Active = teal text and a dot, no solid orange block, no chip */
+html .og-mode{gap:0;margin:0 6px;border:0;background:#ffffff08;--cut:6px}
+html .og-mode button{padding:0 11px;height:28px;display:flex;align-items:center;font-size:9.5px;letter-spacing:.14em;color:var(--muted);background:none}
+html .og-mode button.on{color:var(--signal,#79c1c1);background:#79c1c11a}
+html .og-mode button.on:before{content:"";width:5px;height:5px;margin-right:7px;background:currentColor;transform:rotate(45deg)}
+
+/* engine switch: one small chip showing the current mode, opens on hover or focus as a popover (no layout shift, workspaces keep their room) */
+html .og-mode{position:relative;display:block;width:auto;margin:0 6px;background:#ffffff08;flex:none}
+html .og-mode .cur{display:flex;align-items:center;gap:7px;height:28px;padding:0 11px;font:500 9.5px var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--signal,#79c1c1);cursor:default}
+html .og-mode .cur:before{content:"";width:5px;height:5px;background:currentColor;transform:rotate(45deg)}
+html .og-mode .cur em{font-style:normal;opacity:.6;font-size:8px}
+html .og-mode .pop{position:absolute;top:100%;left:0;min-width:100%;display:none;flex-direction:column;background:linear-gradient(160deg,#10122acc,#080a18f2);box-shadow:inset 0 0 0 1px rgba(var(--p1r,255,63,208),.35),0 14px 30px -10px #000;z-index:90;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+html .og-mode:hover .pop,html .og-mode:focus-within .pop{display:flex}
+html .og-mode .pop button{height:40px;padding:0 14px;justify-content:flex-start;clip-path:none}
+html .og-mode .pop button.on:before{display:none}
+html .og-mode .pop button.on{color:var(--signal,#79c1c1);background:#ffffff0d}
+html .og-mode:before{content:"";position:absolute;left:0;right:0;top:100%;height:8px}
+html .og-mode{clip-path:none!important}
+html .og-mode .cur{--cut:6px;padding-right:16px;clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px));background:#ffffff08}
+html .og-mode .pop{clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+html .shell-search{flex:0 1 250px!important;min-width:180px}
+
+/* engine switch expands IN PLACE on hover like the dock: the chip is replaced by the three modes growing leftwards over the neighbours, nothing shifts */
+html .og-mode{width:92px;height:28px}
+html .og-mode .pop{top:0;right:0;left:auto;min-width:0;flex-direction:row;height:28px;opacity:0;visibility:hidden;transform:translateX(8px);transition:opacity .16s cubic-bezier(.23,1,.32,1),transform .16s cubic-bezier(.23,1,.32,1),visibility 0s .16s;display:flex;box-shadow:inset 0 0 0 1px rgba(var(--p1r,255,63,208),.35),0 0 24px -6px rgba(var(--p1r,255,63,208),.5)}
+html .og-mode:hover .pop,html .og-mode:focus-within .pop{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+html .og-mode .pop button{height:28px;padding:0 13px;white-space:nowrap}
+html .og-mode:before{display:none}
+html[data-motion=off] .og-mode .pop,html[data-motion=reduced] .og-mode .pop{transition:none;transform:none}
+
+/* Simple mode: one plain name per menu entry; the Latin second name is a Visual-only caption */
+html.nx-simple .ns-side small.ns-lab{display:none}
+.pop-return{position:fixed;top:8px;right:8px;z-index:60;height:28px;padding:0 12px}
+body.popped .nx-rail{display:none}

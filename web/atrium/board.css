@@ -1,0 +1,39 @@
+/* Board module: three lanes of real cards. Tint, not fill; the cut corner at top right and bottom left; 44 px
+   targets. On a phone the lanes become tabs and only the chosen lane shows. Everything sits under .bd. */
+.bd .bd-add{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.bd .bd-in{flex:1;min-width:0;min-height:44px;box-sizing:border-box;padding:10px 12px;font:inherit}
+.bd .bd-err{color:#ff8a8a;margin:0 0 12px}
+.bd .bd-undo{border:1px solid var(--line);background:color-mix(in srgb,var(--signal,#79c1c1) 8%,transparent);
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:8px 12px}
+.bd .bd-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 12px}
+.bd .bd-tabs .btn{min-height:44px;justify-content:center}
+.bd .bd-tabs .btn.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.bd .bd-lanes{display:grid;grid-template-columns:repeat(var(--bd-cols,3),minmax(0,1fr));gap:12px;align-items:start}
+.bd .bd-lane{display:grid;gap:10px;align-content:start;min-width:0}
+.bd .bd-lane-h{margin:0;padding:2px 2px 6px;font:500 .72rem/1 var(--font-mono,monospace);letter-spacing:.18em;
+  text-transform:uppercase;color:var(--accent);border-bottom:1px solid var(--line)}
+.bd .bd-lane-empty{margin:0;padding:10px 2px;color:var(--muted);font-size:.85rem}
+.bd .bd-card{border:1px solid var(--line);background:color-mix(in srgb,var(--accent) 4%,transparent);
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
+  display:grid;gap:8px;padding:12px;min-width:0}
+.bd .bd-card:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.bd .bd-title{margin:0;font-size:1rem;line-height:1.35;font-weight:600;overflow-wrap:anywhere}
+.bd .bd-note{margin:0;color:var(--muted);font-size:.85rem;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.bd .bd-acts{display:flex;flex-wrap:wrap;gap:6px}
+.bd .bd-acts .btn{min-height:44px}
+.bd .bd-edit{display:grid;gap:8px}
+.bd .bd-edit .bd-in{flex:none;width:100%;resize:vertical}
+.bd .bd-empty{border:1px dashed var(--line);padding:22px;display:grid;gap:12px;justify-items:start}
+.bd .bd-empty p{margin:0;color:var(--muted)}
+.bd .bd-empty .btn,.bd .bd-add .btn{min-height:44px}
+.bd .btn:focus-visible,.bd .bd-in:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+@media (max-width:900px){
+  .bd .bd-lanes{grid-template-columns:1fr}
+}
+.bd .bd-card .bd-state{justify-self:start}
+.bd .bd-card .bd-by{justify-self:start;font:500 .66rem/1 var(--font-mono,monospace);letter-spacing:.12em;text-transform:uppercase;color:var(--signal,#79c1c1)}
+.bd .bd-sum{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:.85rem;line-height:1.45;color:var(--muted)}
+.bd .bd-sum li{overflow-wrap:anywhere;padding-left:12px;position:relative}
+.bd .bd-sum li::before{content:"";position:absolute;left:0;top:.55em;width:5px;height:5px;background:var(--accent)}
+.bd .bd-rawb{min-height:44px;justify-self:start}

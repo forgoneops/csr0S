@@ -1,0 +1,3 @@
+{ "id": "lumen", "name": "Lumen", "version": "0.1.0", "license": "proprietary (own tokens)",
+  "description": "Cool graphite; cyan leads, ember answers. Same components, no code change.",
+  "css": "theme.css", "source": "DS0 component kit tokens, docs/design/DS0-COMPONENT-KIT-2026-11-22.md (legacy repo, branch shell/ds0-kit)" }

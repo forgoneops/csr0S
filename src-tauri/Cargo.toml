@@ -1,0 +1,26 @@
+[package]
+name = "caesaros-shell"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "CaesarOS native shell (window, tray, deep links, local core start)"
+publish = false
+
+[workspace]
+members = ["logic"]
+
+[build-dependencies]
+tauri-build = "=2.7.6"
+
+[dependencies]
+caesaros-shell-logic = { path = "logic" }
+# UNVERIFIED-API: feature names "tray-icon" and "image-png" (tray + decoding the
+# bundled png icons); confirm against the vendored tauri/Cargo.toml.
+tauri = { version = "=2.12.7", features = ["tray-icon", "image-png"] }
+# UNVERIFIED-API: the "deep-link" feature makes single-instance forward argv
+# deep links to tauri-plugin-deep-link; confirm in the vendored Cargo.toml.
+tauri-plugin-single-instance = { version = "=2.5.5", features = ["deep-link"] }
+tauri-plugin-deep-link = "=2.6.3"
+url = "=2.5.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

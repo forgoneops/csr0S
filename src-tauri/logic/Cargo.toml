@@ -1,0 +1,20 @@
+[package]
+name = "caesaros-shell-logic"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Pure logic of the CaesarOS native shell (no Tauri dependency)"
+publish = false
+
+[lib]
+name = "shell_logic"
+path = "src/lib.rs"
+
+[dependencies]
+url = "=2.5.9"
+serde = { version = "1", features = ["derive"] }
+# hud.rs reads Hyprland's JSON answers; status.rs tests read the JSON contract
+serde_json = "1"
+
+
+

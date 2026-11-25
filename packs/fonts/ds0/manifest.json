@@ -1,0 +1,115 @@
+{
+  "id": "ds0",
+  "name": "DS0 type",
+  "version": "0.1.0",
+  "license": "OFL-1.1",
+  "source": "https://fonts.google.com (Cinzel, Alegreya Sans, Azeret Mono)",
+  "families": {
+    "display": "Cinzel",
+    "body": "Alegreya Sans",
+    "mono": "Azeret Mono"
+  },
+  "fallbacks": {
+    "display": "\"Times New Roman\",serif",
+    "body": "\"Helvetica Neue\",Arial,sans-serif",
+    "mono": "ui-monospace,\"Courier New\",monospace"
+  },
+  "faces": [
+    {
+      "family": "Alegreya Sans",
+      "weight": "400",
+      "file": "alegreya-sans-400-latin-ext.woff2",
+      "subset": "latin-ext"
+    },
+    {
+      "family": "Alegreya Sans",
+      "weight": "400",
+      "file": "alegreya-sans-400-latin.woff2",
+      "subset": "latin"
+    },
+    {
+      "family": "Alegreya Sans",
+      "weight": "500",
+      "file": "alegreya-sans-500-latin-ext.woff2",
+      "subset": "latin-ext"
+    },
+    {
+      "family": "Alegreya Sans",
+      "weight": "500",
+      "file": "alegreya-sans-500-latin.woff2",
+      "subset": "latin"
+    },
+    {
+      "family": "Alegreya Sans",
+      "weight": "700",
+      "file": "alegreya-sans-700-latin-ext.woff2",
+      "subset": "latin-ext"
+    },
+    {
+      "family": "Alegreya Sans",
+      "weight": "700",
+      "file": "alegreya-sans-700-latin.woff2",
+      "subset": "latin"
+    },
+    {
+      "family": "Azeret Mono",
+      "weight": "300",
+      "file": "azeret-mono-300-latin-ext.woff2",
+      "subset": "latin-ext"
+    },
+    {
+      "family": "Azeret Mono",
+      "weight": "300",
+      "file": "azeret-mono-300-latin.woff2",
+      "subset": "latin"
+    },
+    {
+      "family": "Azeret Mono",
+      "weight": "400",
+      "file": "azeret-mono-400-latin-ext.woff2",
+      "subset": "latin-ext"
+    },
+    {
+      "family": "Azeret Mono",
+      "weight": "400",
+      "file": "azeret-mono-400-latin.woff2",
+      "subset": "latin"
+    },
+    {
+      "family": "Azeret Mono",
+      "weight": "500",
+      "file": "azeret-mono-500-latin-ext.woff2",
+      "subset": "latin-ext"
+    },
+    {
+      "family": "Azeret Mono",
+      "weight": "500",
+      "file": "azeret-mono-500-latin.woff2",
+      "subset": "latin"
+    },
+    {
+      "family": "Cinzel",
+      "weight": "400",
+      "file": "cinzel-400-latin-ext.woff2",
+      "subset": "latin-ext"
+    },
+    {
+      "family": "Cinzel",
+      "weight": "400",
+      "file": "cinzel-400-latin.woff2",
+      "subset": "latin"
+    },
+    {
+      "family": "Cinzel",
+      "weight": "500",
+      "file": "cinzel-500-latin-ext.woff2",
+      "subset": "latin-ext"
+    },
+    {
+      "family": "Cinzel",
+      "weight": "500",
+      "file": "cinzel-500-latin.woff2",
+      "subset": "latin"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+/* S4 terminal: one host, three placements (bottom pane, right side, tab). Every colour, face and
+   shape token comes from the active theme pack; nothing here names a colour. The pane is an overlay,
+   so it never pushes the workspaces (R8) and hiding it hides the box, not the shell. */
+.term-host {
+  position: fixed;
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 88%, var(--bg)));
+  border: var(--bw) solid var(--line-strong);
+  box-shadow: var(--shadow-2);
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%);
+}
+.term-host.hidden { display: none; }
+.term-host.place-bottom { left: var(--rail); right: 0; bottom: 0; height: min(42dvh, 340px); border-left: 0; border-right: 0; border-bottom: 0; }
+.term-host.place-right { top: 56px; right: 0; bottom: 0; width: min(460px, 44vw); border-top: 0; border-right: 0; border-bottom: 0; }
+.term-host.place-tab { top: 56px; left: var(--rail); right: 0; bottom: 0; border: 0; }
+.term-host.place-tab::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+
+/* A narrow side pane: the title and state on one line, the actions on the next, never clipped. */
+.term-host.place-right .term-head { flex-wrap: wrap; padding-top: var(--sp1); padding-bottom: var(--sp1); }
+.term-host.place-right .term-note { display: none; }
+.term-host.place-right .term-actions { margin-left: 0; width: 100%; flex-wrap: wrap; }
+.term-head {
+  display: flex; align-items: center; gap: var(--sp2); flex: none; min-height: 52px;
+  padding: 0 var(--sp2) 0 var(--sp3); border-bottom: var(--bw) solid var(--line);
+  background: var(--surface-2); min-width: 0;
+}
+.term-title { display: inline-flex; align-items: center; gap: var(--sp2); color: var(--accent); flex: none; }
+.term-title .mono { color: var(--ink-2); letter-spacing: .18em; }
+.term-dot { width: 7px; height: 7px; background: var(--ink-3); transform: rotate(45deg); flex: none; }
+.term-dot.live { background: var(--ok); }
+.term-dot.connecting, .term-dot.reconnecting { background: var(--warn); }
+.term-dot.error { background: var(--danger); }
+.term-state { color: var(--ink-3); font-size: 0.5938rem; letter-spacing: .14em; flex: none; }
+.term-note { color: var(--ink-3); font-size: 0.5938rem; letter-spacing: .06em; text-transform: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.term-actions { margin-left: auto; display: flex; align-items: center; gap: 2px; min-width: 0; }
+.term-seg { padding: 2px; }
+.term-seg .seg-btn { height: var(--target); padding: 0 10px; font-size: 0.5938rem; }
+.term-btn {
+  height: var(--target); padding: 0 12px; color: var(--ink-2); flex: none;
+  font: 500 0.625rem/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase;
+  transition: color var(--t1) var(--e-soft), background var(--t1) var(--e-soft);
+}
+.term-btn:hover { color: var(--ink); background: var(--surface-3); }
+.term-hide { width: 40px; height: var(--target); }
+.term-error { margin: 0; padding: var(--sp2) var(--sp3); color: var(--danger); font-size: 0.7813rem; border-bottom: var(--bw) solid var(--line); }
+.term-body { flex: 1; min-height: 0; padding: 6px 10px; overflow: hidden; background: var(--bg-deep); }
+.term-body .xterm { height: 100%; }
+.term-body .xterm-viewport { background: transparent !important; }
+.term-body .xterm-screen { height: 100%; }
+.term-hint { flex: none; padding: 4px var(--sp3) 6px; color: var(--ink-3); font-size: 0.5625rem; letter-spacing: .08em; text-transform: none; }
+
+@media (max-width: 760px) {
+  /* Phones get the pane as a drawer: the same host, the same shell, a full-width box above the bar. */
+  .term-host.place-bottom, .term-host.place-right {
+    left: 0; right: 0; top: auto; bottom: calc(60px + env(safe-area-inset-bottom));
+    width: auto; height: min(72dvh, 560px); border-left: 0; border-right: 0;
+  }
+  .term-host.place-tab {
+    left: 0; right: 0; top: 56px; bottom: calc(60px + env(safe-area-inset-bottom)); height: auto;
+  }
+  .term-head { min-height: 0; padding: 6px var(--sp2); flex-wrap: wrap; row-gap: 4px; }
+  .term-state { display: none; }
+  .term-note { flex: 1; }
+  .term-actions { margin-left: 0; width: 100%; flex-wrap: wrap; gap: 2px; }
+  .term-seg .seg-btn { height: 44px; padding: 0 8px; }
+  .term-btn { height: 44px; padding: 0 10px; }
+  .term-hide { width: 44px; height: 44px; }
+  .term-hint { display: none; }
+}

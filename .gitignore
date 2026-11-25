@@ -1,0 +1,11 @@
+node_modules/
+dist/
+data/
+.env
+*.log
+src-tauri/target/
+src-tauri/gen/schemas/
+# evidence screenshots live outside the repo (~/caesaros-evidence); they are re-shot, not versioned
+docs/design/captures/
+docs-shots/
+.DS_Store

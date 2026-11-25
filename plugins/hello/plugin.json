@@ -1,0 +1,12 @@
+{
+  "id": "hello",
+  "name": "Hello",
+  "version": "0.1.0",
+  "description": "A minimal module: one route, one stored counter. It proves the registry, not a feature.",
+  "group": "core",
+  "edition": "standard",
+  "tags": ["example"],
+  "nav": [],
+  "routes": [],
+  "permissions": []
+}

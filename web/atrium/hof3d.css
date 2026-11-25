@@ -1,0 +1,4 @@
+/* Hall of Fame WebGL layer (plan 8.12): a canvas over the still picture, decoration only.
+   Everything here lives under the module's own root class, .hf3. */
+.hf3{position:absolute;inset:0;display:block;width:100%;height:100%;pointer-events:none}
+.hf3[hidden]{display:none}

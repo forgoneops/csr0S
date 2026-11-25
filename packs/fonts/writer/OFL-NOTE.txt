@@ -1,0 +1,1 @@
+iA Writer Duospace is licensed under the SIL Open Font License 1.1 (https://openfontlicense.org). The files here are the original glyphs converted from TTF to WOFF2; no outlines were changed. Copyright Information Architects Inc. with Reserved Font Name 'iA Writer'.

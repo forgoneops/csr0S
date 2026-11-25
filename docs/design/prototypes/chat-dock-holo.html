@@ -1,0 +1,61 @@
+<!doctype html><meta charset="utf-8"><title>Chat dock, hologram study</title>
+<style>
+:root{--font:"Alegreya Sans",system-ui,sans-serif;--mono:"Azeret Mono",ui-monospace,monospace}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;font:15px/1.5 var(--font);color:#e8ecff;background:#05060d;display:grid;grid-template-columns:1fr 1fr;gap:0}
+.stage{position:relative;min-height:100vh;padding:40px;overflow:hidden}
+.stage h3{position:absolute;left:24px;top:16px;margin:0;font:11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:#8b90b8}
+.page{position:absolute;inset:60px 24px 24px;border:1px solid #1b1d33;background:linear-gradient(180deg,#0a0c1a,#070812);opacity:.9}
+.page i{display:block;height:10px;margin:18px;background:#14172b}
+/* theme tokens */
+.roma{--edge:#e8a94a;--edge-r:232,169,74;--glow:#ff7a3d;--glow-r:255,122,61;--ink:#f3e7cf;--panel:rgba(16,11,8,.80);--panel2:rgba(34,22,12,.55);--muted:#b59f80}
+.neutral{--edge:#7fd9ff;--edge-r:127,217,255;--glow:#9bb6ff;--glow-r:155,182,255;--ink:#e8f1ff;--panel:rgba(8,13,24,.80);--panel2:rgba(20,32,52,.55);--muted:#8da3c2}
+/* the dock window: light on dark, not glass. Thin edge, scanlines, one soft glow. */
+.halo{position:absolute;right:32px;bottom:32px;width:380px;height:520px;filter:drop-shadow(0 0 16px rgba(var(--glow-r),.34))}
+.halo:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(var(--edge-r),.95),rgba(var(--edge-r),.45) 55%,rgba(var(--edge-r),.2));clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px))}
+.dock{position:absolute;inset:1px;display:flex;flex-direction:column;color:var(--ink);
+ background:linear-gradient(180deg,rgba(var(--edge-r),.07),transparent 28%),var(--panel);
+ clip-path:polygon(0 0,calc(100% - 17px) 0,100% 17px,100% 100%,17px 100%,0 calc(100% - 17px));}
+.dock:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px);}
+.dock:after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,rgba(var(--edge-r),.95),transparent);box-shadow:0 0 14px rgba(var(--edge-r),.7);}
+.edge{position:absolute;inset:0;pointer-events:none;clip-path:inherit}
+.corner{position:absolute;width:14px;height:14px;border:1px solid rgba(var(--edge-r),.9)}
+.c1{left:6px;top:6px;border-right:0;border-bottom:0}.c2{right:24px;bottom:6px;border-left:0;border-top:0}
+.roma .meander{height:10px;margin:0 18px;background:repeating-linear-gradient(90deg,rgba(var(--edge-r),.5) 0 6px,transparent 6px 8px,rgba(var(--edge-r),.5) 8px 10px,transparent 10px 14px);opacity:.55;mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.neutral .meander{height:1px;margin:6px 18px;background:linear-gradient(90deg,transparent,rgba(var(--edge-r),.6),transparent)}
+header{display:flex;gap:12px;align-items:center;padding:14px 18px 8px}
+.av{width:38px;height:38px;flex:none;background:#000 url(../../../web/atrium/art/caesaros-caesar-portrait.webp) center/cover;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));box-shadow:0 0 0 1px rgba(var(--edge-r),.7)}
+header b{display:block;font:600 17px var(--font);letter-spacing:.02em}header small{font:10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.st{margin-left:auto;display:flex;align-items:center;gap:8px;font:10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--edge)}
+.st:before{content:"";width:7px;height:7px;background:var(--edge);transform:rotate(45deg);box-shadow:0 0 8px var(--edge)}
+.btns{display:flex;gap:6px;margin-left:10px}.btns span{width:28px;height:28px;display:grid;place-items:center;border:1px solid rgba(var(--edge-r),.35);color:var(--muted);font-size:13px}
+.thread{flex:1;overflow:hidden;padding:10px 18px;display:flex;flex-direction:column;gap:10px}
+.m{max-width:86%;padding:9px 12px;background:var(--panel2);border-left:2px solid rgba(var(--edge-r),.6)}
+.m.me{align-self:flex-end;border-left:0;border-right:2px solid rgba(var(--glow-r),.7);background:rgba(var(--glow-r),.08)}
+.m small{display:block;font:9px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.ap{border:1px solid rgba(var(--edge-r),.5);padding:10px 12px;background:rgba(var(--edge-r),.06)}
+.ap b{font:11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--edge)}
+.ap div{display:flex;gap:8px;margin-top:8px}.ap span{padding:6px 12px;font:600 11px var(--mono);letter-spacing:.1em;border:1px solid rgba(var(--edge-r),.6)}.ap span:first-child{background:rgba(var(--edge-r),.18);color:var(--ink)}
+.comp{padding:12px 18px 18px;position:relative}.box{display:flex;gap:8px;align-items:flex-end;padding:9px 10px;border:1px solid rgba(var(--edge-r),.4);background:rgba(0,0,0,.35);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.box p{margin:0;flex:1;color:var(--muted)}.send{width:34px;height:30px;display:grid;place-items:center;background:rgba(var(--edge-r),.2);border:1px solid rgba(var(--edge-r),.7);color:var(--ink)}
+.grip{position:absolute;right:4px;bottom:4px;width:14px;height:14px;background:linear-gradient(135deg,transparent 50%,rgba(var(--edge-r),.9) 50% 56%,transparent 56% 70%,rgba(var(--edge-r),.9) 70% 76%,transparent 76%)}
+.launcher{position:absolute;left:32px;bottom:32px;width:44px;height:44px;display:grid;place-items:center;background:var(--panel);color:var(--ink);clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,9px 100%,0 calc(100% - 9px));box-shadow:0 0 0 1px rgba(var(--edge-r),.6),0 0 18px -4px rgba(var(--glow-r),.5)}
+.launcher i{position:absolute;right:5px;top:5px;width:7px;height:7px;background:var(--glow);transform:rotate(45deg)}
+@media (prefers-reduced-motion:no-preference){.halo{animation:rise .5s cubic-bezier(.2,.8,.2,1)}.dock:after{animation:sweep 1.4s .1s 1 both}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}@keyframes sweep{from{opacity:0;transform:translateY(0)}20%{opacity:1}to{opacity:0;transform:translateY(520px)}}
+</style>
+<div class="stage roma"><h3>neo-Roma</h3><div class="page"><i></i><i style="width:60%"></i><i style="width:80%"></i></div>
+ <div class="launcher"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16v11H9l-5 4z"/></svg><i></i></div>
+ <div class="halo"><div class="dock"><div class="corner c1"></div><div class="corner c2"></div>
+  <div class="meander"></div>
+  <header><div class="av"></div><div><b>Caesar</b><small>Quick ask</small></div><div class="st">Working</div><div class="btns"><span>⤢</span><span>▢</span><span>–</span></div></header>
+  <div class="thread"><div class="m me"><small>You</small>Summarise what changed on this page today.</div><div class="m"><small>Caesar</small>Three notes were edited and the plan moved one step. I can open the plan next to this page.</div>
+   <div class="ap"><b>Needs your yes</b><div style="font-size:13px;margin-top:4px">Write the summary to the Brain?</div><div><span>APPROVE</span><span>NOT NOW</span></div></div></div>
+  <div class="comp"><div class="box"><p>Ask anything about this page</p><div class="send">➤</div></div></div><div class="grip"></div></div></div></div>
+<div class="stage neutral"><h3>neutral</h3><div class="page"><i></i><i style="width:60%"></i><i style="width:80%"></i></div>
+ <div class="launcher"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16v11H9l-5 4z"/></svg><i></i></div>
+ <div class="halo"><div class="dock"><div class="corner c1"></div><div class="corner c2"></div>
+  <div class="meander"></div>
+  <header><div class="av"></div><div><b>Assistant</b><small>Quick ask</small></div><div class="st">Working</div><div class="btns"><span>⤢</span><span>▢</span><span>–</span></div></header>
+  <div class="thread"><div class="m me"><small>You</small>Summarise what changed on this page today.</div><div class="m"><small>Assistant</small>Three notes were edited and the plan moved one step. I can open the plan next to this page.</div>
+   <div class="ap"><b>Needs your yes</b><div style="font-size:13px;margin-top:4px">Write the summary to the Brain?</div><div><span>APPROVE</span><span>NOT NOW</span></div></div></div>
+  <div class="comp"><div class="box"><p>Ask anything about this page</p><div class="send">➤</div></div></div><div class="grip"></div></div></div></div>

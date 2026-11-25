@@ -1,0 +1,124 @@
+/* Chat dock (plan 8.10, 8.10a): light on dark, not glass. Every rule is rooted at .cdk, the module's own root.
+   neo-Roma (default) = ember-gold edge and meander; neutral = cool cyan edge and a hairline.
+   Shortcut: one theme pair only, add tokens here when a third theme ships. */
+.cdk {
+  --edge:#e8a94a; --edge-r:232,169,74; --glow:#ff7a3d; --glow-r:255,122,61;
+  --ink:#f3e7cf; --panel:rgba(16,11,8,.80); --panel-2:rgba(34,22,12,.55); --muted:#b59f80; --line:rgba(232,169,74,.28);
+  position:fixed; inset:0; z-index:95; pointer-events:none;
+  font-family:var(--font-body,"CaesarOS Humanist",system-ui,sans-serif); color:var(--ink);
+}
+.cdk[data-theme=neutral] {
+  --edge:#7fd9ff; --edge-r:127,217,255; --glow:#9bb6ff; --glow-r:155,182,255;
+  --ink:#e8f1ff; --panel:rgba(8,13,24,.80); --panel-2:rgba(20,32,52,.55); --muted:#8da3c2; --line:rgba(127,217,255,.26);
+}
+.cdk.cdk-simple { display:none; }
+@media (max-width:760px) { .cdk { display:none; } }
+
+/* ---- launcher: 44px, a small diamond when a reply runs or an approval waits ---- */
+.cdk .cdk-launch {
+  position:absolute; right:24px; bottom:24px; width:44px; height:44px; padding:0; pointer-events:auto;
+  display:grid; place-items:center; color:var(--ink); cursor:pointer;
+  background:var(--panel); border:0;
+  clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,9px 100%,0 calc(100% - 9px));
+  box-shadow:0 0 0 1px rgba(var(--edge-r),.6),0 0 18px -4px rgba(var(--glow-r),.5);
+}
+.cdk .cdk-launch:hover { box-shadow:0 0 0 1px var(--edge),0 0 20px -2px rgba(var(--glow-r),.6); }
+.cdk .cdk-diamond { position:absolute; right:5px; top:5px; width:7px; height:7px; background:var(--glow); transform:rotate(45deg); display:none; box-shadow:0 0 8px var(--glow); }
+.cdk.cdk-busy .cdk-diamond, .cdk.cdk-wait .cdk-diamond { display:block; }
+.cdk.cdk-open .cdk-launch { display:none; }
+.cdk.cdk-dupe .cdk-launch { display:grid; }
+
+/* ---- the window ---- */
+.cdk .cdk-win {
+  position:absolute; right:24px; bottom:24px; width:380px; height:520px; display:none; pointer-events:auto;
+  background:linear-gradient(180deg,rgba(var(--edge-r),.95),rgba(var(--edge-r),.45) 55%,rgba(var(--edge-r),.2));
+  clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));
+  filter:drop-shadow(0 0 16px rgba(var(--glow-r),.34));
+}
+.cdk.cdk-open .cdk-win { display:block; }
+.cdk.cdk-dupe.cdk-open .cdk-win { display:none; }
+.cdk .cdk-face {
+  position:absolute; inset:1px; display:flex; flex-direction:column; overflow:hidden;
+  background:linear-gradient(180deg,rgba(var(--edge-r),.07),transparent 28%),var(--panel);
+  clip-path:polygon(0 0,calc(100% - 17px) 0,100% 17px,100% 100%,17px 100%,0 calc(100% - 17px));
+}
+.cdk .cdk-face::before { content:""; position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px); }
+.cdk .cdk-corner { position:absolute; width:14px; height:14px; border:1px solid rgba(var(--edge-r),.9); pointer-events:none; }
+.cdk .cdk-c1 { left:6px; top:6px; border-right:0; border-bottom:0; }
+.cdk .cdk-c2 { right:6px; bottom:6px; border-left:0; border-top:0; }
+.cdk .cdk-meander {
+  flex:none; height:10px; margin:0 18px;
+  background:repeating-linear-gradient(90deg,rgba(var(--edge-r),.5) 0 6px,transparent 6px 8px,rgba(var(--edge-r),.5) 8px 10px,transparent 10px 14px);
+  opacity:.55; mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+  -webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+}
+.cdk[data-theme=neutral] .cdk-meander { height:1px; margin:6px 18px; background:linear-gradient(90deg,transparent,rgba(var(--edge-r),.6),transparent); opacity:.8; mask:none; -webkit-mask:none; }
+
+/* ---- header ---- */
+.cdk .cdk-hd { display:flex; align-items:center; gap:10px; padding:12px 14px 8px; flex:none; }
+.cdk .cdk-av { width:38px; height:38px; flex:none; overflow:hidden; background:#000; box-shadow:0 0 0 1px rgba(var(--edge-r),.7); clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px)); }
+.cdk .cdk-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.cdk[data-theme=neutral] .cdk-av img { filter:grayscale(1) contrast(1.05); }
+.cdk .cdk-id { display:grid; line-height:1.2; min-width:0; }
+.cdk .cdk-id b { font-weight:600; font-size:17px; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cdk .cdk-id small { font:10px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.cdk .cdk-st { margin-left:auto; display:flex; align-items:center; gap:7px; font:10px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.14em; text-transform:uppercase; color:var(--edge); }
+.cdk .cdk-st i { width:7px; height:7px; background:var(--edge); transform:rotate(45deg); box-shadow:0 0 8px var(--edge); }
+.cdk .cdk-btns { display:flex; gap:6px; margin-left:10px; }
+.cdk .cdk-btn {
+  width:30px; height:30px; padding:0; display:grid; place-items:center; cursor:pointer;
+  border:1px solid rgba(var(--edge-r),.35); background:transparent; color:var(--muted); font-size:13px; line-height:1;
+}
+.cdk .cdk-btn:hover { border-color:var(--edge); color:var(--ink); }
+
+/* ---- the conversation: the chat view's own message markup, restyled in the dock's language ---- */
+.cdk .cdk-thread { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:8px 14px 10px; display:flex; flex-direction:column; gap:10px; }
+.cdk .cdk-empty { margin:0; padding:10px 2px; color:var(--muted); font-size:13px; line-height:1.6; }
+.cdk .nx-msg { max-width:88%; display:grid; gap:4px; }
+.cdk .nx-msg.me { align-self:flex-end; }
+.cdk .nx-who { font:9px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.cdk .nx-bub { padding:9px 12px; background:var(--panel-2); border:0; border-left:2px solid rgba(var(--edge-r),.6); clip-path:none; color:var(--ink); }
+.cdk .nx-msg.me .nx-bub { background:rgba(var(--glow-r),.12); border-left:0; border-right:2px solid rgba(var(--glow-r),.7); }
+.cdk .nx-bub p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; line-height:1.5; }
+.cdk .nx-tool { border-style:solid; border-color:rgba(var(--edge-r),.3); color:var(--muted); }
+.cdk .xf-head { background:transparent; border:0; color:var(--muted); }
+.cdk .xf-body, .cdk .xf-body pre { color:var(--ink); }
+.cdk .xf-chip { color:var(--muted); }
+
+/* ---- the approval card, in the same language ---- */
+.cdk .cdk-ap { border:1px solid rgba(var(--edge-r),.5); background:rgba(var(--edge-r),.06); padding:10px 12px; display:grid; gap:8px; }
+.cdk .cdk-ap b { font:600 11px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.12em; text-transform:uppercase; color:var(--edge); }
+.cdk .cdk-ap p { margin:0; font-size:14px; line-height:1.45; }
+.cdk .cdk-apb { display:flex; gap:8px; }
+.cdk .cdk-apb button { padding:6px 12px; font:600 11px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.1em; border:1px solid rgba(var(--edge-r),.6); background:transparent; color:var(--ink); cursor:pointer; }
+.cdk .cdk-apb .cdk-apb-a { background:rgba(var(--edge-r),.18); }
+.cdk .cdk-apb button:hover { background:rgba(var(--edge-r),.3); }
+
+/* ---- composer: grows with the text, like the chat page's ---- */
+.cdk .cdk-comp { flex:none; padding:10px 14px 14px; }
+.cdk .cdk-box { display:flex; gap:8px; align-items:flex-end; padding:8px 8px 8px 12px; border:1px solid rgba(var(--edge-r),.4); background:rgba(0,0,0,.35); clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px)); }
+.cdk .cdk-inp { all:unset; box-sizing:border-box; flex:1; min-height:26px; max-height:160px; padding:4px 0; font:15px/1.45 var(--font-body,"CaesarOS Humanist",system-ui,sans-serif); color:var(--ink); white-space:pre-wrap; overflow-y:auto; }
+.cdk .cdk-inp::placeholder { color:var(--muted); }
+.cdk .cdk-send { width:34px; height:30px; flex:none; display:grid; place-items:center; padding:0; cursor:pointer; background:rgba(var(--edge-r),.2); border:1px solid rgba(var(--edge-r),.7); color:var(--ink); font-size:13px; }
+.cdk .cdk-send:hover { background:rgba(var(--edge-r),.35); }
+
+/* ---- live resize grips ---- */
+.cdk .cdk-grip { position:absolute; z-index:3; pointer-events:auto; }
+.cdk .cdk-grip[data-dk-edge=n] { left:18px; right:24px; top:0; height:7px; cursor:ns-resize; }
+.cdk .cdk-grip[data-dk-edge=s] { left:18px; right:6px; bottom:0; height:7px; cursor:ns-resize; }
+.cdk .cdk-grip[data-dk-edge=w] { left:0; top:18px; bottom:18px; width:7px; cursor:ew-resize; }
+.cdk .cdk-grip[data-dk-edge=e] { right:0; top:18px; bottom:6px; width:7px; cursor:ew-resize; }
+.cdk .cdk-grip[data-dk-edge=nw] { left:0; top:0; width:16px; height:16px; cursor:nwse-resize; }
+.cdk .cdk-grip[data-dk-edge=ne] { right:0; top:0; width:20px; height:20px; cursor:nesw-resize; }
+.cdk .cdk-grip[data-dk-edge=sw] { left:0; bottom:0; width:20px; height:20px; cursor:nesw-resize; }
+.cdk .cdk-grip[data-dk-edge=se] { right:0; bottom:0; width:16px; height:16px; cursor:nwse-resize; }
+.cdk .cdk-grip:focus-visible { outline:2px solid var(--edge); outline-offset:-3px; }
+.cdk .cdk-launch:focus-visible, .cdk .cdk-btn:focus-visible, .cdk .cdk-send:focus-visible, .cdk .cdk-apb button:focus-visible, .cdk .cdk-inp:focus-visible { outline:2px solid var(--edge); outline-offset:2px; }
+
+/* ---- one light sweep when it opens; nothing moves after ---- */
+.cdk .cdk-sweep { position:absolute; left:0; right:0; top:0; height:2px; pointer-events:none; opacity:0; background:linear-gradient(90deg,transparent,rgba(var(--edge-r),.95),transparent); box-shadow:0 0 14px rgba(var(--edge-r),.7); }
+.cdk.cdk-anim .cdk-sweep { animation:cdk-sweep 1.4s .1s 1 both; }
+.cdk.cdk-anim.cdk-busy .cdk-diamond, .cdk.cdk-anim.cdk-wait .cdk-diamond { animation:cdk-pulse 1.6s ease-in-out infinite; }
+@keyframes cdk-sweep { from { opacity:0; top:0; } 20% { opacity:1; } to { opacity:0; top:100%; } }
+@keyframes cdk-pulse { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+@media (prefers-reduced-motion: reduce) { .cdk .cdk-sweep, .cdk .cdk-diamond { animation:none !important; } }

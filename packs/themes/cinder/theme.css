@@ -1,0 +1,40 @@
+/* DS0 theme pack: Cinder. Warm basalt; ember leads, cyan answers.
+   Tokens only. No component lives here, so a pack swap changes the whole look with no code edit. */
+:root{
+  --theme-name:"Cinder";
+  /* field */
+  --bg:#0A0908; --bg-deep:#050505;
+  --surface:#121110; --surface-2:#1A1817; --surface-3:#23201E;
+  --glass:rgba(18,17,16,.72); --glass-2:rgba(26,24,23,.82);
+  --line:rgba(255,186,150,.14); --line-strong:rgba(255,196,164,.26);
+  --edge-hi:rgba(255,206,178,.42); --edge:rgba(255,186,150,.16); --edge-lo:rgba(255,186,150,.06);
+  /* ink */
+  --ink:#F4EFE8; --ink-2:#BCB4A9; --ink-3:#8A8279; --ink-inv:#0A0908;
+  /* lead and answer */
+  --accent:#FF6A2B; --accent-hi:#FF8B52; --accent-lo:#D34E17; --accent-ink:#120B07;
+  --accent-2:#37DFF5; --accent-2-ink:#04181D;
+  --signal:var(--accent-2);            /* the WebGL background reads --accent and --signal (R13) */
+  /* state */
+  --ok:#43E0A0; --warn:#FFC24B; --danger:#FF5468; --focus:#7FEAFF;
+  /* derived alphas: components use these, never a raw rgba() of their own */
+  --a06:rgba(255,106,43,.06); --a10:rgba(255,106,43,.10); --a16:rgba(255,106,43,.16);
+  --a30:rgba(255,106,43,.30); --a55:rgba(255,106,43,.55); --a80:rgba(255,106,43,.80);
+  --c06:rgba(55,223,245,.06); --c20:rgba(55,223,245,.20); --c45:rgba(55,223,245,.45);
+  --d10:rgba(255,84,104,.10); --d18:rgba(255,84,104,.18); --d30:rgba(255,84,104,.30); --d55:rgba(255,84,104,.55);
+  --ok35:rgba(67,224,160,.35);
+  /* elevation */
+  --shadow-1:0 1px 0 rgba(255,255,255,.03) inset, 0 10px 24px -18px #000;
+  --shadow-2:0 24px 60px -32px #000, 0 2px 0 rgba(255,255,255,.02) inset;
+  --scrim-1:rgba(0,0,0,.42); --scrim-2:rgba(0,0,0,.72);
+  --scene:linear-gradient(135deg,#241009,#0E0B09 60%,#06161A);
+  --sheen-hi:rgba(255,255,255,.30); --sheen-lo:rgba(255,255,255,.06);
+  /* shape: there is no border radius in DS0 */
+  --cut:12px; --cut-sm:9px; --bw:1px; --r:0;
+  /* space and motion */
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:32px; --sp7:48px; --sp8:64px;
+  --t1:110ms; --t2:180ms; --t3:240ms; --t4:420ms;
+  --e-out:cubic-bezier(.22,1,.32,1); --e-inout:cubic-bezier(.77,0,.175,1); --e-soft:cubic-bezier(.4,0,.2,1);
+  --target:44px;
+  /* shell geometry (decision D1/D3) */
+  --rail:56px; --flyout:316px; --capsule:52px;
+}

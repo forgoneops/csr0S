@@ -1,0 +1,5 @@
+# Paths left out of the clean (open-source) export. They stay in the owner's working tree only.
+# One path per line, relative to the repo root; a folder excludes everything in it.
+# Analysis, audits, plans, handoffs and captures document how the product was studied and built, not the product.
+docs
+skills/caesar-studio-merge

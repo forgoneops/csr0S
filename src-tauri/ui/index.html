@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CaesarOS</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <span class="brand" id="brand">CaesarOS</span>
+  <div class="lang" role="group" aria-label="Language">
+    <button type="button" id="lang-en" data-lang="en">EN</button>
+    <button type="button" id="lang-pl" data-lang="pl">PL</button>
+  </div>
+</header>
+<main>
+  <p id="bridge" class="notice" role="alert" hidden></p>
+
+  <section id="status" class="panel" aria-live="polite" hidden>
+    <p class="status-line"><span class="spinner" id="spinner" aria-hidden="true"></span><span id="status-text"></span></p>
+    <div class="row"><button type="button" id="still-retry" hidden></button></div>
+  </section>
+
+  <section id="offline" class="panel offline" aria-labelledby="offline-title" hidden>
+    <h2 id="offline-title" tabindex="-1"></h2>
+    <p id="offline-gone" class="strong"></p>
+    <p id="offline-reason"></p>
+    <p id="offline-kept"></p>
+    <dl id="offline-facts"></dl>
+    <div class="row">
+      <button type="button" id="offline-retry" class="primary"></button>
+      <button type="button" id="offline-change"></button>
+      <button type="button" id="offline-quit"></button>
+    </div>
+    <p id="offline-error" class="error" role="alert" hidden></p>
+  </section>
+
+  <section id="picker" aria-labelledby="picker-title">
+    <h1 id="picker-title" tabindex="-1"></h1>
+    <p id="picker-lede" class="muted"></p>
+    <ul id="gateways" class="gateways"></ul>
+    <p id="picker-empty" class="muted" hidden></p>
+    <div class="row">
+      <button type="button" id="connect" class="primary"></button>
+    </div>
+    <p id="picker-error" class="error" role="alert" hidden></p>
+  </section>
+
+  <section id="add" class="panel" aria-labelledby="add-title">
+    <h2 id="add-title"></h2>
+    <form id="add-form" novalidate>
+      <label for="add-name" id="add-name-label"></label>
+      <input id="add-name" name="name" type="text" autocomplete="off" spellcheck="false">
+      <label for="add-address" id="add-address-label"></label>
+      <input id="add-address" name="address" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://example.org">
+      <p id="add-error" class="error" role="alert" hidden></p>
+      <button type="submit" id="add-submit" class="primary"></button>
+    </form>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

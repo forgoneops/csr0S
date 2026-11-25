@@ -1,0 +1,91 @@
+{
+ "id": "plain",
+ "name": "Plain",
+ "version": "0.1.0",
+ "license": "OFL-1.1",
+ "source": "Alegreya Sans and Azeret Mono (OFL-1.1), the same files as DS0 type without Cinzel: a calm humanist look",
+ "families": {
+  "display": "Alegreya Sans",
+  "body": "Alegreya Sans",
+  "mono": "Azeret Mono"
+ },
+ "fallbacks": {
+  "display": "\"Times New Roman\",serif",
+  "body": "\"Helvetica Neue\",Arial,sans-serif",
+  "mono": "ui-monospace,\"Courier New\",monospace"
+ },
+ "faces": [
+  {
+   "family": "Alegreya Sans",
+   "weight": "400",
+   "file": "alegreya-sans-400-latin-ext.woff2",
+   "subset": "latin-ext"
+  },
+  {
+   "family": "Alegreya Sans",
+   "weight": "400",
+   "file": "alegreya-sans-400-latin.woff2",
+   "subset": "latin"
+  },
+  {
+   "family": "Alegreya Sans",
+   "weight": "500",
+   "file": "alegreya-sans-500-latin-ext.woff2",
+   "subset": "latin-ext"
+  },
+  {
+   "family": "Alegreya Sans",
+   "weight": "500",
+   "file": "alegreya-sans-500-latin.woff2",
+   "subset": "latin"
+  },
+  {
+   "family": "Alegreya Sans",
+   "weight": "700",
+   "file": "alegreya-sans-700-latin-ext.woff2",
+   "subset": "latin-ext"
+  },
+  {
+   "family": "Alegreya Sans",
+   "weight": "700",
+   "file": "alegreya-sans-700-latin.woff2",
+   "subset": "latin"
+  },
+  {
+   "family": "Azeret Mono",
+   "weight": "300",
+   "file": "azeret-mono-300-latin-ext.woff2",
+   "subset": "latin-ext"
+  },
+  {
+   "family": "Azeret Mono",
+   "weight": "300",
+   "file": "azeret-mono-300-latin.woff2",
+   "subset": "latin"
+  },
+  {
+   "family": "Azeret Mono",
+   "weight": "400",
+   "file": "azeret-mono-400-latin-ext.woff2",
+   "subset": "latin-ext"
+  },
+  {
+   "family": "Azeret Mono",
+   "weight": "400",
+   "file": "azeret-mono-400-latin.woff2",
+   "subset": "latin"
+  },
+  {
+   "family": "Azeret Mono",
+   "weight": "500",
+   "file": "azeret-mono-500-latin-ext.woff2",
+   "subset": "latin-ext"
+  },
+  {
+   "family": "Azeret Mono",
+   "weight": "500",
+   "file": "azeret-mono-500-latin.woff2",
+   "subset": "latin"
+  }
+ ]
+}

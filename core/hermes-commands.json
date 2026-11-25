@@ -1,0 +1,1001 @@
+{
+ "hermes": "v0.23.3",
+ "commands": [
+  {
+   "name": "start",
+   "description": "Acknowledge platform start pings without a reply",
+   "args": "",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": true,
+   "aliases": []
+  },
+  {
+   "name": "new",
+   "description": "Start a new session (fresh session ID + history)",
+   "args": "[name]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "reset"
+   ]
+  },
+  {
+   "name": "topic",
+   "description": "Enable or inspect Telegram DM topic sessions",
+   "args": "[off|help|session-id]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": true,
+   "aliases": []
+  },
+  {
+   "name": "clear",
+   "description": "Clear screen and start a new session",
+   "args": "",
+   "category": "Session",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "redraw",
+   "description": "Force a full UI repaint (recovers from terminal drift)",
+   "args": "",
+   "category": "Session",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "history",
+   "description": "Show conversation history",
+   "args": "",
+   "category": "Session",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "save",
+   "description": "Export the current conversation (bare /save shows usage)",
+   "args": "<json|md|html> [filename] [redact]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "retry",
+   "description": "Retry the last message (resend to agent)",
+   "args": "",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "prompt",
+   "description": "Compose your next prompt in $EDITOR (markdown), then send it",
+   "args": "[initial text]",
+   "category": "Session",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": [
+    "compose"
+   ]
+  },
+  {
+   "name": "undo",
+   "description": "Back up N user turns and re-prompt (default 1)",
+   "args": "[N]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "rewind",
+   "description": "Rewind to an earlier prompt to edit & resend it, or fork from there (Esc Esc)",
+   "args": "[N | fork N]",
+   "category": "Session",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "title",
+   "description": "Set a title for the current session",
+   "args": "[name]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "handoff",
+   "description": "Hand off this session to a messaging platform (Telegram, Discord, etc.)",
+   "args": "<platform>",
+   "category": "Session",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "branch",
+   "description": "Branch the current session (new thread on Discord/Telegram/Slack/Matrix; --here stays here)",
+   "args": "[--here] [name]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "fork"
+   ]
+  },
+  {
+   "name": "worktree",
+   "description": "Show, list, create, or prune isolated git worktrees",
+   "args": "[new [name]|list|prune [--dry-run]]",
+   "category": "Session",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "compress",
+   "description": "Compress conversation context (add 'here [N]' to keep recent N turns; --preview shows what would happen)",
+   "args": "[here [N] | focus topic | --preview|--dry-run]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "compact"
+   ]
+  },
+  {
+   "name": "rollback",
+   "description": "List or restore filesystem checkpoints (restores keep your hand-edits; --all overrides)",
+   "args": "[number] [--all]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "snapshot",
+   "description": "Create or restore state snapshots of Hermes config/state",
+   "args": "[create|restore <id>|prune]",
+   "category": "Session",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": [
+    "snap"
+   ]
+  },
+  {
+   "name": "export",
+   "description": "Export a profile (config, skills, theme) to a shareable archive",
+   "args": "[profile] [-o output.tar.gz]",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "import",
+   "description": "Import a shared profile archive as a new profile",
+   "args": "<archive.tar.gz> [--name <name>]",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "stop",
+   "description": "Kill all running background processes",
+   "args": "",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "discard",
+   "description": "Drop a turn lost when Hermes restarted so this chat's queue runs again",
+   "args": "",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": true,
+   "aliases": []
+  },
+  {
+   "name": "pause",
+   "description": "Pause new work globally (emergency stop); '/pause off' resumes",
+   "args": "[reason | off]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": true,
+   "aliases": []
+  },
+  {
+   "name": "approve",
+   "description": "Approve a pending dangerous command",
+   "args": "[session|always]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": true,
+   "aliases": []
+  },
+  {
+   "name": "deny",
+   "description": "Deny a pending dangerous command (optionally with a reason)",
+   "args": "[all] [reason]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": true,
+   "aliases": []
+  },
+  {
+   "name": "bg",
+   "description": "Run a prompt in a separate background session",
+   "args": "<prompt>",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "btw",
+   "description": "Ask a side question about the current conversation without interrupting it",
+   "args": "<question>",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "agents",
+   "description": "Show active agents and running tasks",
+   "args": "",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "tasks"
+   ]
+  },
+  {
+   "name": "journey",
+   "description": "Open the learning journey timeline",
+   "args": "[list|delete <id>|edit <id>]",
+   "category": "Session",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": [
+    "learning",
+    "memory-graph"
+   ]
+  },
+  {
+   "name": "queue",
+   "description": "Queue a prompt for the next turn, or list/edit/rm/move/clear queued prompts",
+   "args": "[<prompt>|list|edit N <prompt>|rm N|move A B|clear]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "q"
+   ]
+  },
+  {
+   "name": "steer",
+   "description": "Inject a message after the next tool call without interrupting",
+   "args": "<prompt>",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "s"
+   ]
+  },
+  {
+   "name": "goal",
+   "description": "Set a standing goal Hermes works on across turns until achieved",
+   "args": "[text | -- <text> | draft <text> | show | gate add <cmd> | pause | resume | clear | status | wait <pid> | unwait]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "heartbeat",
+   "description": "Set a recurring prompt that re-enters this session when idle",
+   "args": "[every <interval> <prompt> | status | pause | resume | clear]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "hb"
+   ]
+  },
+  {
+   "name": "refine",
+   "description": "Review this conversation now and save lessons to memory/skills",
+   "args": "[focus instructions]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "review",
+   "description": "Spawn an independent subagent to review the work just discussed (PR, code, docs)",
+   "args": "[review instructions]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "loop",
+   "description": "Re-run a prompt on a recurring interval in this session",
+   "args": "[interval] <prompt> [--times N] [--until <condition>] | status | pause | resume | stop",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "proactive"
+   ]
+  },
+  {
+   "name": "plan",
+   "description": "Write a markdown implementation plan to .hermes/plans/ without executing anything",
+   "args": "[task]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "moa",
+   "description": "Run one prompt through the default Mixture of Agents preset, then restore your model",
+   "args": "<prompt>",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "subgoal",
+   "description": "Add or manage extra criteria on the active goal",
+   "args": "[text | remove N | clear]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "status",
+   "description": "Show session, model, token, and context info",
+   "args": "",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "egress",
+   "description": "Show Docker egress proxy status",
+   "args": "[status]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "context",
+   "description": "Show detailed context window view with usage gauge, category breakdown, compression stats, and throughput",
+   "args": "[all]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "ctx"
+   ]
+  },
+  {
+   "name": "whoami",
+   "description": "Show your slash command access (admin / user)",
+   "args": "",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "profile",
+   "description": "Show active profile name and home directory",
+   "args": "",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "sethome",
+   "description": "Set this chat as the home channel",
+   "args": "",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": true,
+   "aliases": [
+    "set-home"
+   ]
+  },
+  {
+   "name": "resume",
+   "description": "Resume a previously-named session",
+   "args": "[name]",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "sessions",
+   "description": "Browse and resume previous sessions",
+   "args": "",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "config",
+   "description": "Show current configuration",
+   "args": "",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "model",
+   "description": "Switch model (session-scoped; --global to persist)",
+   "args": "[model|reset] [--provider name] [--reasoning level] [--global|--session] [--refresh]",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "codex-runtime",
+   "description": "Toggle codex app-server runtime for OpenAI/Codex models",
+   "args": "[auto|codex_app_server]",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "codex_runtime"
+   ]
+  },
+  {
+   "name": "personality",
+   "description": "Set a predefined personality",
+   "args": "[name]",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "statusbar",
+   "description": "Toggle the context/model status bar",
+   "args": "",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": [
+    "sb"
+   ]
+  },
+  {
+   "name": "battery",
+   "description": "Toggle a color-coded battery indicator in the status bar",
+   "args": "[on|off|status]",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "timestamps",
+   "description": "Toggle [HH:MM] timestamps on messages and /history",
+   "args": "[on|off|status]",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": [
+    "ts"
+   ]
+  },
+  {
+   "name": "diff",
+   "description": "Show git changes in the working directory",
+   "args": "[staged|all|session] [--stat] [path...]",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "verbose",
+   "description": "Cycle tool progress display: off -> new -> all -> verbose",
+   "args": "",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "focus",
+   "description": "Toggle focus view — show only your prompt and the final response",
+   "args": "[on|off|status]",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "footer",
+   "description": "Toggle gateway runtime-metadata footer on final replies",
+   "args": "[on|off|status]",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "yolo",
+   "description": "Toggle YOLO mode (skip all dangerous command approvals)",
+   "args": "",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "approvals",
+   "description": "Show or set the persistent dangerous-command approval mode",
+   "args": "[manual|smart|off]",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "reasoning",
+   "description": "Manage reasoning effort and display",
+   "args": "[level|show|hide|full|clamp] [--global]",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "fast",
+   "description": "Fast mode — OpenAI Priority Processing / Anthropic Fast Mode (normal/fast/auto/cold/ultrafast)",
+   "args": "[normal|fast|auto|cold|ultrafast|status] [--global]",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "skin",
+   "description": "Show or change the display skin/theme",
+   "args": "[name]",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "indicator",
+   "description": "Pick the TUI busy-indicator style",
+   "args": "[ascii|emoji|kaomoji|unicode]",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "voice",
+   "description": "Toggle voice mode",
+   "args": "[on|off|tts|status]",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "wake",
+   "description": "Toggle the 'Hey Hermes' wake word listener",
+   "args": "[on|off|status]",
+   "category": "Configuration",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "busy",
+   "description": "Control how messages behave while Hermes is working",
+   "args": "[queue|steer|interrupt|status]",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "autoprune",
+   "description": "Turn automatic pruning of old sessions on or off",
+   "args": "[on|off|later|status]",
+   "category": "Configuration",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "tools",
+   "description": "Manage tools: /tools [list|disable|enable] [name...]",
+   "args": "[list|disable|enable] [name...]",
+   "category": "Tools & Skills",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "toolsets",
+   "description": "List available toolsets",
+   "args": "",
+   "category": "Tools & Skills",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "skills",
+   "description": "Search, install, inspect, or manage skills",
+   "args": "",
+   "category": "Tools & Skills",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "memory",
+   "description": "Review pending memory writes / toggle the approval gate",
+   "args": "[pending|approve|reject|approval] [id|on|off]",
+   "category": "Tools & Skills",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "bundles",
+   "description": "List skill bundles (aliases /<name> for multiple skills)",
+   "args": "",
+   "category": "Tools & Skills",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "pet",
+   "description": "Toggle or adopt a petdex mascot (/pet, /pet list, /pet <slug>)",
+   "args": "[toggle|list|scale <n>|<slug>]",
+   "category": "Tools & Skills",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "hatch",
+   "description": "Generate a new petdex pet from a description",
+   "args": "[description]",
+   "category": "Tools & Skills",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": [
+    "generate-pet"
+   ]
+  },
+  {
+   "name": "learn",
+   "description": "Learn a reusable skill from anything you describe (dirs, URLs, this chat, notes)",
+   "args": "<what to learn from>",
+   "category": "Tools & Skills",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "init",
+   "description": "Generate or update AGENTS.md project instructions from a repo scan",
+   "args": "[notes]",
+   "category": "Tools & Skills",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "cron",
+   "description": "Manage scheduled tasks",
+   "args": "[subcommand]",
+   "category": "Tools & Skills",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "suggestions",
+   "description": "Review suggested automations (accept/dismiss)",
+   "args": "[accept|dismiss N | catalog]",
+   "category": "Tools & Skills",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "suggest"
+   ]
+  },
+  {
+   "name": "blueprint",
+   "description": "Set up an automation from a blueprint template",
+   "args": "[name] [slot=value ...]",
+   "category": "Tools & Skills",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "bp"
+   ]
+  },
+  {
+   "name": "curator",
+   "description": "Background skill maintenance (status, run, pin, archive, list-archived)",
+   "args": "[subcommand]",
+   "category": "Tools & Skills",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "kanban",
+   "description": "Multi-profile collaboration board (tasks, links, comments)",
+   "args": "[subcommand]",
+   "category": "Tools & Skills",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "reload",
+   "description": "Reload .env variables into the running session",
+   "args": "",
+   "category": "Tools & Skills",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "reload-mcp",
+   "description": "Reload MCP servers from config",
+   "args": "",
+   "category": "Tools & Skills",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "reload_mcp"
+   ]
+  },
+  {
+   "name": "reload-skills",
+   "description": "Re-scan ~/.hermes/skills/ for newly installed or removed skills",
+   "args": "",
+   "category": "Tools & Skills",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "reload_skills"
+   ]
+  },
+  {
+   "name": "browser",
+   "description": "Connect browser tools to your live Chromium-family browser via CDP",
+   "args": "[connect|disconnect|status]",
+   "category": "Tools & Skills",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "plugins",
+   "description": "List installed plugins and their status",
+   "args": "[update|auto-update [on|off]]",
+   "category": "Tools & Skills",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "commands",
+   "description": "Browse all commands and skills (paginated)",
+   "args": "[page]",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": true,
+   "aliases": []
+  },
+  {
+   "name": "help",
+   "description": "Show available commands (/help skills lists skill commands, /help <text> filters)",
+   "args": "[skills|<filter>]",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "palette",
+   "description": "Open the fuzzy command palette (also Ctrl+P)",
+   "args": "",
+   "category": "Info",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "restart",
+   "description": "Gracefully restart the gateway after draining active runs",
+   "args": "",
+   "category": "Session",
+   "cli_only": false,
+   "gateway_only": true,
+   "aliases": []
+  },
+  {
+   "name": "usage",
+   "description": "Show token usage and rate limits; `reset` redeems a banked Codex limit reset",
+   "args": "[reset [--force]]",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "subscription",
+   "description": "View your Nous plan and change it in the browser",
+   "args": "",
+   "category": "Info",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": [
+    "upgrade"
+   ]
+  },
+  {
+   "name": "login",
+   "description": "Sign in with a Nous account (keeps your connectors)",
+   "args": "",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "topup",
+   "description": "Show your Nous balance and manage billing on the portal",
+   "args": "",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "insights",
+   "description": "Show usage insights and analytics",
+   "args": "[days]",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "platforms",
+   "description": "Show gateway/messaging platform status",
+   "args": "",
+   "category": "Info",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": [
+    "gateway"
+   ]
+  },
+  {
+   "name": "platform",
+   "description": "Pause, resume, or list a failing gateway platform",
+   "args": "<pause|resume|list> [name]",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": true,
+   "aliases": []
+  },
+  {
+   "name": "copy",
+   "description": "Copy the last assistant response to clipboard",
+   "args": "[number]",
+   "category": "Info",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "paste",
+   "description": "Attach clipboard image from your clipboard",
+   "args": "",
+   "category": "Info",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "image",
+   "description": "Attach a local image file for your next prompt",
+   "args": "<path>",
+   "category": "Info",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "update",
+   "description": "Update Hermes Agent to the latest version",
+   "args": "",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "version",
+   "description": "Show Hermes Agent version",
+   "args": "",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": [
+    "v"
+   ]
+  },
+  {
+   "name": "debug",
+   "description": "Debug report (versions, config keys, error counts; no log text): shows the privacy notice; /debug upload shares links",
+   "args": "[upload|nous upload|local]",
+   "category": "Info",
+   "cli_only": false,
+   "gateway_only": false,
+   "aliases": []
+  },
+  {
+   "name": "quit",
+   "description": "Exit the CLI (use --delete to also remove session history)",
+   "args": "[--delete]",
+   "category": "Exit",
+   "cli_only": true,
+   "gateway_only": false,
+   "aliases": [
+    "exit"
+   ]
+  }
+ ]
+}

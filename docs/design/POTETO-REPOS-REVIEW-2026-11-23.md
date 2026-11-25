@@ -1,0 +1,36 @@
+# Review of github.com/poteto (Lauren Tan), 2026-11-23, claude-b
+
+Source: the GitHub API (85 public repositories), the READMEs of the relevant ones, and a web search for pstack. Only READMEs, trees and licences were read, no code run. Everything marked "not read" is judged from its name and one-line description only. Ideas are taken, code is not: our versions are written new, with the author credited (all the relevant repos are MIT, Copyright 2026 Lauren Tan, except where noted).
+
+## Where pstack is
+There is no `poteto/pstack` repository. pstack is in her fork of the Cursor plugins repository, `poteto/plugins`, folder `pstack/` (MIT, Copyright (c) 2026 Lauren Tan), first released as a Cursor plugin. Community ports to other agents exist, all MIT: `backnotprop/pstack` (Claude Code, Codex, Pi), `michael-denyer/pstack-claude` (many agents), `ericlitman/open-pstack`, `Aqua-123/pstack-for-codex`. That several ports exist shows the skills are agent-neutral, which is our direction.
+
+## Worth taking (ideas, our own implementation)
+| Repo | What it is | What we take, and where it goes |
+|---|---|---|
+| **pstack** (in `plugins`) | an opinionated skill stack; `poteto-mode` reads the request and routes to one of 15 playbooks (investigation, bug fix, perf, runtime forensics, feature, refactoring, prototype, visual parity, authoring a skill, eval...); 24 `principle-*` skills (fix root causes, prove it works, subtract before you add, never block on the human, make operations idempotent...); `reflect`, `interrogate`, `unslop`, `tdd`, `arena` (panels of several models), `figure-it-out`, `setup-pstack` (maps roles to models), `automate-me` (mines your transcripts and drafts your own mode skill) | (1) the router with playbooks is our skill picker (plan 7.4) and `caesar_recommend`; (2) the principles become the **Rules** page (11.4a) and the senior-review checklist; (3) `setup-pstack` is our role-to-model mapping in `caesar_delegate_route`; (4) `arena` is a multi-model review panel for the senior review; (5) `automate-me` is a good proactive feature: Caesar drafts the owner's own mode from their sessions (11.3); (6) `interrogate` fits the grill skills (7.5); (7) `unslop` as a pass before any release |
+| **noodle** (Go, MIT, 715 stars) | skill-based agent orchestration: dispatcher, adapters for Claude and Codex, a worktree per task, an event model, a loop, a monitor and a UI, a `brain/` folder, docs | the closest sibling of our orchestration layer: adapter per agent (our adapter contract), a worktree per task (our crew worktrees, make it a feature), skills as the unit of work, event schema (11.1). Read its `docs/concepts` and `adapter/` before building the layer |
+| **brainmaxxing** (Python, MIT, 410 stars) | a Markdown vault as persistent memory: `/reflect` after a session, `/meditate` to audit and prune, `/ruminate` over past conversations, `/plan`, `/review`; hooks inject the brain index at start and rebuild it on change; it is also an Obsidian vault | the same shape as our Brain. Take the learning loop as the proactive maintenance of the Brain (11.3, 11.6) and the index injection at session start (`caesar_context`) |
+| **how** (MIT, 1000 stars) | a skill that explains a subsystem; critique mode spawns independent critics across models | a skill `caesar-how` for explaining the codebase to a newcomer, and the critics idea for the senior review |
+| **verification-skill-example** (no licence, "private reference") | a fictional example of a project-local verification skill plus a behaviour-level feature map, one file per feature area, each answering: what exists, how a user reaches it, how to drive it, what usually lies; a sweep order | the pattern for our readiness pass: a feature map of CaesarOS that the readiness script and the crew drive. **No licence, so the idea only, nothing copied** |
+| **orchestrate** (in `plugins`) | fans a big task over parallel cloud agents, planners publish tasks, workers hand off, a script reconciles from disk and git | the reconcile-from-disk idea fits our Board (3.3a, drift detector); the Cursor SDK part we cannot use |
+| `ralph-loop`, `continual-learning`, `agent-compatibility`, `cli-for-agent`, `teaching`, `thermos` (in `plugins`) | **not read** | names suggest a loop-until-done skill (our `caesar_loop`), continual learning (reflect), and agent-friendly CLI guidance; to read before judging |
+
+## Not taking, and why
+| Repos | What they are | Why not |
+|---|---|---|
+| hiring-without-whiteboards (53k stars) | a list of companies without whiteboard interviews | unrelated to the product |
+| terraform, reverse_proxy, hww-api | Elixir Phoenix plug for replacing an API step by step; its demo; a small API for the list above | different stack and a different problem |
+| peedy | a PDF watermark microservice in Elixir, "for educational purposes only", licence NOASSERTION | not for production, unclear licence |
+| monkers, boba-js, advent-of-code-2018, rustic, go-test | a toy language VM in Rust, its TypeScript start, puzzle practice, experiments | learning projects |
+| Ember addons: ember-crumbly, ember-macaroni, ember-pipeline, ember-hypersearch, ember-in-viewport-demo, ember-toggle-helper, ember-deep-set, ember-lazy-video, ember-api-feature-flags, ember-test-component, ember-ja-query, ember-workshop, ember-gsg*, component-best-practices, ember-redux-experiment, emberfire (fork) | components and talks for the Ember framework | we do not use Ember; the ideas (breadcrumbs, feature flags) are small |
+| validated-proxy, jsonapi-deserializable, jsonapi-parser, munson | typed validated proxies; Ruby JSON:API libraries | not needed |
+| conference notes: emberconf-2015/16/17, elixirconf-2016/17, rustconf-2020, e4e-2015 | link collections | notes, not code |
+| forks of big projects: react, react-native, relay, vite, vite-plugin-react, stylex, reactjs.org, webamp, jest, syntax | copies of upstream projects; no changes of hers visible | we use the upstream where needed; nothing to take from a fork |
+| react-compiler-styled-jsx, repro-32440 | an experiment and a bug reproduction | narrow experiments |
+| old React components and gems: react-typeahead, react-dropdown, react-waypoint, react-fittext, react-googlemaps, jquery-datatables-rails, select2-rails, highcharts-rails, octopress-relatedposts, erlguten | small old libraries for React, Rails and Erlang | outdated and a different stack |
+| benny-avatars | avatar images for a Slack bot, no licence | no licence, no use |
+| bitburner-scripts, steamcircle, birthday-puzzle, flushed, number1.pizza, deadcrabs, orion_takehome, styleguides (a company style guide), elixir-portal-test, elixir-workshop-pragdave, vscode-tinacious-contrast (a VS Code theme), poteto, poteto.github.io, homebrew-tap, `-_-` (empty) | games, personal and interview projects, a company style guide, a profile and a site, packaging, a joke repo | personal or unrelated |
+
+## What this changes in the plan
+Nothing enters the plan above the scope freeze. The pstack and noodle ideas go to LATER and to the parking lot of `docs/plan/ATRIUM-PORT-PLAN-2026-11-22.md`, attached to rows 7.4, 7.5, 11.3, 11.4a and the layer spec. First reads before use: noodle's `docs/concepts` and `adapter/`, pstack's `poteto-mode` and `arena` skills, brainmaxxing's hooks.

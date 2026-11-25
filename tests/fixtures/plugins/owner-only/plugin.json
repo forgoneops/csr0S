@@ -1,0 +1,17 @@
+{
+  "id": "owner-only",
+  "name": "Owner-only fixture",
+  "version": "0.1.0",
+  "description": "A dev fixture in the owner layer: it declares a live-bar item, but a consumer build must never start it, so nothing is registered.",
+  "group": "system",
+  "edition": "owner",
+  "tags": ["dev"],
+  "defaultOff": true,
+  "nav": [],
+  "routes": [],
+  "contributions": {
+    "status": [
+      { "id": "secret", "label": "Owner", "icon": "lock", "read": "/status" }
+    ]
+  }
+}

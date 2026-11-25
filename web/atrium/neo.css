@@ -1,0 +1,85 @@
+/* NEO ROMA skin: Blade Runner / Altered Carbon haze, holo glass, neon, Roman soul (meander, laurel gold, numerals).
+   Rules: one infinite loop at most (the holo sweep on the top bar), transform/opacity only, everything off in motion reduced/off. */
+html[data-skin=neo]{
+ --bg:#05060d;--surface:#0b0d18;--line:#2a2548;--text:#e8ecff;--muted:#8b90b8;
+ --accent:var(--p1);--accent-ink:#0a0310;--signal:var(--p2);--cx-mag:var(--p1);--cx-gold:#f2c46b;
+ --g1:var(--p1r);--g2:var(--p2r);--g3:242,196,107;--g4:139,92,255;
+ --meander:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='8'><path d='M0 7H4V1H12V5H8V3H10M12 7H16V1H24' fill='none' stroke='%23f2c46b' stroke-width='1' opacity='.7'/></svg>")}
+/* the void: deep blue-violet with teal-orange haze, no brown */
+html[data-skin=neo]{background:radial-gradient(120% 80% at 50% 0,#14103a 0,#070815 55%,#03040a 100%) fixed}
+html[data-skin=neo] body,html[data-skin=neo] .shell{background:transparent!important}
+html[data-skin=neo] .shell:before{background:radial-gradient(60% 40% at 15% 90%,rgba(var(--p1r),0.18),transparent 70%),radial-gradient(50% 40% at 90% 10%,rgba(var(--p2r),0.15),transparent 70%),radial-gradient(40% 30% at 70% 95%,#f2c46b1f,transparent 70%)!important;opacity:1!important}
+/* holo glass panels: translucent, blurred, neon hairline, corner brackets, faint scans, chromatic edge */
+html[data-skin=neo][data-theme=caesaros] .panel,html[data-skin=neo][data-theme=caesaros] .dw,html[data-skin=neo] .og-card{
+ --g:var(--g2);
+ border:0;
+ background:
+  linear-gradient(var(--cx-gold),var(--cx-gold)) 0 0/14px 1px no-repeat,linear-gradient(var(--cx-gold),var(--cx-gold)) 0 0/1px 14px no-repeat,
+  linear-gradient(var(--cx-gold),var(--cx-gold)) 100% 100%/14px 1px no-repeat,linear-gradient(var(--cx-gold),var(--cx-gold)) 100% 100%/1px 14px no-repeat,
+  repeating-linear-gradient(0deg,#ffffff06 0 1px,transparent 1px 3px),
+  radial-gradient(120% 90% at 100% 0,rgba(var(--g),.10),transparent 55%),
+  linear-gradient(160deg,#0f1226cc,#080a18d9);
+ -webkit-backdrop-filter:blur(10px) saturate(1.3);backdrop-filter:blur(10px) saturate(1.3);
+ box-shadow:inset 0 0 0 1px rgba(var(--g),.28),inset 0 1px #ffffff1a,-1px 0 10px -4px rgba(var(--p1r),.45),1px 0 10px -4px rgba(var(--p2r),.45),0 20px 50px -34px #000}
+html[data-skin=neo] .dw:nth-child(4n+1){--g:var(--g2)}html[data-skin=neo] .dw:nth-child(4n+2){--g:var(--g1)}
+html[data-skin=neo] .dw:nth-child(4n+3){--g:var(--g4)}html[data-skin=neo] .dw:nth-child(4n){--g:var(--g3)}
+/* widget heads: no more brown strip, glass with neon title and chromatic split */
+html[data-skin=neo] .dw-head{background:linear-gradient(90deg,rgba(var(--g),.16),transparent 70%)!important;border-bottom:1px solid rgba(var(--g),.3)}
+html[data-skin=neo] :is(.dw-head h3,.nx-phead h2,.at-workspace-head h2,.panel h2){text-shadow:-1px 0 rgba(var(--p1r),0.50),1px 0 rgba(var(--p2r),0.50),0 0 18px rgba(var(--g,51,232,255),.35)}
+/* top bar and rail: glass with the Roman meander band under it */
+html[data-skin=neo] .atrium-top{background:linear-gradient(180deg,#0c0e22e6,#070815d9)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:0!important;position:relative}
+html[data-skin=neo] .atrium-top:after{content:"";position:absolute;left:0;right:0;bottom:0;height:8px;background:var(--meander) 0 0/24px 8px repeat-x;opacity:.55;pointer-events:none}
+html[data-skin=neo] .ns-side{background:linear-gradient(180deg,#0a0c1ccc,#05060ccc);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+html[data-skin=neo] .ns-side:before{background:linear-gradient(180deg,transparent,var(--p2),var(--p1),transparent);opacity:.7}
+/* workspace tabs: Roman numerals, neon active */
+html[data-skin=neo] .ws-bar .ws.on{background:linear-gradient(135deg,rgba(var(--p1r),.28),rgba(var(--p2r),.10));box-shadow:inset 0 -2px var(--p2),inset 0 0 0 1px rgba(var(--p1r),.5),0 0 18px -4px rgba(var(--p1r),.6)}
+html[data-skin=neo] .ws-bar .ws.on b{color:var(--cx-gold);text-shadow:0 0 10px #f2c46b}
+/* buttons: ghost neon */
+html[data-skin=neo] .btn,html[data-skin=neo] .act-btn{background:#ffffff08;color:var(--text);box-shadow:inset 0 0 0 1px rgba(var(--p2r),.35)}
+html[data-skin=neo] .btn:hover{box-shadow:inset 0 0 0 1px var(--p2),0 0 14px -2px rgba(var(--p2r),.6)}
+/* hologram sweep: the ONE ambient loop, on the top bar only, transform+opacity */
+html[data-skin=neo][data-motion=on] .atrium-top:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 40%,rgba(var(--p2r),.12) 50%,transparent 60%);transform:translateX(-100%);animation:neosweep 9s linear infinite}
+@keyframes neosweep{to{transform:translateX(100%)}}
+@media (prefers-reduced-motion:reduce){html[data-skin=neo][data-motion=on] .atrium-top:before{animation:none}}
+
+
+/* palettes: ?pal=a..g. p1 = main neon (also --accent, drives the WebGL background), p2 = second neon (--signal). gold stays the Roman accent. */
+html[data-skin=neo]{--p1:#ff3fd0;--p1r:255,63,208;--p2:#33e8ff;--p2r:51,232,255}
+html[data-skin=neo][data-pal=a]{}
+html[data-skin=neo][data-pal=b]{--p1:#33e8ff;--p1r:51,232,255;--p2:#6a8cff;--p2r:106,140,255}
+html[data-skin=neo][data-pal=c]{--p1:#ff3fd0;--p1r:255,63,208;--p2:#f2c46b;--p2r:242,196,107}
+html[data-skin=neo][data-pal=d]{--p1:#b04dff;--p1r:176,77,255;--p2:#ff7a3d;--p2r:255,122,61}
+html[data-skin=neo][data-pal=e]{--p1:#ff3fd0;--p1r:255,63,208;--p2:#ff2d4f;--p2r:255,45,79}
+html[data-skin=neo][data-pal=f]{--p1:#a45cff;--p1r:164,92,255;--p2:#33e8ff;--p2r:51,232,255}
+html[data-skin=neo][data-pal=g]{--p1:#9b5cff;--p1r:155,92,255;--p2:#f2c46b;--p2r:242,196,107}
+
+/* beat the theme's own accent rule (html[data-theme][data-mode][data-accent]) so the WebGL background and every token follow the palette */
+html[data-skin=neo][data-theme=caesaros][data-mode][data-accent]{--accent:var(--p1);--accent-ink:#0a0310;--signal:var(--p2);--a08:rgba(var(--p1r),.08);--a16:rgba(var(--p1r),.16)}
+
+html[data-skin=neo] .og-seg.pals{gap:6px}html[data-skin=neo] .og-seg.pals button{width:34px;height:26px;padding:0;min-width:0;clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px));opacity:.7;box-shadow:none}html[data-skin=neo] .og-seg.pals button.on{opacity:1;outline:2px solid var(--text);outline-offset:2px}
+html[data-skin=neo][data-pal=h]{--p1:#fcee0a;--p1r:252,238,10;--p2:#00f0ff;--p2r:0,240,255}
+html[data-skin=neo][data-pal=i]{--p1:#ffb000;--p1r:255,176,0;--p2:#2fd6c8;--p2r:47,214,200}
+html[data-skin=neo][data-pal=h],html[data-skin=neo][data-pal=i]{--accent-ink:#0b0a02}
+html[data-skin=neo][data-pal=j]{--p1:#ff8a3d;--p1r:255,138,61;--p2:#33e8ff;--p2r:51,232,255;--accent-ink:#120803}
+
+/* left menu as a hologram: projected glass, open corner brackets, scanlines, light beam on the edge, no solid frame */
+html[data-skin=neo] .ns-side{
+ background:
+  linear-gradient(rgba(var(--p2r),.9),rgba(var(--p2r),.9)) 0 0/12px 1px no-repeat,linear-gradient(rgba(var(--p2r),.9),rgba(var(--p2r),.9)) 0 0/1px 12px no-repeat,
+  linear-gradient(rgba(var(--p2r),.9),rgba(var(--p2r),.9)) 100% 100%/12px 1px no-repeat,linear-gradient(rgba(var(--p2r),.9),rgba(var(--p2r),.9)) 100% 100%/1px 12px no-repeat,
+  repeating-linear-gradient(0deg,rgba(var(--p2r),.05) 0 1px,transparent 1px 3px),
+  linear-gradient(90deg,rgba(var(--p2r),.10),rgba(var(--p2r),.02) 60%,transparent),
+  linear-gradient(180deg,rgba(10,12,28,.80),rgba(5,6,12,.72));
+ -webkit-backdrop-filter:blur(14px) saturate(1.5);backdrop-filter:blur(14px) saturate(1.5);
+ border-right:0;box-shadow:inset 0 0 40px -20px rgba(var(--p2r),.5)}
+html[data-skin=neo] .ns-side:before{width:2px;background:linear-gradient(180deg,transparent,rgba(var(--p2r),1) 30%,rgba(var(--p1r),1) 70%,transparent);opacity:.9;filter:drop-shadow(0 0 6px rgba(var(--p2r),.9))}
+html[data-skin=neo] .ns-it .icon{filter:drop-shadow(0 0 4px rgba(var(--p2r),.55))}
+html[data-skin=neo] .ns-it.on{background:linear-gradient(90deg,rgba(var(--p1r),.22),transparent)}
+html[data-skin=neo] .ns-it.on .icon{filter:drop-shadow(0 0 6px rgba(var(--p1r),.9))}
+html[data-skin=neo] .ns-wrap:hover .ns-side,html[data-skin=neo] .ns-wrap:focus-within .ns-side{box-shadow:inset 0 0 40px -20px rgba(var(--p2r),.5),14px 0 50px -10px rgba(var(--p2r),.28)}
+
+/* art as hologram: soft chromatic split, scanlines and a faint projected sweep; the picture stays readable */
+html[data-skin=neo] :is(.at-hero-art img,.nx-scene img,.dw-head img,.nx-cr,.cx-logo,.ns-brand img){filter:saturate(1.12) contrast(1.04) drop-shadow(-1px 0 rgba(var(--p1r),.40)) drop-shadow(1px 0 rgba(var(--p2r),.40)) drop-shadow(0 0 8px rgba(var(--p2r),.25))}
+html[data-skin=neo] :is(.nx-scene,.dw-head){position:relative}
+html[data-skin=neo] :is(.at-hero-art,.nx-scene):after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(var(--p2r),.07) 0 1px,transparent 1px 3px),linear-gradient(90deg,rgba(var(--p1r),.10),transparent 35%,transparent 65%,rgba(var(--p2r),.10))}
+html[data-skin=neo][data-motion=off] *,html[data-skin=neo][data-motion=reduced] *{animation:none!important}

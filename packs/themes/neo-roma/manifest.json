@@ -1,0 +1,71 @@
+{
+ "id": "neo-roma",
+ "name": "Neo Roma",
+ "version": "0.1.0",
+ "license": "proprietary (own tokens and materials)",
+ "description": "Ancient Rome seen through Blade Runner haze: holo glass, a hologram menu, gold corner brackets, a meander band. Ember and cyan by default; ten palettes.",
+ "css": "theme.css",
+ "source": "NEO ROMA skin of the CaesarOS prototype (docs/design/prototype/caesaros-new/neo.css), reimplemented on this app's components",
+ "palettes": [
+  {
+   "id": "ember",
+   "name": "Ember",
+   "p1": "#ff8a3d",
+   "p2": "#33e8ff"
+  },
+  {
+   "id": "neon",
+   "name": "Neon",
+   "p1": "#ff3fd0",
+   "p2": "#33e8ff"
+  },
+  {
+   "id": "ice",
+   "name": "Ice",
+   "p1": "#33e8ff",
+   "p2": "#6a8cff"
+  },
+  {
+   "id": "aurum",
+   "name": "Aurum",
+   "p1": "#ff3fd0",
+   "p2": "#f2c46b"
+  },
+  {
+   "id": "dusk",
+   "name": "Dusk",
+   "p1": "#b04dff",
+   "p2": "#ff7a3d"
+  },
+  {
+   "id": "crimson",
+   "name": "Crimson",
+   "p1": "#ff3fd0",
+   "p2": "#ff2d4f"
+  },
+  {
+   "id": "violet",
+   "name": "Violet",
+   "p1": "#a45cff",
+   "p2": "#33e8ff"
+  },
+  {
+   "id": "regal",
+   "name": "Regal",
+   "p1": "#9b5cff",
+   "p2": "#f2c46b"
+  },
+  {
+   "id": "volt",
+   "name": "Volt",
+   "p1": "#fcee0a",
+   "p2": "#00f0ff"
+  },
+  {
+   "id": "amber",
+   "name": "Amber",
+   "p1": "#ffb000",
+   "p2": "#2fd6c8"
+  }
+ ]
+}

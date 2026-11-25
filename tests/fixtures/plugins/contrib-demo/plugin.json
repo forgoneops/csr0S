@@ -1,0 +1,29 @@
+{
+  "id": "contrib-demo",
+  "name": "Contributions demo",
+  "version": "0.1.0",
+  "description": "A dev fixture (off by default) that registers one item on every contribution surface: a Settings row, a live-bar status item and a command. It proves the registry, not a feature.",
+  "group": "system",
+  "edition": "standard",
+  "tags": ["dev", "example"],
+  "defaultOff": true,
+  "permissions": ["demo"],
+  "nav": [],
+  "routes": [],
+  "contributions": {
+    "actions": [
+      { "id": "bump", "label": "Bump", "path": "/bump", "permission": "demo" },
+      { "id": "secret", "label": "Secret", "path": "/secret", "permission": "vault" }
+    ],
+    "status": [
+      { "id": "pings", "label": "Pings", "icon": "info", "read": "/status", "intervalMs": 5000, "permission": "demo" },
+      { "id": "hidden", "label": "Hidden", "icon": "lock", "read": "/status", "permission": "vault" }
+    ],
+    "settings": [
+      { "id": "counter", "title": "Contributions demo", "label": "One row from a manifest", "description": "Registered by the module, not by the shell: no rebuild.", "icon": "tag", "read": "/status", "action": "bump", "permission": "demo" }
+    ],
+    "commands": [
+      { "id": "bump", "label": "Demo: bump the counter", "hint": "contrib-demo", "icon": "command", "action": "bump", "permission": "demo" }
+    ]
+  }
+}
