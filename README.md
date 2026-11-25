@@ -1,63 +1,83 @@
 # csr0S — CaesarOS
 
-> Apes together strong. **Caesar — Slayer of the Digital Gods.**
+> **Apes together strong. Caesar, Slayer of the Digital Gods.**
 
-CaesarOS is a local-first workspace for AI agents: a **crew you can talk to**, notes with a **Brain**, a **Board** of plans and goals, a terminal, and computer control — all running on your own machine. No account, no cloud, no monthly bill. Your agents work *for* you, on hardware you own.
+**The AI workspace that runs on your machine, not in someone else's cloud.**
+A crew of agents you can talk to, a Brain that actually remembers, a Board that tracks what happens, and real computer control — all local, all yours, zero subscription.
 
-![CaesarOS](assets/screens/atrium.webp)
+![CaesarOS — the Atrium](assets/screens/atrium.webp)
 
-## What it is
+---
 
-CaesarOS runs on your machine and serves its own pages on a local address. Every agent profile you already have becomes a **crew member** with its own name, role, memory and tools. Notes, chats, tasks and settings stay in a folder you choose, and nothing leaves the machine unless you add an address and choose to share it.
+## Stop renting your intelligence.
 
-### The crew
-Talk to a whole crew of agents, each with a name, role, its own memory and skills — not a single chatbot. They can hand work to each other and report back in their own voice.
+ChatGPT and Claude are brilliant at answering. They are also just **sessions** — throwaway conversations with no memory, no team, no access to your machine, and a monthly bill for a text box.
 
-### The Brain
-A shared, cross-session memory: facts, decisions, and lessons the crew actually remembers — not a context window you lose. Ask the Brain what you already decided; it answers from what was written down.
+CaesarOS is the turn. Your agents live **on your hardware**, remember **everything you decided**, work **as a crew**, and can **act** on your computer — with you in control of every step.
 
-### The Board
-Plans, goals, and work items that survive. What is running, what needs your approval, what is waiting — the state of your crew's world, not a chat log.
+Everything is plug-and-play with what you already run. Hermes, Claude Code, Codex, a local model, every profile you have becomes a **crew member** in minutes.
 
-### Computer control
-The crew can read your screen, windows and keyboard — with your explicit approval — and act like an operator, not just a text box.
+---
 
-### Local-first, offline
-Everything runs locally. Talk to the crew with no internet, no vendor, no tracking. Your data is yours.
+## The crew, not a chatbot
+
+A whole slate of named agents, each with its own role, memory and skills — talking to you, handing work to each other, and reporting back in their own voice. One chat, a whole operation.
+
+## The Brain that never forgets
+
+Shared, cross-session memory. Facts and decisions you make are **written down and actually used** — not lost when the context window closes. Ask the crew what you already decided; it answers from what it keeps.
+
+## The Board of what's real
+
+Plans, goals, running work, approvals, things waiting on you. The live state of your operation — not a chat log.
+
+## Hands on your machine
+
+With your explicit approval, the crew can read your screen, control your windows and keyboard, run your terminal, and get things done — not just talk about them.
+
+## Your machine. Your data. Your rules.
+
+Everything runs locally. Works offline. No account, no tracking, no vendor lock-in. Your notes are plain Markdown; your chats and settings are yours on disk. What you build, you own.
+
+---
 
 ## Installation
 
-Requirements:
-- 🐧 Our current build ships for **Linux** (a bare-metal machine, or a Linux VM).
-- Bun, a few system packages, and ~1–2 GB of disk for the core. The installer checks for you.
+Ships for **Linux** today. Windows, macOS, and Android are coming — star the repo to get the installer the day it lands.
 
-### Linux
 ```bash
-# 1. Install the CaesarOS runtime
+# One line. Local-first. No cloud, no account.
 curl -fsSL https://csr0s.app/install.sh | bash
-
-# 2. Start the core (it binds 127.0.0.1 by default)
-caesarcore
-
-# 3. Open the Atrium
-# → http://127.0.0.1:PORT     (the installer prints the exact address)
 ```
-That is it. The first run walks you through picking an engine (Ollama, OpenRouter, or a local model), pairs your agent profiles, and opens the room. Nothing leaves your machine.
 
-### Windows · macOS · Android
-**Coming soon.** CaesarOS is being built for these platforms. Star the repo and sign up for the waitlist at https://csr0s.app to get the installer the day it lands.
+```bash
+# Start the core (binds 127.0.0.1 by default)
+caesarcore
+```
 
-## What makes it different
+The first run walks you through picking an engine (Ollama, OpenRouter, or a local model), pairs your agent profiles, and opens the Atrium. The printed address is yours — on your network, on your disk.
 
-ChatGPT, Claude, and the like are fine as text boxes — but they are **sessions**, not a workspace. CaesarOS gives you:
-- **A crew, not a chatbot** — several named agents with long-lived memory and skills, working together and handing off between themselves.
-- **A Brain that remembers** — facts and decisions persist across every session, and the crew actually uses them.
-- **Your machine, your data** — local-first, offline-capable, no vendor lock-in.
-- **Real actions, with your approval** — the crew reads your screen, runs your terminal, and plans on your Board, always under your control.
+**Windows · macOS · Android** — *coming soon.* Join the waitlist at https://csr0s.app.
+
+---
+
+## Why CaesarOS and not a big-tech chat app
+
+| CaesarOS | ChatGPT · Claude |
+|---|---|
+| A crew of named agents with memory and skills | One chatbot, one session |
+| Brain: remembers decisions across sessions | Forgets when the window closes |
+| Works on your computer, with your approval | Can't touch your machine |
+| Local-first, works offline, no subscription | Cloud, subscription, your data on their servers |
+| Plan on a Board, handoff, approvals | Chat, then you do the rest |
+
+Stop renting intelligence. **Own it.**
+
+---
 
 ## Project status
 
-**Alpha 0.01.** This is an early, working build — the core is functional and tested, the Atrium shell is live, and the crew, Brain, Board and computer control are all real. Platform Windows/macOS/Android and the installer are on the way.
+**Alpha 0.01.** This is a working build — the core is functional and tested, the Atrium shell is live, and the crew, Brain, Board and computer control are all real. Windows/macOS/Android and the full installer are on the way.
 
 ## How it fits together
 
