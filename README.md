@@ -129,6 +129,23 @@ bun tools/leak-check.ts   # refuses personal data, paths, secrets and private ad
 
 ## Acknowledgements
 
+To the people in CaesarOS's Hall of Fame:
+
+1. [Teknium](https://x.com/Teknium): For calling people "normies." Somehow, that unlocked my potential.
+2. [witcheer](https://x.com/witcheer): For the incredible support and everything you share.
+3. [tonysimons](https://x.com/tonysimons): For the tutorials, the attitude, and always being willing to help.
+4. [HermesWatcher](https://x.com/HermesWatcher): For sharing what you know, the content you put out, and keeping us up to date with the latest news.
+5. [BkashJosi](https://x.com/BkashJosi): For the tutorials and ideas you share, and for the good conversations we've had.
+6. [rlaope](https://x.com/rlaope): For [Oh My Hermes](https://github.com/rlaope/oh-my-hermes)
+   and everything else you build. Your work laid the foundation for CaesarOS. Its ideas for the
+   agent layer were rewritten as our own code.
+7. [tonbistudio](https://x.com/tonbistudio): For the clear tutorials, the excellent video channel, and that god-tier voice.
+8. [kommechanic](https://x.com/kommechanic): For your tutorials and ideas, and for Mission Control, which inspired me to build my own version.
+9. [iamlukethedev](https://x.com/iamlukethedev): For your brilliant projects, especially HeraldOS, which inspired some CaesarOS features. And for End Camp, which helped me stay sane while building it.
+10. [BearHuddleston](https://x.com/BearHuddleston): For the idea of moving the Hermes desktop app away from Electron and making it a web app. That laid the groundwork for CaesarOS to work as an ecosystem across devices, like Apple's.
+
+CaesarOS also builds on these projects:
+
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research: the default crew
   runtime.
 - [xterm.js](https://github.com/xtermjs/xterm.js): the terminal.
@@ -137,8 +154,6 @@ bun tools/leak-check.ts   # refuses personal data, paths, secrets and private ad
   and [nodemailer](https://github.com/nodemailer/nodemailer): mail.
 - The SIL Open Font License fonts in `packs/fonts/`
   ([OFL](https://openfontlicense.org)).
-- [Oh My Hermes](https://github.com/rlaope/oh-my-hermes) by rlaope: ideas for the agent layer,
-  rewritten as our own code.
 
 ## License
 
