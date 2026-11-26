@@ -6,6 +6,17 @@
   const J = { 'content-type': 'application/json' };
   const E = s => (typeof OGE === 'function' ? OGE(s) : String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])));
   const STATE = { planned: 'Planned', started: 'Started', observed: 'Observed', verified: 'Verified', claimed: 'No evidence' };
+  /* Sticky-note colours, as in the old board: a card's colour is stable for its whole life, picked from its id. */
+  // Colours come from the theme's own tokens, never fixed hex: a note stays inside the system palette when the theme changes.
+  const NOTE_C = [
+    'color-mix(in srgb, var(--accent) 92%, #6b4a2a 8%)',
+    'color-mix(in srgb, var(--accent) 74%, var(--warn,#c98a2b) 26%)',
+    'color-mix(in srgb, var(--accent) 64%, #8b6b4a 36%)',
+    'color-mix(in srgb, var(--accent) 84%, var(--signal,#79c1c1) 16%)',
+    'color-mix(in srgb, var(--warn,#c98a2b) 78%, var(--accent) 22%)',
+    'color-mix(in srgb, var(--accent) 58%, var(--warn,#c98a2b) 42%)',
+  ];
+  const noteColour = id => NOTE_C[[...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % NOTE_C.length];
   const LANES = [['todo', 'To do', 'Start'], ['doing', 'Doing', 'Finish'], ['done', 'Done', '']];
   // three readable views over the same lanes: Now is what moves, Plan is what is ahead, Done is what was finished (newest first)
   const VIEWS = [['now', 'Now', ['doing']], ['plan', 'Plan', ['todo', 'doing']], ['done', 'Done', ['done']]];
@@ -89,7 +100,7 @@
           <div class="bd-acts"><button class="btn" type="submit">Save</button><button class="btn ghost" type="button" data-bd="cancel">Cancel</button></div>
         </form>`
       : `<h4 class="bd-title" data-no-i18n>${name}</h4><span class="bd-state ${B.states[t.id] || 'planned'}">${STATE[B.states[t.id] || 'planned']}</span>${t.by ? `<span class="bd-by" data-no-i18n>by ${E(t.by)}</span>` : ''}${(() => { const s = bullets(t); return `<ul class="bd-sum">${s.list.map(x => `<li data-no-i18n>${E(x)}</li>`).join('')}</ul>${s.more ? `<button class="btn ghost bd-rawb" type="button" data-bd="raw" data-id="${E(t.id)}" aria-expanded="${!!B.raw[t.id]}">${B.raw[t.id] ? 'Hide full note' : 'Full note'}</button>${B.raw[t.id] ? `<p class="bd-note" data-no-i18n>${E(t.note)}</p>` : ''}` : ''}`; })()}<div class="bd-acts">${acts.join('')}</div>`;
-    return `<article class="bd-card" data-id="${E(t.id)}" draggable="true">${body}</article>`;
+    return `<article class="bd-card" data-id="${E(t.id)}" draggable="true" style="--nc:${noteColour(t.id)}"><i class="bd-band" aria-hidden="true"></i><i class="bd-pin" aria-hidden="true"></i>${body}</article>`;
   }
 
   /** Where the plan and reality have come apart, one bullet each with a one-tap fix. */

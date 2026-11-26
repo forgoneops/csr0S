@@ -4,9 +4,12 @@
 #   tools/run-instance.sh mine     yours: your data folder and your private owner layer, port 4479
 # The code is the same; only the data and the owner layer differ, and neither lives in this repo, so a patch made here
 # reaches both and cannot carry your data anywhere. Override with CAESAROS_PORT, CAESAROS_DATA, CAESAROS_OWNER_DIR.
+# Instances bind 0.0.0.0 by default so the same workspace is reachable from any device (tailnet/phone/VPS); the
+# local-only desktop path (tools/run-desktop.sh) stays on 127.0.0.1. Override with CAESAROS_HOST.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WHICH="${1:-}"
+export CAESAROS_HOST="${CAESAROS_HOST:-0.0.0.0}"
 case "$WHICH" in
   clean)
     export CAESAROS_PORT="${CAESAROS_PORT:-4480}"

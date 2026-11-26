@@ -6,6 +6,7 @@
 import type { Context, Hono, MiddlewareHandler } from "hono";
 import { scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
 import { kv } from "./db";
+import { access } from "./principal";
 
 type Rec = { salt: string; hash: string } | null;
 const store = kv("auth");
@@ -48,7 +49,10 @@ export function authGate(): MiddlewareHandler {
     const path = new URL(c.req.url).pathname;
     if (OPEN.some((r) => r.test(path))) return next();
     if (validSession(cookieOf(c))) return next();
-    if ((c.req.header("authorization") ?? "").toLowerCase().startsWith("bearer ")) return next();   // an agent or a paired device: its own key is checked by the route
+    // An agent or a paired device carries its own bearer token. Pass it only when the token is a
+    // real issued agent key, not for any header that merely starts with "Bearer " (a bare header
+    // would otherwise bypass the login wall on routes that do not re-check the token themselves).
+    if (access.principal(c).kind === "agent") return next();
     if (path.startsWith("/api/") || path.startsWith("/v1/")) return c.json({ error: "login_required" }, 401);
     return c.redirect("/login");
   };

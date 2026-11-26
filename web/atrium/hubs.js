@@ -59,12 +59,14 @@
     savedKey = JSON.stringify(layout);
   }
   function save() {
+    // persist immediately, not after a 400 ms debounce: a later full render must not re-read the
+    // saved workspace before the new widget/position was written, which made added widgets vanish
     clearTimeout(saveT); saveT = setTimeout(() => {
       const w = wsNow(); if (!w || !layout) return; const k = JSON.stringify(layout) + '|' + WIDGETS.map(x => x.id).join(',');
       if (k === savedKey) return; savedKey = k;
       w.widgets = WIDGETS.map(x => x.id); w.layout = JSON.parse(JSON.stringify(layout));
       void put({ workspaces: H.ws });
-    }, 400);
+    }, 0);
   }
 
   // the prototype's render, with the board kept in step with the workspace tab and the extra edit controls added after it

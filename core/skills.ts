@@ -2,9 +2,10 @@
 // description, and a plain static scan of what the file asks an agent to do. The scan is a list of things worth
 // a second look, not a verdict. Nothing is installed, copied or run from here.
 import type { Context, Hono } from "hono";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative } from "node:path";
+import { readRegularFileNoFollow } from "./safe-file";
 
 export type Skill = { id: string; name: string; description: string; category: string; flags: string[] };
 const FLAGS: [string, RegExp][] = [
@@ -33,24 +34,29 @@ export function scanSkills(dirs: string | string[] | null = skillsDirs()): Skill
 }
 
 function scanOne(dir: string, out: Skill[], seen: Set<string>): void {
+  let root: string; try { root = realpathSync(dir); } catch { return; }
   const walk = (d: string, depth: number) => {
     if (out.length >= MAX_FILES || depth > 4) return;
     let names: string[] = []; try { names = readdirSync(d); } catch { return; }
     for (const n of names) {
       const p = join(d, n);
-      let st; try { st = statSync(p); } catch { continue; }
+      // The Marketplace is read-only, but a symlink inside a skill folder could still
+      // make this listing read and expose a SKILL.md outside the selected folder.
+      let st; try { st = lstatSync(p); } catch { continue; }
+      if (st.isSymbolicLink()) continue;
       if (st.isDirectory()) walk(p, depth + 1);
       else if (n === "SKILL.md" && st.size <= MAX_BYTES) {
-        const text = readFileSync(p, "utf8"), head = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
+        let text: string; try { text = readRegularFileNoFollow(p, st, root, MAX_BYTES).toString("utf8"); } catch { continue; }
+        const head = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
         const rel = relative(dir, d), id = rel || n;
         if (seen.has(id)) continue; seen.add(id);
         out.push({ id, name: field(head, "name") || id.split("/").pop()!, description: field(head, "description").slice(0, 300), category: rel.split("/")[0] || "general", flags: FLAGS.filter(([, re]) => re.test(text)).map(([l]) => l) });
       }
     }
   };
-  walk(dir, 0);
+  walk(root, 0);
 }
 
-export function skillsApi(app: Hono, isOperator: (c: Context) => boolean) {
-  app.get("/api/skills", (c) => (isOperator(c) ? c.json(scanSkills()) : c.json({ error: "operator_only" }, 403)));
+export function skillsApi(app: Hono, isOperator: (c: Context) => boolean, extraDirs: string[] = []) {
+  app.get("/api/skills", (c) => (isOperator(c) ? c.json(scanSkills([...extraDirs, ...skillsDirs()])) : c.json({ error: "operator_only" }, 403)));
 }

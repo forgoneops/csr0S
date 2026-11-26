@@ -10,7 +10,7 @@ const SHELL = [
   "/index.html",
   "/background.js", "/og.js", "/registry.js", "/pages.js", "/ns.js", "/bridge.js", "/setup.js", "/real.js", "/a11y.js", "/i18n.js", "/board.js", "/dock.js", "/pop.js", "/limits.js", "/mail.js", "/tour.js", "/mascot.js", "/voice.js", "/hud.js", "/hof3d.js",
   "/real.css", "/kit.css", "/board.css", "/ns.css", "/neo.css", "/og.css", "/dock.css", "/hof3d.css",
-  "/vendor/xterm.js", "/vendor/addon-fit.js", "/vendor/xterm.css",
+  "/vendor/xterm.js", "/vendor/addon-fit.js", "/vendor/xterm.css", "/vendor/three.min.js",
   "/icons/legio.svg", "/icons/icon-192.png", "/icons/icon-512.png",
   "/icons/icon-maskable-512.png", "/icons/apple-touch-icon.png",
   "/caesar/portrait-neo.png",

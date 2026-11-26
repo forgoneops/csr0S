@@ -114,11 +114,44 @@
         gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, pulseCount);
       }
     };
+    // A whisper of ASCII under the traces: characters on a coarse grid, drawn from an atlas so the
+    // whole layer costs a few hundred blits. It is texture, never content — low alpha, and the centre
+    // (mark and title) stays clear.
+    const GLYPHS = "·+:/\\|—=#0Oo*,;'`";
+    let atlas = null, atlasAccent = "";
+    const buildAtlas = (accent) => {
+      const cs = 18, n = GLYPHS.length;
+      const c = document.createElement("canvas"); c.width = n * cs; c.height = cs;
+      const x = c.getContext("2d");
+      x.font = "600 14px ui-monospace, monospace"; x.textAlign = "center"; x.textBaseline = "middle";
+      x.fillStyle = accent;
+      for (let i = 0; i < n; i++) x.fillText(GLYPHS[i], i * cs + cs / 2, cs / 2 + 1);
+      atlas = { c, cs, n }; atlasAccent = accent;
+    };
+    const drawAscii = (accent) => {
+      if (!atlas || atlasAccent !== accent) buildAtlas(accent);
+      const step = 46, cell = atlas.cs;
+      const hx = Math.min(210, w * .27), hy = Math.min(280, h * .3), cx = w / 2, cy = h * .46;
+      const drift = reduce.matches ? 0 : (phase * 5) % step;
+      ctx.save();
+      for (let y = -step + drift; y < h + step; y += step) {
+        for (let x = step / 2; x < w; x += step) {
+          if (Math.abs(x - cx) < hx && Math.abs(y - cy) < hy) continue;
+          const k = ((Math.round(x) * 7919 + Math.round(y) * 104729) | 0) >>> 0;
+          const g = k % atlas.n;
+          ctx.globalAlpha = 0.028 + ((k >>> 9) % 100) / 100 * 0.05;
+          ctx.drawImage(atlas.c, g * cell, 0, cell, cell, x - cell / 2, y - cell / 2, cell, cell);
+        }
+      }
+      ctx.restore();
+    };
+
     const draw = () => {
       if (document.documentElement.dataset.theme !== "caesaros") { ctx.clearRect(0, 0, w, h); return; }
       const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#c97143";
       const signal = getComputedStyle(document.documentElement).getPropertyValue("--signal").trim() || "#79c1c1";
       ctx.clearRect(0, 0, w, h);
+      drawAscii(accent);
       const compact = w < 720, margin = compact ? 18 : 42, horizon = h * .78;
       ctx.save();
       // Distant arch silhouettes sit at the edges, framing rather than filling the workspace.
@@ -148,6 +181,16 @@
         ctx.fillText(glyphs[i % glyphs.length], margin, y);
         if (!compact) ctx.fillText(glyphs[(i + 2) % glyphs.length], w - margin, y);
       }
+      // Sparse transparent ASCII telemetry is anchored to selected network nodes, not tiled over the UI.
+      // It gives the living node graph a little Caesar Evolved machine language without competing with content.
+      ctx.font = `${compact ? 7 : 8}px "CaesarOS Mono", monospace`;
+      net.forEach((p, i) => {
+        if (i % (compact ? 5 : 3) !== 0 || p.pts.length < 2) return;
+        const [x, y] = p.pts[0];
+        ctx.globalAlpha = .075;
+        ctx.fillStyle = p.live ? signal : accent;
+        ctx.fillText(`NODE_${String(i + 1).padStart(2, "0")} // 0x${(0xCA00 + i * 17).toString(16).toUpperCase()}`, x + 7, y - 7);
+      });
       // Traces are always faint; the pulses only run when the Living background switch is on and motion is allowed.
       if (!useGL) { ctx.lineWidth = 1; ctx.strokeStyle = accent; ctx.globalAlpha = .07;
       for (const p of net) { ctx.beginPath(); p.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); }

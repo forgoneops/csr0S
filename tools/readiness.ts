@@ -1,20 +1,51 @@
 // Readiness pass for the Atrium (docs/plan/ATRIUM-PORT-PLAN-2026-11-22.md, READY FOR DAILY USE).
-// Starts a throwaway core (own data dir, port 4492), drives it with Playwright at 1440x900 and 390x844,
+// Starts a throwaway core (own data and home dirs, ephemeral loopback port), drives it with Playwright at 1440x900 and 390x844,
 // and scores every check that can run on a fresh instance. Checks that need the owner's data or another
 // machine are SKIPPED with the reason, never faked. Usage: bun tools/readiness.ts
 import { spawn, type Subprocess } from "bun";
-import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { scoreReadiness } from "./readiness-score.ts";
+import { parseTestSummary } from "./readiness-summary.ts";
 
 declare const S: any; declare const THREADS: any;                   // the Atrium keeps its state in a top-level const: reachable by name inside page.evaluate, not through window
 const ROOT = join(import.meta.dir, "..");
-const PORT = 4492;                       // never 4400, 4410 or 4479: those belong to the owner's real instance
+async function ephemeralLoopbackPort(): Promise<number> {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const probe = createServer();
+    const port = await new Promise<number>((resolve, reject) => {
+      probe.once("error", reject);
+      probe.listen(0, "127.0.0.1", () => {
+        const address = probe.address();
+        if (!address || typeof address === "string") { reject(new Error("could not read the temporary loopback port")); return; }
+        resolve(address.port);
+      });
+    });
+    await new Promise<void>((resolve, reject) => probe.close((err) => err ? reject(err) : resolve()));
+    if (port !== 4479 && port !== 4492) return port;
+  }
+  throw new Error("could not choose an allowed temporary loopback port");
+}
+const PORT = await ephemeralLoopbackPort();
 const BASE = `http://127.0.0.1:${PORT}`;
 type Check = { name: string; state: "pass" | "fail" | "skip"; detail: string };
 
 const checks: Check[] = [];
+const removeThrowawayData = (root: string) => {
+  if (!existsSync(root)) return;
+  const makeDirectoriesWritable = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const child = join(dir, name), st = lstatSync(child);
+      if (st.isDirectory() && !st.isSymbolicLink()) makeDirectoriesWritable(child);
+    }
+    chmodSync(dir, 0o700);
+  };
+  makeDirectoriesWritable(root);
+  rmSync(root, { recursive: true, force: true });
+};
 const pass = (name: string, detail = "") => checks.push({ name, state: "pass", detail });
 const fail = (name: string, detail: string) => checks.push({ name, state: "fail", detail });
 const skip = (name: string, detail: string) => checks.push({ name, state: "skip", detail });
@@ -87,7 +118,13 @@ const until = async (pg: PageLike, ok: () => Promise<boolean>, what: string, ms 
 };
 
 async function main() {
-  const dataDir = mkdtempSync(join(tmpdir(), "caesaros-readiness-"));
+  const dataDir = mkdtempSync(join(tmpdir(), "caesaros-readiness-data-"));
+  const homeDir = mkdtempSync(join(tmpdir(), "caesaros-readiness-home-"));
+  const verificationEnv = {
+    PATH: process.env.PATH ?? "/usr/bin:/bin", HOME: homeDir, USERPROFILE: homeDir, HERMES_HOME: join(homeDir, ".hermes"),
+    CAESAROS_HOME: homeDir, CAESAROS_SKILLS_DIR: "", CLAUDE_CONFIG_DIR: join(homeDir, ".claude"), CODEX_HOME: join(homeDir, ".agents"),
+    CAESAROS_MODULE_DIRS: "plugins", CAESAROS_DATA: join(dataDir, "repo-checks"), TMPDIR: tmpdir(),
+  };
   const logs: string[] = [];
   let core: Subprocess | undefined, browser: any;
   const cleanup = async () => {
@@ -98,6 +135,8 @@ async function main() {
         await Promise.race([core.exited, new Promise((r) => setTimeout(r, 2000))]);
       }
     } catch { /* already gone */ }
+    try { removeThrowawayData(dataDir); } catch (e) { console.error(`could not remove throwaway data directory: ${(e as Error).message}`); }
+    try { removeThrowawayData(homeDir); } catch (e) { console.error(`could not remove throwaway home directory: ${(e as Error).message}`); }
   };
 
   try {
@@ -106,18 +145,18 @@ async function main() {
 
     core = spawn(["bun", "core/server.ts"], {
       cwd: ROOT, stdout: "pipe", stderr: "pipe",
-      env: { ...process.env, CAESAROS_DATA: dataDir, CAESAROS_PORT: String(PORT), CAESAROS_HOST: "127.0.0.1", CAESAROS_TEST_ENGINE: "1", CAESAROS_ECHO_DELAY_MS: "350" },
+      env: { ...verificationEnv, CAESAROS_DATA: dataDir, CAESAROS_PORT: String(PORT), CAESAROS_HOST: "127.0.0.1", CAESAROS_TEST_ENGINE: "1", CAESAROS_ECHO_DELAY_MS: "350" },
     });
     const reader = async (s: ReadableStream<Uint8Array>) => { for await (const chunk of s) logs.push(new TextDecoder().decode(chunk)); };
     void reader(core.stdout as ReadableStream<Uint8Array>); void reader(core.stderr as ReadableStream<Uint8Array>);
 
-    await record("core starts on a throwaway data dir (port 4492)", async () => { await waitForHealth(20_000); });
+    await record("core starts on an isolated throwaway home and data dir (ephemeral loopback port)", async () => { await waitForHealth(20_000); });
 
     const pw = await import(pathToFileURL(resolvePlaywright()).href);
     browser = await pw.chromium.launch({ executablePath: resolveChromium(), args: ["--no-sandbox"] });
 
     const page = async (width: number, height: number) => {
-      const ctx = await browser.newContext({ viewport: { width, height } });
+      const ctx = await browser.newContext({ viewport: { width, height }, locale: "en-US" });
       const p = await ctx.newPage() as PageLike;
       return { ctx, p };
     };
@@ -126,6 +165,17 @@ async function main() {
     const { p: desk } = await page(1440, 900);
     const deskErrors: string[] = []; errorsOf(desk, deskErrors);
     const bootErrors = deskErrors.splice(0);
+    await record("first launch offers English or Polski before entering", async () => {
+      const { ctx, p } = await page(900, 700);
+      try {
+        await p.goto(BASE);
+        await p.locator('[data-boot-lang="pl"]').waitFor({ state: "visible", timeout: 10_000 });
+        await p.locator('[data-boot-lang="pl"]').click();
+        await until(p, async () => await p.evaluate(async () => document.documentElement.lang === "pl" && (await (await fetch("/api/settings")).json()).language === "pl"), "the Polish choice to apply on the local core", 10_000);
+        await until(p, async () => await p.evaluate(() => !document.querySelector("#boot")), "the chosen language splash to finish", 3_000);
+        return "Polski selected and persisted before opening Setup";
+      } finally { await ctx.close(); }
+    });
     await record("fresh instance boots: first run renders", async () => {
       await desk.goto(`${BASE}/?noboot`);
       try { await desk.locator('[data-su="finish"]').waitFor({ state: "visible", timeout: 15_000 }); }
@@ -197,7 +247,7 @@ async function main() {
       await desk.locator('[data-nt="save"]').click();
       await desk.waitForTimeout(900);
       const state = await desk.locator("#nt-state").innerText();
-      if (!/saved/i.test(state)) throw new Error(`note not saved (state: ${state})`);
+      if (!/(saved|zapisano)/i.test(state)) throw new Error(`note not saved (state: ${state})`);
       return token;
     });
     await record("a note can be found by search", async () => {
@@ -218,7 +268,7 @@ async function main() {
       await desk.locator("#nt-editor").fill(`${noteText}\nedited once`);
       await desk.locator('[data-nt="save"]').click();
       await desk.waitForTimeout(900);
-      if (!/saved/i.test(await desk.locator("#nt-state").innerText())) throw new Error("edit did not save");
+      if (!/(saved|zapisano)/i.test(await desk.locator("#nt-state").innerText())) throw new Error("edit did not save");
       await desk.reload(); await desk.waitForTimeout(1000);
       await openApp(desk, "Memory");
       await desk.locator("#nt-q").fill(token); await desk.waitForTimeout(900);
@@ -284,6 +334,24 @@ async function main() {
       await openLook();
       await desk.locator('[data-st="motion:full"]').click();
       await desk.waitForTimeout(500);
+    });
+    await record("same-route refreshes do not replay entrance motion", async () => {
+      await openApp(desk, "Settings");
+      const update = await desk.evaluate(() => { (window as any).render(); const main = document.querySelector("#shell main"); return { kind: document.documentElement.dataset.renderKind, animation: main ? getComputedStyle(main).animationName : "missing" }; });
+      if (update.kind !== "update" || update.animation !== "none") throw new Error(`update motion was ${update.kind}/${update.animation}`);
+      await openApp(desk, "Chat");
+      const navigation = await desk.evaluate(() => ({ kind: document.documentElement.dataset.renderKind, animation: getComputedStyle(document.querySelector("#shell main")!).animationName }));
+      if (navigation.kind !== "navigate" || navigation.animation !== "mot-in") throw new Error(`navigation motion was ${navigation.kind}/${navigation.animation}`);
+      return "same route stays still; route change gets its entrance motion";
+    });
+    await record("Hall of Fame is focused and keeps all ten external links", async () => {
+      await openApp(desk, "Settings");
+      const credits = desk.locator('[data-st="open:credits"]'); await credits.waitFor({ state: "visible", timeout: 10_000 }); await credits.click();
+      await desk.locator(".hof .hof-spot").first().waitFor({ state: "visible", timeout: 10_000 });
+      const result = await desk.evaluate(() => ({ links: document.querySelectorAll(".hof-spot").length, canvas: !!document.querySelector(".hof canvas.hf3"), extras: [...document.querySelectorAll(".st-card")].some(el => /Report a problem/i.test(el.textContent || "")) }));
+      if (result.links !== 10) throw new Error(`expected 10 profile links, got ${result.links}`);
+      if (result.extras) throw new Error("unrelated Settings options appeared inside the Hall of Fame");
+      return `${result.links} profile links${result.canvas ? ", 3D canvas mounted" : ", still fallback (headless WebGL unavailable)"}`;
     });
 
     // --- chat on the scripted echo engine (CAESAROS_TEST_ENGINE=1 above): answers, Stop, the waiting queue, Local only, Polish ---
@@ -384,10 +452,12 @@ async function main() {
       const diacritics = () => desk.evaluate(() => (document.body.innerText.match(/[ąćęłńóśźż]/gi) ?? []).length);
       const before = await diacritics();
       await desk.locator('[data-st="lang:pl"]').click();
-      await until(desk, async () => (await diacritics()) > before, "Polish text on the page", 25_000);
+      await until(desk, async () => (await diacritics()) > before, "Polish text on the page", 45_000);   // a loaded machine can take 20 s to swap the catalog
       if (await desk.evaluate(() => document.documentElement.lang) !== "pl") throw new Error("the page language did not change");
-      await desk.locator('[data-st="lang:en"]').click(); await desk.waitForTimeout(1500);
-      return "Polish letters appeared; switched back to English";
+      const timeOrigin = await desk.evaluate(() => performance.timeOrigin);
+      await desk.locator('[data-st="lang:en"]').click(); await desk.waitForTimeout(800);
+      if (await desk.evaluate(() => performance.timeOrigin) !== timeOrigin) throw new Error("switching language reloaded the page");
+      return "Polish appeared; switched back to English without a page reload";
     });
     await record("phone: a chat answers on the echo engine at 390x844", async () => {
       await (phone as any).goto(`${BASE}/?noboot`, { waitUntil: "commit" }); await phone.waitForTimeout(2000);
@@ -424,7 +494,7 @@ async function main() {
 
     // --- the repo's own gates, run as commands ---
     const runCmd = async (argv: string[], timeoutMs: number) => {
-      const p = spawn(argv, { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
+      const p = spawn(argv, { cwd: ROOT, stdout: "pipe", stderr: "pipe", env: verificationEnv });
       const out: string[] = [];
       const read = async (s: ReadableStream<Uint8Array>) => { for await (const c of s) out.push(new TextDecoder().decode(c)); };
       void read(p.stdout as ReadableStream<Uint8Array>); void read(p.stderr as ReadableStream<Uint8Array>);
@@ -439,23 +509,28 @@ async function main() {
     await record("bun test tests passes", async () => {
       const { code, out } = await runCmd(["bun", "test", "tests"], 600_000);
       if (code !== 0) throw new Error(out.trim().split("\n").filter((l) => /fail|error/i.test(l)).slice(0, 4).join(" | ") || "bun test failed");
-      const summary = out.split("\n").find((l) => /\d+ pass/.test(l));
-      return summary?.trim() ?? "";
+      // Bun's own summary only: a test description such as "26 passing and 7 skipped scores 78.8" is not a count.
+      const summary = parseTestSummary(out);
+      if (!summary) throw new Error("bun test printed no anchored summary line (expected a bare `N pass` line and `Ran N tests across M files.`)");
+      return summary.line;
+    });
+    await record("leak check passes", async () => {
+      const { code, out } = await runCmd(["bun", "tools/leak-check.ts"], 120_000);
+      if (code !== 0) throw new Error(out.trim().split("\n").slice(0, 4).join(" | ") || "leak check failed");
+      return out.trim().split("\n").slice(-1)[0] ?? "";
     });
 
     // --- the table and the score, before cleanup: closing a browser can hang on Wayland ---
     const width = Math.max(...checks.map((c) => c.name.length), 8);
     for (const c of checks) console.log(`${c.state.toUpperCase().padEnd(4)}  ${c.name.padEnd(width)}  ${c.detail}`);
-    const runnable = checks.filter((c) => c.state !== "skip");
-    const passed = runnable.filter((c) => c.state === "pass").length;
-    const pct = runnable.length ? (100 * passed) / runnable.length : 0;
-    console.log(`\n${passed}/${runnable.length} runnable checks passed = ${pct.toFixed(1)}%  (${checks.length - runnable.length} skipped)`);
-    const skipped = checks.filter((c) => c.state === "skip");
-    if (skipped.length) console.log(`NOTE: ${skipped.length} must-pass gate lines were skipped; this score alone is not READY. See the plan's gate list.`);
+    // The plan's rule: passed checks over ALL checks. A skip did not run, so it counts as not passed.
+    const score = scoreReadiness(checks);
+    console.log(`\n${score.passed}/${score.total} checks passed = ${score.pct.toFixed(1)}%  (${score.skipped} skipped, counted as not passed)`);
+    if (score.skipped) console.log(`NOTE: ${score.skipped} must-pass gate lines were skipped and count against the score; this pass is not READY. See the plan's gate list.`);
     const failed = checks.filter((c) => c.state === "fail");
     if (failed.length) console.log(`failing: ${failed.map((c) => c.name).join(" | ")}`);
     await Promise.race([cleanup(), new Promise((r) => setTimeout(r, 5000))]);
-    process.exit(pct < 98 ? 1 : 0);
+    process.exit(score.ready ? 0 : 1);
   } catch (e) {
     await cleanup();
     console.error(`readiness could not run: ${(e as Error).message}`);

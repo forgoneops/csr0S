@@ -2,7 +2,7 @@
    Same look (og-card, og-row, og-tag, btn), real data. Each page loads on first draw, keeps its state in RD, and calls
    the prototype's own render() when something changes. Writes go through the core's own guards (operator only). */
 (() => {
-  const RD = { dev: null, hw: null, inst: null, pull: null, ollama: false, keys: null, fresh: null, kb: null, kbq: '', kbhits: null, bk: null, err: {}, join: { url: '', code: '' }, code: null };
+  const RD = { marketItems: null, marketErr: '', marketBusy: false, dev: null, hw: null, inst: null, pull: null, ollama: false, keys: null, fresh: null, kb: null, kbq: '', kbhits: null, bk: null, err: {}, join: { url: '', code: '' }, code: null };
   const J = { 'content-type': 'application/json' };
   const toLogin = r => { if (r && r.status === 401) location.href = '/login'; return r; };   // the owner password is on and the session ended
   const g = async (u, d) => { try { const r = toLogin(await fetch(u)); return r.ok ? await r.json() : d; } catch { return d; } };
@@ -123,8 +123,17 @@
   V.Library = () => {
     if (!RD.kb) { void loadKb(); return `<div class="nx-view enter">${head('Library', 'Documents you add stay on this computer.', 'Bibliotheca')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     const hits = RD.kbhits ? (RD.kbhits.length ? RD.kbhits.map(h => `<div>${I('library', 16)}<span>${E(h.name)} <small>${E(h.passage)}</small></span></div>`).join('') : '<div style=\"display:block\"><span>Nothing found.</span></div>') : '';
+    // A shelf, not a file list: every document is a book with its own cover tone, its folder as the collection line.
+    const TONES = ['#b4723c', '#7a5c9e', '#3f7d8c', '#9e5c5c', '#6b8f4e', '#a58a3f'];
+    const tone = s => TONES[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % TONES.length];
+    const book = x => `<button type="button" class="lib-book${RD.kbsel === x.id ? ' on' : ''}" data-rd="lib:${E(x.id)}" style="--cv:${tone(x.name)}" aria-label="Find passages in ${E(x.name)}" aria-pressed="${RD.kbsel === x.id}"><span class="lib-cover" aria-hidden="true"><span class="lib-band"></span><b>${E(x.name)}</b><i>${E(x.folder || 'Unshelved')}</i></span><span class="lib-foot">${x.chars < 1000 ? x.chars + ' chars' : Math.round(x.chars / 1000) + 'k chars'}</span></button>`;
+    const folders = [...new Set(RD.kb.map(x => x.folder || ''))];
+    const shown = RD.kb.filter(x => !RD.kfilter || x.folder === RD.kfilter);
+    // the old library's format tabs, made from the folders the person actually uses
+    const cols = RD.kb.length > 1 && folders.length > 1 ? `<div class="lib-cols" role="tablist" aria-label="Collections">${[['', 'All'], ...folders.map(f => [f, f || 'Unshelved'])].map(([id, label]) => `<button type="button" class="btn ghost${(RD.kfilter || '') === id ? ' on' : ''}" data-rd="kcol:${encodeURIComponent(id)}" role="tab" aria-selected="${(RD.kfilter || '') === id}">${E(label)} <span class="bd-n">${id ? RD.kb.filter(x => (x.folder || '') === id).length : RD.kb.length}</span></button>`).join('')}</div>` : '';
+    const shelf = `<div class="lib-shelf" role="list" aria-label="Your shelf">${shown.length ? shown.map(book).join('') : `<div class="lib-blank" role="listitem"><span class="lib-ghost" aria-hidden="true"></span><span class="lib-ghost" aria-hidden="true"></span><span class="lib-ghost" aria-hidden="true"></span><p>The shelf is empty. Add the first document below and it lands here as a book.</p></div>`}</div>`;
     return `<div class="nx-view enter">${head('Library', 'Documents you add stay on this computer. Search finds passages in all of them.', 'Bibliotheca')}
-    <div class="og-wrap"><div class="og-card"><div class="og-row"><input class="og-input" id="rd-kq" placeholder="Search your documents" value="${E(RD.kbq)}" style="flex:1">${btn('kbsearch', 'Search')}</div>${hits ? `<div class="og-list">${hits}</div>` : ''}</div>
+    <div class="og-wrap">${cols}${shelf}<div class="og-card"><div class="og-row"><input class="og-input" id="rd-kq" placeholder="Search your documents" value="${E(RD.kbq)}" style="flex:1">${btn('kbsearch', 'Search')}</div>${hits ? `<div class="og-list">${hits}</div>` : ''}</div>
     ${sec('Add a document')}
     <div class="og-card"><div class="og-row"><input class="og-input" id="rd-kname" placeholder="Name"></div><textarea class="og-input" id="rd-ktext" rows="6" placeholder="Paste text or Markdown" style="width:100%;box-sizing:border-box"></textarea><div class="og-row"><label class="btn" style="cursor:pointer">Choose a text or Markdown file<input type="file" id="rd-kfile" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden></label>${btn('kbadd', 'Add to library')}</div>${RD.err.kb ? `<p role="alert">${E(RD.err.kb)}</p>` : ''}</div>
     ${sec('Your documents' + (RD.kfilter ? ' · folder ' + RD.kfilter : ''))}${RD.kfilter ? `<div class="og-row">${btn('kfall', 'All documents')}</div>` : ''}<div class="og-list">${RD.kb.filter(x => !RD.kfilter || x.folder === RD.kfilter).length ? RD.kb.filter(x => !RD.kfilter || x.folder === RD.kfilter).map(x => `<div>${I('library', 16)}<span>${E(x.name)} <small>${x.chars < 1000 ? x.chars + ' characters' : Math.round(x.chars / 1000) + ' k characters'}</small></span><span class="og-row"><input class="og-input" id="rd-kf-${E(x.id)}" placeholder="Folder" value="${E(x.folder || '')}" style="min-width:110px;max-width:150px" aria-label="Folder of ${E(x.name)}">${btn('kfsave:' + E(x.id), 'Move')}${RD.ksure === x.id ? btn('kbrmgo:' + E(x.id), 'Delete for good') : btn('kbrm:' + E(x.id), 'Delete')}</span></div>`).join('') : '<div style=\"display:block\"><span>No documents yet.</span></div>'}</div></div></div>`;
@@ -141,6 +150,8 @@
   const prevSettings = OG.Settings;
   V.Settings = () => {
     const base = prevSettings ? prevSettings() : '';
+    // Credits is a focused Hall of Fame: never append unrelated system settings beneath the statues.
+    if (/data-st="open:credits"\s+aria-expanded="true"/.test(base)) return base;
     if (!RD.bk || !RD.set) { void loadSet(); return base; }
     const rows = [{ to: '127.0.0.1:11434', why: 'Ollama on this machine, for local models. Never leaves the computer.' }]
       .concat(RD.ms.map(x => ({ to: x.url, why: 'Model server "' + x.name + '", added by you.' })), RD.gw.map(x => ({ to: x.url, why: 'Gateway "' + x.name + '", added by you.' })),
@@ -281,16 +292,32 @@
   };
 
 
-  /* ---------- Marketplace: the skills on this computer, scanned, read only ---------- */
+  /* ---------- Marketplace: local skills and hash-bound quarantine/approval ---------- */
+  async function loadMarketplace() {
+    const [skills, data] = await Promise.all([g('/api/skills', []), g('/api/install-gate', { items: [] })]);
+    RD.skills = skills; RD.marketItems = data.items || []; again();
+  }
+  const utf8Base64 = text => { const bytes = new TextEncoder().encode(text); let binary = ''; for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(binary); };
   V.Marketplace = () => {
-    if (!RD.skills) { void (async () => { RD.skills = await g('/api/skills', []); again(); })(); return `<div class="nx-view enter">${head('Marketplace', 'Skills found on this computer.', 'Mercatus')}<div class="og-wrap">${loadingCard()}</div></div>`; }
+    if (!RD.skills || !RD.marketItems) { void loadMarketplace(); return `<div class="nx-view enter">${head('Marketplace', 'Skills on this computer and reviewed packages.', 'Mercatus')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     const q = (RD.skq || '').toLowerCase(), list = RD.skills.filter(s => !q || (s.name + ' ' + s.description + ' ' + s.category).toLowerCase().includes(q));
-    const cats = [...new Set(list.map(s => s.category))];
-    const flagged = RD.skills.filter(s => s.flags.length).length;
-    return `<div class="nx-view enter">${head('Marketplace', 'Hermes skills found on this computer, scanned first. Nothing is installed or run from here.', 'Mercatus')}
-    <div class="og-wrap"><div class="og-card"><div class="og-row"><input class="og-input" id="rd-skq" placeholder="Search skills" value="${E(RD.skq || '')}" style="flex:1">${btn('skgo', 'Search')}</div><p>${RD.skills.length} skills found · ${flagged} with something worth a second look. The scan lists what a file asks an agent to do (administrator rights, deleting files, downloading code, secrets); it is not a verdict.</p></div>
-    ${cats.map(c => `${sec(c)}<div class="og-list">${list.filter(s => s.category === c).map(s => `<div>${I('plugin', 16)}<span>${E(s.name)} <small>${E(s.description)}</small>${s.flags.length ? `<small style="display:block;color:var(--accent)">Look at: ${s.flags.map(E).join('; ')}</small>` : ''}</span><span class="og-tag ${s.flags.length ? '' : 'sig'}">${s.flags.length ? 'Review' : 'Clean'}</span></div>`).join('')}</div>`).join('') || '<div class="og-card"><p>No skills found. Put skill folders (each with a SKILL.md) in the skills folder, or set CAESAROS_SKILLS_DIR.</p></div>'}
-    <p class="og-note">Adding skills from the community is not done from here yet; this page only shows what you already have.</p></div></div>`;
+    const cats = [...new Set(list.map(s => s.category))], flagged = RD.skills.filter(s => s.flags.length).length;
+    const targets = [['hermes', 'Hermes'], ['claude-code', 'Claude Code'], ['codex', 'Codex']];
+    const items = RD.marketItems.map(item => {
+      const existing = item.targets || [];
+      const choices = targets.filter(([id]) => !existing.includes(id)).map(([id, label]) => `<label class="og-check" style="display:flex;align-items:center;gap:8px;min-height:44px"><input type="checkbox" data-agent-target="${E(id)}"> ${E(label)}</label>`).join('');
+      const installedTargets = existing.length ? existing.map(id => E(targets.find(([key]) => key === id)?.[1] || id)).join(', ') : 'CaesarOS registry only';
+      const action = item.scan.verdict === 'red'
+        ? '<p role="alert">Blocked: red findings cannot be approved.</p>'
+        : `${item.scan.verdict === 'yellow' ? '<p>Yellow findings require an extra confirmation.</p>' : ''}<div class="og-row" style="flex-wrap:wrap">${choices || '<span>No additional agent targets are available.</span>'}</div>${btn('mgapprove:' + E(item.id), item.status === 'installed' ? 'Add to selected agents' : 'Approve selected targets')}`;
+      return `<div class="og-card"><div class="og-row"><h4>${E(item.name)} · ${E(item.version)}</h4><span class="og-tag ${item.scan.verdict === 'green' ? 'sig' : ''}">${E(item.scan.verdict)} · ${E(item.status)}</span></div><p>Declared source: ${E(item.source)} · Licence: ${E(item.license)}</p><p>Declared permissions: ${item.needs.map(E).join(', ') || 'none'} · Dependencies (not fetched): ${item.dependencies.map(d => E(d.name + '@' + d.version + ' (' + d.source + ')')).join(', ') || 'none declared'}</p><code style="overflow-wrap:anywhere">SHA-256 ${E(item.scan.sha256 || 'unavailable')}</code>${item.scan.findings.length ? `<div class="og-list">${item.scan.findings.map(f => `<div><span class="og-tag">${E(f.severity)}</span><span>${E(f.file)}:${f.line} · ${E(f.rule)}<small>${E(f.excerpt)}</small></span></div>`).join('')}</div>` : '<p>No scanner findings.</p>'}<p>Installed targets: ${installedTargets}</p>${action}${item.status === 'installed' ? btn('mgremove:' + E(item.id), 'Remove from CaesarOS and selected agents') : ''}</div>`;
+    }).join('');
+    return `<div class="nx-view enter">${head('Marketplace', 'Review a local skill package before it enters CaesarOS.', 'Mercatus')}
+    <div class="og-wrap"><div class="og-card"><h4>Review a skill package</h4><p>Select a JSON package. CaesarOS does not download, extract or run it. The package stays in quarantine until you approve the exact scan hash.</p><details><summary>Package format</summary><pre>{"name":"Skill name","version":"1.0.0","source":"https://…","license":"MIT","needs":[],"dependencies":[],"files":[{"path":"SKILL.md","content":"# Skill\nInstructions…"}]}</pre></details><label class="btn" for="rd-skill-bundle">Choose skill JSON</label><input id="rd-skill-bundle" type="file" accept="application/json,.json" style="display:none">${RD.marketBusy ? '<p role="status">Scanning in quarantine…</p>' : ''}${RD.marketErr ? `<p role="alert">${E(RD.marketErr)}</p>` : ''}</div>
+    ${RD.marketItems.length ? `${sec('Review and registry')}${items}` : ''}
+    <div class="og-card"><div class="og-row"><input class="og-input" id="rd-skq" placeholder="Search skills already on this computer" value="${E(RD.skq || '')}" style="flex:1">${btn('skgo', 'Search')}</div><p>${RD.skills.length} skills found · ${flagged} with something worth a second look. Existing skills remain read only.</p></div>
+    ${cats.map(c => `${sec(c)}<div class="og-list">${list.filter(s => s.category === c).map(s => `<div>${I('plugin', 16)}<span>${E(s.name)} <small>${E(s.description)}</small>${s.flags.length ? `<small style="display:block;color:var(--accent)">Look at: ${s.flags.map(E).join('; ')}</small>` : ''}</span><span class="og-tag ${s.flags.length ? '' : 'sig'}">${s.flags.length ? 'Review' : 'Clean'}</span></div>`).join('')}</div>`).join('') || '<div class="og-card"><p>No skills found on this computer yet.</p></div>'}
+    </div></div>`;
   };
 
 
@@ -716,6 +743,20 @@
   setInterval(() => { void refreshSyncChip(); }, 60000);
   const val = id => (document.getElementById(id) || {}).value || '';
   document.addEventListener('change', async e => {
+    if (!e.target || e.target.id !== 'rd-skill-bundle' || !e.target.files || !e.target.files[0]) return;
+    RD.marketErr = ''; RD.marketBusy = true; again();
+    try {
+      const pack = JSON.parse(await e.target.files[0].text());
+      if (!pack || typeof pack !== 'object' || !Array.isArray(pack.files) || pack.files.some(f => !f || typeof f.path !== 'string' || typeof f.content !== 'string')) throw new Error('The JSON must contain a files list with path and text content.');
+      const files = pack.files.map(f => ({ path: f.path, base64: utf8Base64(f.content) }));
+      const r = await w('/api/install-gate/quarantine', 'POST', { ...pack, kind: 'skill', files });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'The package could not be scanned.');
+      RD.marketItems = [data, ...(RD.marketItems || [])];
+    } catch (err) { RD.marketErr = err && err.message ? err.message : 'The package could not be read.'; }
+    RD.marketBusy = false; e.target.value = ''; again();
+  });
+  document.addEventListener('change', async e => {
     if (e.target && e.target.id === 'rd-kfile' && e.target.files[0]) { const f = e.target.files[0]; const t = await f.text(); const n = document.getElementById('rd-kname'); const x = document.getElementById('rd-ktext'); if (x) x.value = t; if (n && !n.value) n.value = f.name.replace(/\.[^.]+$/, ''); }
   });
   document.addEventListener('input', e => { if (e.target && e.target.id === 'rd-url') RD.join.url = e.target.value; if (e.target && e.target.id === 'rd-code') RD.join.code = e.target.value.replace(/\D/g, ''); if (e.target && e.target.id === 'rd-kq') RD.kbq = e.target.value; });
@@ -804,6 +845,25 @@
     else if (k === 'ntheirs') { if (NT.theirs) { NT.open = NT.theirs; NT.text = NT.theirs.content; NT.status = 'saved'; again(); } }
     else if (k === 'nmine') { if (NT.theirs) { NT.open = NT.theirs; NT.status = 'dirty'; await flushNote(); await loadNotes(); } }
     else if (k === 'skgo') { RD.skq = val('rd-skq'); again(); }
+    else if (k === 'mgapprove') {
+      const item = (RD.marketItems || []).find(x => x.id === v); if (!item) return;
+      const confirmYellow = item.scan.verdict === 'yellow';
+      if (confirmYellow && !window.confirm('This scan has yellow findings. Review the exact findings and hash before continuing. Approve this hash?')) return;
+      const card = t.closest('.og-card'); const targets = card ? [...card.querySelectorAll('[data-agent-target]:checked')].map(x => x.dataset.agentTarget) : [];
+      if (!targets.length) { RD.marketErr = 'Select at least one agent before approving.'; again(); return; }
+      const r = await w('/api/install-gate/' + encodeURIComponent(v) + '/approve', 'POST', { sha256: item.scan.sha256, confirmYellow, targets });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) { if (data.item) { RD.marketItems = RD.marketItems.map(x => x.id === v ? data.item : x); RD.skills = await g('/api/skills', []); } RD.marketErr = data.error === 'scan_changed' ? 'The package changed. Review the new scan before approving.' : data.error === 'agent_projection_failed' ? 'Some selected agents were updated. Select the remaining agents and retry.' : 'The package could not be added (' + (data.error || 'failed') + ').'; }
+      else { RD.marketItems = RD.marketItems.map(x => x.id === v ? data : x); RD.skills = await g('/api/skills', []); }
+      again();
+    }
+    else if (k === 'mgremove') {
+      if (!window.confirm('Remove this unchanged skill from CaesarOS?')) return;
+      const r = await w('/api/install-gate/' + encodeURIComponent(v), 'DELETE');
+      if (!r.ok) RD.marketErr = 'Some unchanged agent copies may already be removed. Modified files were preserved; resolve the change and retry to finish.';
+      else { RD.marketItems = RD.marketItems.filter(x => x.id !== v); RD.skills = await g('/api/skills', []); }
+      again();
+    }
     else if (k === 'wbadd') { const i = document.getElementById('rd-wb'); const title = i ? i.value.trim() : ''; if (title) { await w('/api/board', 'POST', { title }); await refreshW(); } }
     else if (k === 'cprev' || k === 'cnext') { const c = RD.cal; c.m += k === 'cnext' ? 1 : -1; if (c.m < 0) { c.m = 11; c.y--; } if (c.m > 11) { c.m = 0; c.y++; } c.sel = null; await loadCal(); }
     else if (k === 'ctoday') { const t = new Date(); RD.cal.y = t.getFullYear(); RD.cal.m = t.getMonth(); RD.cal.sel = null; await loadCal(); }
@@ -837,6 +897,8 @@
     else if (k === 'keymk') { const name = val('rd-key').trim().toLowerCase(); const r = await w('/api/tokens', 'POST', { name }); const j = await r.json().catch(() => ({})); if (r.ok && j.token) RD.fresh = j.token; else RD.err.key = j.error || 'The key could not be made.'; await loadKeys(); }
     else if (k === 'keyrm') { await w('/api/tokens/' + encodeURIComponent(v), 'DELETE'); RD.fresh = null; await loadKeys(); }
     else if (k === 'kbsearch') { RD.kbq = val('rd-kq'); RD.kbhits = RD.kbq.trim() ? await g('/api/knowledge/search?q=' + encodeURIComponent(RD.kbq), []) : null; again(); }
+    else if (k === 'kcol') { RD.kfilter = decodeURIComponent(v) || null; RD.kbsel = null; again(); }
+    else if (k === 'lib') { const doc = (RD.kb || []).find(x => x.id === v); if (doc) { RD.kbsel = doc.id; RD.kbq = doc.name; RD.kbhits = await g('/api/knowledge/search?q=' + encodeURIComponent(doc.name), []); } again(); }
     else if (k === 'kbadd') { const r = await w('/api/knowledge', 'POST', { name: val('rd-kname'), text: val('rd-ktext') }); if (!r.ok) RD.err.kb = 'The document could not be added.'; await loadKb(); }
     else if (k === 'kbrm') { RD.ksure = v; again(); }
     else if (k === 'kbrmgo') { await w('/api/knowledge/' + encodeURIComponent(v), 'DELETE'); RD.ksure = null; RD.kbhits = null; await loadKb(); }

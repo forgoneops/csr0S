@@ -8,10 +8,11 @@ import { layout } from "./graphlayout";
 import { treeLayout, type Branch } from "./arbor";
 import type { Hono } from "hono";
 import { createHash } from "node:crypto";
-import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, writeFileSync } from "node:fs";
+import { closeSync, constants, existsSync, lstatSync, mkdirSync, openSync, readSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DATA } from "./db";
 import { access } from "./principal";
+import { readRegularFileNoFollow } from "./safe-file";
 
 export const MAX_NOTE_BYTES = 1024 * 1024;
 export const MAX_NOTES = 5000;
@@ -37,15 +38,19 @@ export function createNotes(dir: string = join(DATA, "notes")) {
   const regular = (p: string) => { try { const st = lstatSync(p); return st.isFile() && !st.isSymbolicLink() ? st : null; } catch { return null; } };
   /** The first 512 bytes only: listing thousands of notes must not read them whole. */
   const headOf = (p: string): string => {
-    const fd = openSync(p, "r");
+    // O_NOFOLLOW: a symlink swapped in after the lstat (see regular()) must not redirect the open.
+    const fd = openSync(p, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
     try { const buf = Buffer.alloc(512); const n = readSync(fd, buf, 0, 512, 0); return buf.subarray(0, n).toString("utf8"); } finally { closeSync(fd); }
   };
   const snippetOf = (text: string) => text.replace(/\s+/g, " ").trim().slice(0, 140);
 
   const readRaw = (id: string): { content: string; updatedAt: number } | null => {
-    const st = regular(file(id));
+    const p = file(id);
+    const st = regular(p);
     if (!st || st.size > MAX_NOTE_BYTES) return null;
-    return { content: readFileSync(file(id), "utf8"), updatedAt: Math.round(st.mtimeMs) };
+    // Verify the opened file, not the path: a symlink swapped in after the lstat must not be followed.
+    const content = readRegularFileNoFollow(p, st, dir, MAX_NOTE_BYTES).toString("utf8");
+    return { content, updatedAt: Math.round(st.mtimeMs) };
   };
 
   function list(): NoteMeta[] {

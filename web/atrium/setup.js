@@ -6,11 +6,13 @@
   const post = (u, b) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
   const PLATFORMS = [['x', 'X (Twitter)', '@handle'], ['youtube', 'YouTube', '@channel or link'], ['instagram', 'Instagram', '@handle'], ['tiktok', 'TikTok', '@handle'], ['linkedin', 'LinkedIn', 'profile or page link'], ['facebook', 'Facebook', 'page link'], ['threads', 'Threads', '@handle'], ['bluesky', 'Bluesky', 'handle.bsky.social'], ['mastodon', 'Mastodon', '@name@server'], ['reddit', 'Reddit', 'u/name'], ['github', 'GitHub', 'name'], ['pinterest', 'Pinterest', '@handle']];
   const TOOLS = { claude: ['Claude Code', 'Uses your Claude subscription. Run it once and sign in.', 'claude'], codex: ['Codex', 'Uses your ChatGPT subscription. Sign in once.', 'codex login'], hermes: ['Hermes', 'Runs your crew. Choose its model and sign in.', 'hermes model'], gemini: ['Gemini CLI', 'Uses your Google account.', 'gemini'], ollama: ['Ollama', 'Local models: they work with no internet.', 'sudo pacman -S ollama && sudo systemctl enable --now ollama'] };
-  const D = { set: null, detect: [], targets: [], hw: null, pull: null, ollama: null, loaded: false };
+  const D = { set: null, detect: [], targets: [], hw: null, pull: null, ollama: null, loaded: false, term: false, ex: null, exBusy: false, exErr: '', exHost: '', exPort: '', signing: '', signErr: '' };
+  const EXERR = { host_is_required: 'Type the address first, like user@host.', host_invalid: 'That address does not look right. Use user@host or a host name.', tailscale_not_available: 'Tailscale is not running on this machine. Install it and run tailscale up first.', ssh_failed: 'SSH did not accept this machine\'s key. Add your key to the VPS first.', socat_failed: 'socat could not be installed on the VPS (it needs passwordless sudo, or install socat yourself).', unit_failed: 'The forward service did not start on the VPS.', busy: 'A connection is already running.', operator_only: 'Only the person using this machine can connect a VPS.', loopback_only: 'Open CaesarOS on this machine to connect a VPS.' };
 
   async function load() {
     try {
-      const [set, det, tg, hw, pull] = await Promise.all([get('/api/settings'), get('/api/detect'), get('/api/chat-targets'), get('/api/hardware'), get('/api/models/pull')]);
+      const [set, det, tg, hw, pull, term, ex] = await Promise.all([get('/api/settings'), get('/api/detect'), get('/api/chat-targets'), get('/api/hardware'), get('/api/models/pull'), get('/api/terminal').catch(() => ({ enabled: false })), get('/api/expose').catch(() => null)]);
+      D.term = !!term.enabled && !!(window.CX && window.CX.runInTerminal); D.ex = ex;
       D.set = set; D.detect = det.engines; D.targets = tg; D.hw = hw; D.pull = pull; D.ollama = tg.find(t => t.id === 'ollama'); D.loaded = true;
     } catch (e) { D.loaded = 'error'; }
   }
@@ -18,12 +20,12 @@
     const d = D.detect.find(x => x.id === id); const t = D.targets.find(x => x.id === id) || D.targets.find(x => x.id === 'hermes:caesar');
     if (!d || !d.found) return ['off', 'Not installed'];
     if (id === 'hermes') return ['ok', 'Ready'];
-    return t && t.ok ? ['ok', 'Ready'] : ['warn', 'Sign in'];
+    return t && t.ok ? ['ok', 'Ready'] : ['warn', 'Not signed in'];
   };
   const toolRow = id => {
     const [name, why, cmd] = TOOLS[id]; const [cls, label] = stateOf(id);
-    return `<li class="su-tool"><span class="su-dot ${cls}"></span><span class="su-tt"><b>${esc(name)}</b><small>${esc(why)}</small>${cls === 'ok' ? '' : `<code>${esc(cmd)}</code>`}</span>
-      <span class="su-chip ${cls}">${label}</span>${cls === 'ok' ? '' : `<button class="su-btn" data-su="copy" data-v="${esc(cmd)}">${I('copy', 16)}<span>Copy command</span></button>`}</li>`;
+    return `<li class="su-tool"><span class="su-dot ${cls}"></span><span class="su-tt"><b>${esc(name)}</b><small>${esc(why)}</small>${cls === 'ok' ? '' : `<code>${esc(cmd)}</code>`}${cls === 'warn' && !D.term ? '<small>The terminal is off in this edition, so run this command in your own terminal.</small>' : ''}${D.signing === id && D.signErr ? `<small role="alert">${esc(D.signErr)}</small>` : ''}</span>
+      <span class="su-chip ${cls}">${D.signing === id && cls !== 'ok' ? 'Waiting' : label}</span>${cls === 'warn' && D.term ? `<button class="su-btn go" data-su="signin" data-v="${id}">${I('terminal', 16)}<span>Sign in</span></button>` : ''}${cls === 'ok' ? '' : `<button class="su-btn" data-su="copy" data-v="${esc(cmd)}">${I('copy', 16)}<span>Copy command</span></button>`}</li>`;
   };
   const accountVal = p => ((D.set.profile.accounts || []).find(a => a.platform === p) || {}).handle || '';
   const pullBox = (m) => {
@@ -34,6 +36,22 @@
         : st && st.done ? '<span class="su-chip ok">Installed</span>'
         : st && st.error ? `<span class="su-chip warn" title="${esc(st.error)}">Failed</span><button class="su-btn" data-su="pull" data-v="${esc(m.model)}">Try again</button>`
         : `<button class="su-btn go" data-su="pull" data-v="${esc(m.model)}" ${ready ? '' : 'disabled title="Install Ollama first"'}>${I('download', 16)}<span>Download</span></button>`}</div>`;
+  };
+  const stepRows = a => `<ul class="su-tools">${a.map(x => `<li class="su-tool"><span class="su-dot ${x.ok ? 'ok' : 'warn'}"></span><span class="su-tt"><b>${esc(x.label)}</b><small>${esc(x.detail)}</small></span></li>`).join('')}</ul>`;
+  const vpsCard = () => {
+    const x = D.ex; const head = '<h3><span>5</span>Connect to a VPS</h3>';
+    if (!x) return `<section class="su-card">${head}<p class="su-note">Open CaesarOS on this machine to connect a VPS.</p></section>`;
+    const live = x.configured, steps = D.exBusy || D.exErr ? (x.progress || []) : live ? x.steps : [];
+    const err = D.exErr ? `<div class="su-warn" role="alert"><b>${esc(EXERR[D.exErr] || D.exErr)}</b></div>` : '';
+    const form = `<form class="su-grid" data-su-vps><label class="su-f"><span>VPS address</span><input class="su-in" data-su-exf="exHost" value="${esc(D.exHost)}" placeholder="user@host" autocomplete="off" autocapitalize="none" spellcheck="false" ${D.exBusy ? 'disabled' : ''}></label>
+        <label class="su-f"><span>Port (optional)</span><input class="su-in" data-su-exf="exPort" value="${esc(D.exPort)}" placeholder="${x.localPort}" inputmode="numeric" autocomplete="off" ${D.exBusy ? 'disabled' : ''}></label>
+        <button class="su-btn go" type="submit" ${D.exBusy ? 'disabled' : ''}>${I('system', 16)}<span>${D.exBusy ? 'Connecting' : 'Connect'}</span></button></form>`;
+    return `<section class="su-card">${head}
+      <p class="su-note">Optional. Reach this CaesarOS from your phone or another computer through a VPS you own. It needs Tailscale here and your own SSH key on the VPS. Only the address you type is contacted, and nothing is installed here.</p>
+      ${live ? `<p class="su-note" role="status">Connected to ${esc(x.host)} on port ${x.localPort}. Health: <b>${esc(x.health || 'unknown')}</b></p>` : form}
+      ${err}${steps.length ? stepRows(steps) : ''}
+      ${live ? `<button class="su-btn" data-su="vps-off">${I('stop', 16)}<span>Disconnect</span></button>` : ''}
+    </section>`;
   };
   function setupView() {
     if (!D.loaded) { void load().then(() => { if (S.tabs[S.act] && S.tabs[S.act].id === 'Start') render(); }); return `<div class="nx-view enter su">${scene('atrium-hero', 100)}<div class="su-wrap"><p class="su-lead">Loading…</p></div></div>`; }
@@ -56,7 +74,7 @@
       </section>
 
       <section class="su-card"><h3><span>2</span>Sign in to your tools</h3>
-        <p class="su-note">Use the subscriptions you already pay for. Open the Terminal (Ctrl+\`), run the command, then press Check again.</p>
+        <p class="su-note">Use the subscriptions you already pay for. Press Sign in: the terminal opens and runs the command, and the row turns Ready by itself when you are done.</p>
         <ul class="su-tools">${['claude', 'codex', 'hermes', 'gemini'].map(toolRow).join('')}</ul>
         <button class="su-btn" data-su="recheck">${I('refresh', 16)}<span>Check again</span></button>
       </section>
@@ -72,6 +90,8 @@
         <div class="su-tiers">${D.hw.advice.map(pullBox).join('')}</div>
       </section>
 
+      ${vpsCard()}
+
       <footer class="su-foot"><button class="su-btn go big" data-su="finish">${I('check', 18)}<span>Finish and open the Atrium</span></button><small>You can come back to this page any time from Start.</small></footer>
     </div></div>`;
   }
@@ -79,6 +99,27 @@
 
   let timer = 0;
   const poll = () => { clearInterval(timer); timer = setInterval(async () => { try { D.pull = await get('/api/models/pull'); } catch { return; } const on = S.tabs[S.act] && S.tabs[S.act].id === 'Start'; if (on && !document.activeElement.matches('input,textarea')) render(); if (!D.pull || D.pull.done || D.pull.error) clearInterval(timer); }, 1500); };
+
+  const onStart = () => S.tabs[S.act] && S.tabs[S.act].id === 'Start';
+  const idle = () => !document.activeElement || !document.activeElement.matches('input,textarea');
+  // sign-in watch: after Sign in, look again until the row is Ready (or about five minutes pass); coming back to the page looks at once
+  let watch = 0, watchEnd = 0;
+  const recheck = async () => { await load(); if (D.signing && stateOf(D.signing)[0] === 'ok') { D.signing = ''; D.signErr = ''; clearInterval(watch); } if (onStart() && idle()) render(); };
+  const watchSignIn = () => { clearInterval(watch); watchEnd = Date.now() + 300000; watch = setInterval(() => { if (!D.signing || Date.now() > watchEnd) { D.signing = ''; clearInterval(watch); return; } void recheck(); }, 4000); };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && D.signing) void recheck(); });
+  // VPS: while a connect runs, and while one is live, read /api/expose so each step and the health show as they happen
+  let exTimer = 0;
+  const watchVps = () => { clearInterval(exTimer); exTimer = setInterval(async () => { if (!D.ex || (!D.exBusy && !D.ex.configured)) { clearInterval(exTimer); return; } try { const x = await get('/api/expose'); D.ex = x; } catch { return; } if (onStart() && idle()) render(); }, D.exBusy ? 1500 : 10000); };
+  async function vpsConnect() {
+    const host = D.exHost.trim(), port = parseInt(D.exPort, 10);
+    D.exErr = ''; D.exBusy = true; D.ex = { ...D.ex, progress: [] }; render(); watchVps();
+    try {
+      const r = await post('/api/expose', { host, ...(port > 0 ? { port } : {}) }); const b = await r.json().catch(() => ({}));
+      if (!r.ok) D.exErr = b.error || 'failed';
+    } catch { D.exErr = 'The core did not answer.'; }
+    D.exBusy = false; try { D.ex = await get('/api/expose'); } catch { /* keep the last answer */ }
+    render(); if (D.ex && D.ex.configured) watchVps();
+  }
 
   // the composer on the Start tab: type and send, and the first answer is two steps from the first screen
   async function ask() {
@@ -95,11 +136,23 @@
     const b = e.target.closest('[data-su]'); if (!b) return; e.preventDefault(); e.stopPropagation();
     const a = b.dataset.su;
     if (a === 'copy') { try { await navigator.clipboard.writeText(b.dataset.v); b.querySelector('span').textContent = 'Copied'; setTimeout(() => { if (b.isConnected) b.querySelector('span').textContent = 'Copy command'; }, 1400); } catch { /* clipboard refused */ } }
-    else if (a === 'lang') { await put('/api/settings', { language: b.dataset.v }); if (D.set) D.set.language = b.dataset.v; document.documentElement.lang = b.dataset.v; render(); }
+    else if (a === 'signin') {
+      const id = b.dataset.v, cmd = (TOOLS[id] || [])[2]; if (!cmd || id === 'ollama') return;
+      D.signing = id; D.signErr = ''; render();
+      if (!await window.CX.runInTerminal(cmd)) D.signErr = 'The terminal did not start. Copy the command and run it yourself.'; else watchSignIn();
+      render();
+    }
+    else if (a === 'vps-off') { b.disabled = true; await fetch('/api/expose', { method: 'DELETE' }); D.exErr = ''; try { D.ex = await get('/api/expose'); } catch { /* keep */ } render(); }
+    else if (a === 'lang') { await put('/api/settings', { language: b.dataset.v }); if (window.I18N?.setLanguage) await window.I18N.setLanguage(b.dataset.v); try { localStorage.setItem('caesaros-language-choice', b.dataset.v); } catch {} if (D.set) D.set.language = b.dataset.v; document.documentElement.lang = b.dataset.v; render(); }
     else if (a === 'recheck') { b.disabled = true; await load(); render(); }
     else if (a === 'pull') { await post('/api/models/pull', { model: b.dataset.v }); D.pull = await get('/api/models/pull'); render(); poll(); }
     else if (a === 'cancel') { await fetch('/api/models/pull', { method: 'DELETE' }); D.pull = await get('/api/models/pull'); render(); }
     else if (a === 'finish') { await put('/api/settings', { setupDone: true }); S.tabs = [{ k: 'ws' }]; S.act = 0; render(); }
+  }, true);
+  document.addEventListener('input', e => { const f = e.target.closest && e.target.closest('[data-su-exf]'); if (f) D[f.dataset.suExf] = f.value; });
+  document.addEventListener('submit', e => {
+    if (!e.target.closest || !e.target.closest('[data-su-vps]')) return;
+    e.preventDefault(); e.stopPropagation(); if (!D.exBusy) void vpsConnect();
   }, true);
   document.addEventListener('change', async e => {
     const f = e.target.closest('[data-su-save]'), ac = e.target.closest('[data-su-acct]'); if (!f && !ac || !D.set) return;

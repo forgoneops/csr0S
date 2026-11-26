@@ -63,7 +63,16 @@ function railHtml() {
       <button class="ns-it" data-app="Mobile app" title="Mobile app">${I('chat', 20)}<span class="ns-lab">Mobile app</span></button>
     </div></aside></div>`;
 }
-function flyHtml() { return ''; }
+function flyHtml() {
+  // The Sessions strip in the footer and the rail both land here: a real list of open conversations,
+  // each a button that opens that thread. Empty state says so instead of rendering nothing.
+  if (typeof S === 'undefined' || S.flyout !== 'ses') return '';
+  const E = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const rows = (typeof THREADS !== 'undefined' ? THREADS : []).slice(0, 14)
+    .map((t) => `<button type="button" class="fly-row" data-ses="${E(t.id)}"><span class="fly-t"><b>${E(t.t)}</b><small>${E(((typeof C !== 'undefined' && C[t.a]) || {}).n || '')} · ${E(t.s)}</small></span><span class="fly-go" aria-hidden="true">›</span></button>`).join('');
+  return `<div class="fly" role="dialog" aria-label="Sessions"><div class="fly-head"><span class="label">Sessions</span><button type="button" class="fly-x" data-nx="fly-ses" aria-label="Close sessions">×</button></div>
+    <div class="fly-body">${rows || '<p class="su-note">No conversations yet. Start one from Chat.</p>'}</div></div>`;
+}
 
 /* ---------- pages ---------- */
 const nsHead = (name, sub, la, sc) => `${name === 'Start' ? scene(sc || 'atrium-hero', 100) : ''}<div class="nx-phead"><h2>${OGE(name.toUpperCase())}</h2><span class="label">${OGE(la || '')}</span></div><p style="margin:6px 0 0;color:var(--muted);font-size:13px;max-width:820px">${OGE(sub)}</p>`;

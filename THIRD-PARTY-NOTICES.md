@@ -36,6 +36,7 @@ load them without a bundler. Verified by SHA-256 against `node_modules`:
 | `web/atrium/vendor/xterm.js` | `@xterm/xterm@6.0.0/lib/xterm.js` | MIT (The xterm.js authors, SourceLair Private Company) |
 | `web/atrium/vendor/xterm.css` | `@xterm/xterm@6.0.0/css/xterm.css` | MIT (same) |
 | `web/atrium/vendor/addon-fit.js` | `@xterm/addon-fit@0.11.0/lib/addon-fit.js` | MIT (The xterm.js authors) |
+| `web/atrium/vendor/three.min.js` | `three.js r128 build/three.min.js` | MIT (three.js authors; full notice in `web/atrium/vendor/THREE-LICENSE.txt`) |
 
 SHA-256: `xterm.js` 14903579ff54664cd72f8e8699e6961a6272c21863ec1c3b118cdc8af5d4a972,
 `xterm.css` 854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6,
@@ -45,9 +46,9 @@ SHA-256: `xterm.js` 14903579ff54664cd72f8e8699e6961a6272c21863ec1c3b118cdc8af5d4
 
 | Pack | Fonts | Licence | Notes |
 |---|---|---|---|
-| `packs/fonts/ds0` | Cinzel, Alegreya Sans, Azeret Mono (WOFF2, latin and latin-ext subsets) | SIL Open Font License 1.1, per `packs/fonts/ds0/manifest.json` | Files fetched from Google Fonts (`fonts.google.com` per the manifest). The licence text is not bundled with this pack. Copyright holder: **UNKNOWN** (not recorded in the tree). |
-| `packs/fonts/plain` | Alegreya Sans, Azeret Mono (the same files as DS0 type, without Cinzel) | SIL Open Font License 1.1, per `packs/fonts/plain/manifest.json` | As above; licence text not bundled. Copyright holder: **UNKNOWN**. |
-| `packs/fonts/writer` | iA Writer Duospace | SIL Open Font License 1.1, per `packs/fonts/writer/OFL-NOTE.txt` and the pack manifest | Copyright Information Architects Inc., with Reserved Font Name "iA Writer". Converted from TTF to WOFF2 with unchanged glyphs. Licence text not bundled; the note points at https://openfontlicense.org. |
+| `packs/fonts/ds0` | Cinzel, Alegreya Sans, Azeret Mono (WOFF2, latin and latin-ext subsets) | SIL Open Font License 1.1, per `packs/fonts/ds0/manifest.json` | Files fetched from Google Fonts (`fonts.google.com` per the manifest). Copyright: The Cinzel Project Authors; The Alegreya Sans Project Authors; The Azeret Project Authors. Upstream links and full licence texts are bundled in `web/atrium/fonts/CAESAR-LEGIO-{CINZEL,ALEGREYA-SANS,AZERET-MONO}-OFL.txt`. |
+| `packs/fonts/plain` | Alegreya Sans, Azeret Mono (the same files as DS0 type, without Cinzel) | SIL Open Font License 1.1, per `packs/fonts/plain/manifest.json` | As above. Copyright: The Alegreya Sans Project Authors and The Azeret Project Authors. Their upstream links and full licence texts are bundled in `web/atrium/fonts/CAESAR-LEGIO-{ALEGREYA-SANS,AZERET-MONO}-OFL.txt`. |
+| `packs/fonts/writer` | iA Writer Duospace | SIL Open Font License 1.1, per `packs/fonts/writer/OFL.txt` and the pack manifest | Copyright Information Architects Inc., with Reserved Font Name "iA Writer". Converted from TTF to WOFF2 with unchanged glyphs. |
 
 ## Icons and themes (`packs/icons/`, `packs/themes/`)
 
@@ -58,7 +59,8 @@ embedded in them per their manifests; nothing here was verified beyond those dec
 
 ## Bundled art (`web/atrium/art/`)
 
-114 files (111 `.webp`, 3 `.svg`, 12.2 MB) shipped with the app: banners, scenes, the Caesar
+117 recursively served files (114 `.webp`, 3 `.svg`, 12,510,650 bytes): 29 WebP and 3 SVG files at
+the art root, plus 85 WebP files in nested art folders. They include banners, scenes, the Caesar
 portrait, crew portraits and tool marks.
 
 **Provenance.** These images were generated for the project owner with an AI image tool (Codex, OpenAI
