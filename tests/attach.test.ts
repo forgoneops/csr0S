@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { codexAdd, codexRemove, claudeHookAdd, claudeHookRemove, shareEdit, backup } from "../tools/attach";
+import { codexAdd, codexRemove, claudeHookAdd, claudeHookRemove, hermesAdd, hermesRemove, shareEdit, backup } from "../tools/attach";
 import { search, listNotes, start, recent, read, readShare } from "../tools/caesar-layer-mcp";
 
 describe("codex block", () => {
@@ -30,6 +30,42 @@ describe("claude hook", () => {
   });
   test("remove drops empty hook containers it created", () => {
     expect(claudeHookRemove(claudeHookAdd({ model: "m" }))).toEqual({ model: "m" });
+  });
+});
+
+describe("Hermes MCP config", () => {
+  const config = { CAESAROS_DATA: "/tmp/caesaros-brain", CAESAROS_URL: "http://127.0.0.1:4480" };
+  test("adds an owned root block and removal restores an empty config exactly", () => {
+    const once = hermesAdd("", config);
+    expect(once).toContain("mcp_servers:\n  caesar-layer:\n    command: \"bun\"");
+    expect(once).toContain('CAESAROS_DATA: "/tmp/caesaros-brain"');
+    expect(hermesAdd(once, config)).toBe(once);
+    expect(hermesRemove(once)).toBe("");
+  });
+  test("merges into existing MCP config and remove preserves other servers byte for byte", () => {
+    const base = 'model:\n  provider: ollama\nmcp_servers:\n  time:\n    command: "uvx"\n';
+    const once = hermesAdd(base, config);
+    expect(once).toContain('  time:\n    command: "uvx"\n\n  # >>> caesaros attach');
+    expect(hermesAdd(once, config)).toBe(once);
+    expect(hermesRemove(once)).toBe(base);
+  });
+  test("remove fails closed when a person edits the managed block", () => {
+    const once = hermesAdd("", config), edited = once.replace('command: "bun"', 'command: "other"');
+    expect(() => hermesRemove(edited)).toThrow("block changed");
+    expect(edited).toContain('command: "other"');
+  });
+  test("CRLF config keeps its line endings after add and remove", () => {
+    const base = 'mcp_servers:\r\n  time:\r\n    command: "uvx"\r\n';
+    expect(hermesRemove(hermesAdd(base, config))).toBe(base);
+  });
+  test("mixed line endings fail closed instead of normalizing the file", () => {
+    const mixed = 'model: "x"\r\nmcp_servers:\n  time: {}\n';
+    expect(() => hermesAdd(mixed, config)).toThrow("line endings");
+  });
+  test("an unmarked server with our name and ambiguous YAML fail closed", () => {
+    expect(() => hermesAdd('mcp_servers:\n  caesar-layer:\n    command: "other"\n', config)).toThrow("unmarked");
+    expect(() => hermesAdd('mcp_servers:\n  time: {}\nmcp_servers:\n  other: {}\n', config)).toThrow("ambiguous");
+    expect(() => hermesRemove('# >>> caesaros attach (caesar-layer)\n')).toThrow("markers");
   });
 });
 

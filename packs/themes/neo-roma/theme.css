@@ -166,7 +166,7 @@ html[data-theme="neo-roma"] .chat-session[aria-current="true"]{background:linear
 html[data-theme="neo-roma"] .md-fence{background:rgba(3,4,10,.7); border-color:rgba(var(--p2r),.3)}
 html[data-theme="neo-roma"] .md-code{background:rgba(var(--p2r),.10); border-color:rgba(var(--p2r),.28)}
 
-/* phone: the same art, ultra minimal (Konrad 2026-11-22). Functions stay; the ambient background is dimmed, the meander is a thin
+/* phone: the same art, ultra minimal (the owner 2026-11-22). Functions stay; the ambient background is dimmed, the meander is a thin
    hairline and the top-bar sweep is dropped, so the screen stays calm and the content comes first. */
 @media (max-width:480px){
   html[data-theme="neo-roma"] :is(.bg,.bg-gl){opacity:.35}

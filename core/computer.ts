@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { Context, Hono } from "hono";
 import { DATA } from "./db";
+import { ROOT } from "./root";
 
 export type SessionEnv = { XDG_RUNTIME_DIR: string; WAYLAND_DISPLAY: string; HYPRLAND_INSTANCE_SIGNATURE: string };
 export type ExecResult = { code: number; out: string; err: string };
@@ -238,7 +239,7 @@ export function computerApi(app: Hono, isOperator: (c: Context) => boolean, comp
   app.post("/api/computer/token", wrap(async (c) => (issueToken ? (issueToken(), c.json({ ok: true, file: "computer-token", days: 7 })) : c.json({ error: "not available" }, 501))));
   app.get("/api/computer/state", wrap(async (c) => c.json({
     armed: comp.isArmed(), until: comp.until(), hasToken: existsSync(join(DATA, "computer-token")),
-    mcpScript: join(import.meta.dir, "..", "tools", "caesar-computer-mcp.ts"), dataDir: DATA, pointer: false,
+    mcpScript: join(ROOT, "tools", "caesar-computer-mcp.ts"), dataDir: DATA, pointer: false,
   })));
   app.post("/api/computer/stop", wrap(async (c) => { comp.stop(); return c.json({ armed: false }); }));
   app.get("/api/computer/windows", wrap(async (c) => c.json(await comp.listWindows()), true));

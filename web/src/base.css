@@ -476,7 +476,7 @@ h1,h2,h3,p{margin:0}
 /* the tour box must stay readable over any page: a denser glass than a normal panel (specificity beats the theme's panel rule) */
 html[data-theme] .tour-box.panel.frame,html .tour-box.panel.frame{background-color:color-mix(in srgb,var(--bg) 90%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2)}
 
-/* One corner language (Konrad 2026-11-22: "no squares", the trailer's edge): every control is cut 45 degrees on its top-right and
+/* One corner language (the owner 2026-11-22: "no squares", the trailer's edge): every control is cut 45 degrees on its top-right and
    bottom-left corners, never a plain rectangle. Panels keep their own larger cut and brackets. A clipped box hides an outline that
    sits outside it, so the focus ring of these controls is drawn inside. */
 .settings-nav .row,.btn,.engine-chip,.field,.text-input,.select-btn,.seg,.seg-btn,.state,.chip,.rail-brand,.rail-item,.swatch,.icon-btn,.skip,.chat-session,.term-btn{

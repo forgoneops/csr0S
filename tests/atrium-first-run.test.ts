@@ -87,9 +87,9 @@ describe("what the top bar says is true", () => {
     expect(load({ remote: true }).ogMode()).toContain(">VPS<");
   });
 
-  test("the status line is a plain sentence and the workspace bar starts with Main alone", () => {
+  test("the status line is a plain sentence and the workspace bar starts with purpose workspaces", () => {
     expect(html).toContain("Engines ready: ");
     expect(html).not.toContain("engines answering");
-    expect(html).toContain("const WSN=['Main'];");
+    expect(html).toContain("const WSN=['Home','Planning','Knowledge','Business','System','Crew'];");
   });
 });

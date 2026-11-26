@@ -6,16 +6,16 @@
   if (typeof HTMLElement === 'undefined' || !(document.body instanceof HTMLElement)) return;   // the registry test's stub
 
   const KEY = 'caesar.dock.v1', SOLO = 'hermes:caesar!alone';
-  const D = { open: false, id: null, w: 380, h: 520, busy: false, note: '', sig: '' };
-  try { const s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; if (typeof s.id === 'string') D.id = s.id; if (Number(s.w) >= 320) D.w = Number(s.w); if (Number(s.h) >= 260) D.h = Number(s.h); } catch { /* private mode: defaults are fine */ }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ id: D.id, w: D.w, h: D.h })); } catch { /* private mode */ } };
+  let wasOpen = false;
+  const D = { open: false, id: null, w: 380, h: 520, r: 24, b: 40, busy: false, note: '', sig: '' };
+  try { const s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; wasOpen = s.open === true; if (typeof s.id === 'string') D.id = s.id; if (Number(s.w) >= 320) D.w = Number(s.w); if (Number(s.h) >= 260) D.h = Number(s.h); if (Number.isFinite(+s.r)) D.r = +s.r; if (Number.isFinite(+s.b)) D.b = +s.b; } catch { /* private mode: defaults are fine */ }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ open: D.open, id: D.id, w: D.w, h: D.h, r: D.r, b: D.b })); } catch { /* private mode */ } };
 
   const el = document.createElement('div');
   el.className = 'cdk';
   el.innerHTML = `
     <button class="cdk-launch" type="button" aria-label="Quick ask (Ctrl+J)" aria-expanded="false" aria-controls="cdk-win">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg>
-      <i class="cdk-diamond" aria-hidden="true"></i>
+      <img alt="" src="caesar/portrait-neo.png" draggable="false"><span class="cdk-tag" aria-hidden="true">ASK</span><i class="cdk-diamond" aria-hidden="true"></i>
     </button>
     <section class="cdk-win" id="cdk-win" role="dialog" aria-label="Quick ask" aria-hidden="true">
       <div class="cdk-face">
@@ -67,6 +67,8 @@
     D.w = Math.min(Math.max(D.w, 320), Math.max(320, Math.round(innerWidth * 0.9)));
     D.h = Math.min(Math.max(D.h, 260), Math.max(260, Math.round(innerHeight * 0.9)));
     win.style.width = D.w + 'px'; win.style.height = D.h + 'px';
+    D.r = Math.min(Math.max(D.r, 8), Math.max(8, innerWidth - 60)); D.b = Math.min(Math.max(D.b, 8), Math.max(8, innerHeight - 60));
+    el.style.setProperty('--cdk-r', D.r + 'px'); el.style.setProperty('--cdk-b', D.b + 'px');
   }
 
   function msgsHtml(id) {
@@ -106,7 +108,7 @@
   async function adopt(session) { window.xAdopt(session); D.id = session.id; save(); }
 
   async function ensure() {
-    if (D.id && THR(D.id)) return true;
+    if (D.id && THR(D.id)) { try { await window.xLoad(D.id); } catch { /* history shows on the next turn */ } return true; }
     if (D.id) {   // a remembered conversation: bring it back into the lists the chat view reads
       try {
         const r = await fetch('/api/chat/sessions/' + encodeURIComponent(D.id)), got = await r.json();
@@ -138,15 +140,15 @@
     paint(true);
   }
 
-  function openDock() {
+  function openDock(quiet) {
     sync();
-    if (S.simple || innerWidth <= 760) return;
+    if (S.simple) return;
     D.open = true; D.sig = ''; paint(true); save();
     if (D.id) void ensure().then(() => paint(true));   // resume the remembered conversation; a new one waits for the first send
-    setTimeout(() => { try { inp.focus(); } catch { /* not focusable yet */ } }, 20);
+    if (!quiet) setTimeout(() => { try { inp.focus(); } catch { /* not focusable yet */ } }, 20);
   }
   function close2(focus) {
-    D.open = false; D.sig = ''; paint(true);
+    D.open = false; D.sig = ''; paint(true); save();
     if (focus !== false) { try { launch.focus(); } catch { /* ignore */ } }
   }
   function promote(kind) {
@@ -159,7 +161,7 @@
   // ---- clicks: the dock's own controls, the reused message markup and the approval card ----
   el.addEventListener('click', (e) => {
     const t = e.target.closest ? e.target.closest('[data-dk],[data-dk-approve],[data-dk-deny],[data-dk-fold]') : null;
-    if (!t) { if (e.target.closest && e.target.closest('.cdk-launch')) { e.preventDefault(); openDock(); } return; }
+    if (!t) { if (e.target.closest && e.target.closest('.cdk-launch')) { e.preventDefault(); if (launch.dataset.moved) delete launch.dataset.moved; else openDock(); } return; }
     e.preventDefault(); e.stopPropagation();
     if (t.dataset.dk === 'tab') promote('tab');
     else if (t.dataset.dk === 'split') promote('split');
@@ -174,6 +176,22 @@
       paint(true);
     }
   }, true);
+
+  // ---- move: drag the header (or the launcher); on a phone the window is a fixed sheet, the launcher still drags ----
+  const dragMove = (h, isLaunch) => h.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || (!isLaunch && (e.target.closest('button') || innerWidth <= 760))) return;
+    const sx = e.clientX, sy = e.clientY, r0 = D.r, b0 = D.b; let moved = false;
+    const mv = (ev) => {
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
+      moved = true; el.classList.add('cdk-moving'); D.r = r0 - (ev.clientX - sx); D.b = b0 - (ev.clientY - sy); clampSize();
+    };
+    const up = () => {
+      removeEventListener('pointermove', mv); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
+      el.classList.remove('cdk-moving'); if (moved) { save(); if (isLaunch) h.dataset.moved = '1'; }
+    };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  });
+  dragMove(q('.cdk-hd'), false); dragMove(launch, true);
 
   q('.cdk-comp').addEventListener('submit', (e) => { e.preventDefault(); void sendMsg(); });
   inp.addEventListener('input', () => { inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 160) + 'px'; });
@@ -221,5 +239,6 @@
   setInterval(() => { if (D.open) paint(false); else sync(); }, 2000);
 
   clampSize(); sync(); paint(true);
+  if (wasOpen) openDock(true);   // a reload brings the window and its conversation back
   window.CDK = { open: openDock, minimise: close2, state: D };   // for the browser checks and other modules
 })();

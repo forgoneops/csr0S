@@ -20,7 +20,7 @@
   const on = () => S.tabs[S.act] && S.tabs[S.act].id === 'Computer';
 
   function view() {
-    if (!K.st) { void refresh().then(() => on() && render()); return `<div class="nx-view enter cx">${nsHead('Computer', 'Loading…', 'Machina', 'atrium-hero')}</div>`; }
+    if (!K.st) { void refresh().then(() => on() && render()); return `<div class="nx-view enter cx">${nsHead('Computer', 'Reading this machine', 'Machina', 'atrium-hero')}<div class="og-wrap">${ARTSKEL(3, 'Loading')}</div></div>`; }
     const armed = K.st.armed, s = left();
     const wins = K.wins.map(w => `<li class="cx-w"><span class="cx-wt"><b>${esc(w.title || w.class)}</b><small>${esc(w.class)} · workspace ${esc(String(w.workspace))} · ${w.width}×${w.height}</small></span><button class="su-btn" data-cx="shot" data-v="${esc(w.address)}">${I('image', 16)}<span>Look</span></button></li>`).join('');
     const audit = K.audit.map(a => `<li class="cx-a"><time>${esc(new Date(a.time).toLocaleTimeString())}</time><b>${esc(a.action)}</b><span>${esc(a.class || '')} ${esc((a.title || '').slice(0, 40))}</span><em class="${/ok|armed/.test(a.result) ? 'ok' : 'no'}">${esc(a.result)}${a.length != null ? ' · ' + a.length + ' chars' : ''}</em></li>`).join('');

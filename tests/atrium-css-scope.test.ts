@@ -37,8 +37,14 @@ const MODULES: Record<string, string> = {
   "neo.css": "html[data-skin=neo]",
   "theme-neutral.css": "html[data-skin=neo][data-theme=neutral]",
   "board.css": ".bd",
+  "media.css": ".md",
   "dock.css": ".cdk",
+  "live.css": ".lv",
   "hof3d.css": ".hf3",
+  "skills.css": ".sk",
+  "library.css": ".lx-",
+  "studio.css": ".sdx",
+  "lair.css": ".lr",
 };
 
 // names a module stylesheet takes once its rules leave kit.css

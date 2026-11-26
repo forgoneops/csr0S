@@ -42,7 +42,7 @@ function shell(): Record<string, unknown> {
     localStorage: { getItem: () => null, setItem: noop, removeItem: noop },
     sessionStorage: { getItem: () => null, setItem: noop, removeItem: noop },
     fetch: async () => empty, setTimeout, clearTimeout, setInterval: () => 0, clearInterval: noop,
-    requestAnimationFrame: () => 0, matchMedia: () => ({ matches: false, addEventListener: noop }),
+    requestAnimationFrame: () => 0, MutationObserver: class { observe() {} }, matchMedia: () => ({ matches: false, addEventListener: noop }),
     history: { pushState: noop, replaceState: noop }, CustomEvent: function () {}, Event: function () {},
     Image: fake(), Audio: fake(), URL, getComputedStyle: () => ({}),
     SETTINGS: {}, root: fake(), BODY: fake(), S: { tabs: {}, act: "chat", cur: "", waiting: [] },
@@ -62,10 +62,15 @@ describe("Atrium module registry", () => {
   test("every script loads in the page's order and registers its views", () => {
     const { OG, OG_MODULES } = load(scripts);
     for (const s of scripts) expect(html).toContain(`<script src="${s}"></script>`);
-    expect(OG_MODULES.size).toBe(13);
-    expect([...OG_MODULES.keys()]).toEqual(["pages", "ns", "ns-mobile", "ns-gateway", "setup", "notes", "mail", "settings", "computer", "real", "board", "dock", "hof3d"]);
-    expect(Object.keys(OG).length).toBe(53);
+    expect(OG_MODULES.size).toBe(20);
+    expect([...OG_MODULES.keys()]).toEqual(["pages", "ns", "ns-mobile", "ns-gateway", "setup", "notes", "mail", "media", "settings", "computer", "library", "real", "business-modules", "studio", "skills", "board", "lair", "dock", "live", "hof3d"]);
+    expect(Object.keys(OG).length).toBe(54);
     for (const name of Object.keys(OG)) expect(typeof OG[name]).toBe("function");
+  });
+
+  test("the Business, Fleet and Leads pages draw without throwing, before any data arrives", () => {
+    const { OG } = load(scripts);
+    for (const n of ["Business", "Fleet", "Leads"]) expect(typeof (OG[n] as () => unknown)()).toBe("string");
   });
 
   test("a duplicate module id throws", () => {

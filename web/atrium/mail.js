@@ -16,10 +16,11 @@
   const un = s => (s === 'ssl' ? 'SSL' : s === 'tls' ? 'STARTTLS' : 'None (this computer only)');
 
   async function loadAccounts() { const r = await api('GET', '/api/mail/accounts'); M.accts = r.ok && Array.isArray(r.data) ? r.data : []; if (!M.acc || !M.accts.some(a => a.id === M.acc)) M.acc = M.accts[0] ? M.accts[0].id : null; if (M.acc) await loadList(); else if (onScreen()) render(); }
+  async function loadUnread() { if (!M.acc) return; const r = await api('GET', '/api/mail/folders?account=' + encodeURIComponent(M.acc)); const f = r.ok && Array.isArray(r.data) ? r.data.find(x => x.path === 'INBOX') : null; M.un = f ? f.unread : 0; }
   async function loadList(more) {
     const p = new URLSearchParams({ account: M.acc, folder: 'INBOX', limit: '50' }); if (M.q.trim()) p.set('q', M.q.trim()); if (M.unread) p.set('unread', '1'); if (more && M.msgs.length) p.set('before', String(M.msgs[M.msgs.length - 1].date));
     const r = await api('GET', '/api/mail/messages?' + p); const l = r.ok && Array.isArray(r.data) ? r.data : [];
-    M.msgs = more ? M.msgs.concat(l) : l; M.more = l.length === 50; if (onScreen()) render();
+    M.msgs = more ? M.msgs.concat(l) : l; M.more = l.length === 50; await loadUnread(); if (onScreen()) render();
   }
   async function loadDrafts() { const r = await api('GET', '/api/mail/drafts?account=' + encodeURIComponent(M.acc || '')); M.drafts = r.ok && Array.isArray(r.data) ? r.data : []; if (onScreen()) render(); }
   async function openMsg(id) {
@@ -52,6 +53,9 @@
   const field = (id, label, value = '', type = 'text', extra = '') => `<label class="ml-f"><span class="label">${label}</span><input class="og-input" id="${id}" type="${type}" value="${esc(value)}" autocomplete="off" ${extra}></label>`;
   const secBtns = (k, cur) => `<div class="ml-seg" role="group" aria-label="Connection security">${['ssl', 'tls', 'none'].map(s => `<button type="button" class="nt-b${cur === s ? ' go' : ''}" data-ml="${k}:${s}" aria-pressed="${cur === s}"><span>${un(s)}</span></button>`).join('')}</div>`;
 
+  /** The messenger post: a rider route with a seal at each end. The unread count is the real one from the local store; the rider moves only while a sync runs and only when Motion is on. */
+  const post = (a, add) => `<div class="ml-post${M.busy === 'sync' ? ' ride' : ''}" role="status"><span class="ml-seal" aria-hidden="true">${I('mail', 18)}</span><i class="ml-route" aria-hidden="true"><b></b></i><span class="ml-seal" aria-hidden="true">${I('inbox', 18)}</span>
+    <span class="ml-ptxt" data-no-i18n>${add ? 'No post route yet. Add an account to open one.' : `<b>${M.un || 0}</b> unread \u00b7 ${a.lastSync ? 'synced ' + esc(dt(a.lastSync)) : 'not synced yet'}`}</span></div>`;
   function addForm() {
     const fl = M.f.fill || {}, h = M.help;
     return `<section class="ml-add panel"><h3>Add your mail account</h3>
@@ -73,8 +77,8 @@
       <div class="nt-acts"><button class="nt-b go" data-ml="send" ${M.busy ? 'disabled' : ''}><span>${M.busy === 'send' ? 'Sending\u2026' : 'Send'}</span></button><button class="nt-b" data-ml="cancelplan"><span>Back to the draft</span></button></div></section>`; }
     if (M.d) return `<section class="nt-ed panel ml-read"><div class="nt-bar"><button class="nt-b nt-backbtn" data-ml="back">${I('chevron-right', 16)}<span>Back</span></button><h3 class="nt-name">${M.d.id ? 'Draft' : 'New message'}</h3></div>
       ${field('ml-to', 'To', (M.d.to || []).map(a => a.address).join(', '))}${field('ml-cc', 'Cc', (M.d.cc || []).map(a => a.address).join(', '))}${field('ml-sub', 'Subject', M.d.subject || '')}
-      <textarea id="ml-body" class="nt-text ml-body" aria-label="Message" data-no-i18n>${esc(M.d.text || '')}</textarea>${M.msg ? `<p class="nt-msg" role="status">${esc(M.msg)}</p>` : ''}
-      <div class="nt-acts"><button class="nt-b go" data-ml="review"><span>Review and send</span></button><button class="nt-b" data-ml="save"><span>Save draft</span></button>${M.d.id ? '<button class="nt-b" data-ml="deldraft"><span>Delete draft</span></button>' : ''}</div></section>`;
+      <textarea id="ml-body" class="nt-text ml-body" aria-label="Message" placeholder="Write your message" data-no-i18n>${esc(M.d.text || '')}</textarea><p class="ml-note ml-count" id="ml-count" data-no-i18n>${(M.d.text || '').length} characters</p>${M.msg ? `<p class="nt-msg" role="status">${esc(M.msg)}</p>` : ''}
+      <div class="nt-acts ml-sticky"><button class="nt-b go" data-ml="review"><span>Review and send</span></button><button class="nt-b" data-ml="save"><span>Save draft</span></button>${M.d.id ? '<button class="nt-b" data-ml="deldraft"><span>Delete draft</span></button>' : ''}</div></section>`;
     if (!M.sel) return `<section class="nt-ed panel ml-read"><p class="nt-empty">${M.msg ? esc(M.msg) : 'Select a message, or write a new one.'}</p></section>`;
     const m = M.sel;
     return `<section class="nt-ed panel ml-read"><div class="nt-bar"><button class="nt-b nt-backbtn" data-ml="back">${I('chevron-right', 16)}<span>Back</span></button><h3 class="nt-name ml-title" data-no-i18n>${esc(m.subject || '(no subject)')}</h3></div>
@@ -83,14 +87,14 @@
       <div class="nt-acts"><button class="nt-b go" data-ml="reply"><span>Reply</span></button><button class="nt-b" data-ml="replyAll"><span>Reply all</span></button><button class="nt-b" data-ml="forward"><span>Forward</span></button><button class="nt-b" data-ml="${m.seen ? 'unread' : 'read'}"><span>${m.seen ? 'Mark unread' : 'Mark read'}</span></button></div></section>`;
   }
   function mailView() {
-    if (M.accts === null) { void loadAccounts(); return `<div class="nx-view enter ml">${nsHead('Mail', 'Your own mail client, searchable offline.', 'Tabellae')}<div class="og-wrap"><p class="nt-empty">Loading\u2026</p></div></div>`; }
-    if (!M.accts.length || M.adding) return `<div class="nx-view enter ml">${nsHead('Mail', 'Your own mail client, searchable offline.', 'Tabellae')}<div class="og-wrap">${addForm()}</div></div>`;
+    if (M.accts === null) { void loadAccounts(); return `<div class="nx-view enter ml">${nsHead('Mail', 'Your own mail client, searchable offline.', 'Tabellae')}<div class="og-wrap">${ARTSKEL(3, 'Loading')}</div></div>`; }
+    if (!M.accts.length || M.adding) return `<div class="nx-view enter ml">${nsHead('Mail', 'Your own mail client, searchable offline.', 'Tabellae')}<div class="og-wrap">${post(null, true)}${addForm()}</div></div>`;
     const a = M.accts.find(x => x.id === M.acc) || M.accts[0], last = a.lastSync ? `Synced ${dt(a.lastSync)}` : 'Not synced yet';
     if (M.tab === 'drafts' && !M.drafts) void loadDrafts();
     const list = M.tab === 'drafts' ? (M.drafts || []).map(d => `<button class="nt-note ml-msg${M.d && M.d.id === d.id ? ' on' : ''}" data-ml-draft="${esc(d.id)}"><b data-no-i18n>${esc((d.to || []).map(x => x.address).join(', ') || '(no recipient)')}</b><span class="ml-sub" data-no-i18n>${esc(d.subject || '(no subject)')}</span></button>`).join('') || '<p class="nt-empty">No drafts.</p>'
       : M.msgs.map(row).join('') + (M.more ? '<button class="nt-b" data-ml="more"><span>Older</span></button>' : '') || `<p class="nt-empty">${M.q || M.unread ? 'No mail matches.' : 'No mail yet. Press Sync.'}</p>`;
     return `<div class="nx-view enter ml">${nsHead('Mail', 'Your own mail client, searchable offline.', 'Tabellae')}
-      <div class="nt-wrap${M.open ? ' nt-open' : ''}"><aside class="nt-list panel">
+      ${post(a)}<div class="nt-wrap${M.open ? ' nt-open' : ''}"><aside class="nt-list panel">
         <div class="ml-acct"><span class="label" data-no-i18n>${esc(a.label || a.address)}</span>${M.accts.length > 1 ? M.accts.map(x => `<button class="nt-tag${x.id === a.id ? ' on' : ''}" data-ml-acc="${esc(x.id)}" data-no-i18n>${esc(x.label || x.address)}</button>`).join('') : ''}</div>
         <div class="ml-seg" role="group" aria-label="Mail view"><button class="nt-b${M.tab === 'inbox' ? ' go' : ''}" data-ml="inbox" aria-pressed="${M.tab === 'inbox'}"><span>Inbox</span></button><button class="nt-b${M.tab === 'drafts' ? ' go' : ''}" data-ml="drafts" aria-pressed="${M.tab === 'drafts'}"><span>Drafts</span></button></div>
         <input class="og-input" id="ml-q" type="search" placeholder="Search mail" aria-label="Search mail" value="${esc(M.q)}" autocomplete="off">
@@ -124,7 +128,9 @@
   let t = 0;
   document.addEventListener('input', e => {
     if (!e.target) return;
+    if (e.target.id === 'ml-body') { const c = document.getElementById('ml-count'); if (c) c.textContent = e.target.value.length + ' characters'; }
     if (e.target.id === 'ml-q') { M.q = e.target.value; clearTimeout(t); t = setTimeout(() => void loadList(), 300); }
   });
+  document.addEventListener('keydown', e => { if (e.target && e.target.id === 'ml-body' && (e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); void review(); } });
   document.addEventListener('change', e => { if (e.target && e.target.id === 'ml-addr') void suggest(); });
 })();

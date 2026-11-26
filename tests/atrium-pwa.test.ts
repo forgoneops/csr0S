@@ -30,6 +30,12 @@ describe("Atrium PWA", () => {
     expect(manifest.icons.some((i: { purpose: string }) => i.purpose === "maskable")).toBe(true);
   });
 
+  test("the worker matches shell files across the ?v= stamp and the page has a core-unreachable banner", () => {
+    expect(sw).toContain("ignoreSearch: true");
+    expect(readFileSync(join(ATRIUM, "index.html"), "utf8")).toContain('class="nx-offline"');
+    expect(readFileSync(join(ATRIUM, "kit.css"), "utf8")).toContain("html[data-core-down] .nx-offline");
+  });
+
   test("every icon the manifest names exists on disk", () => {
     for (const i of manifest.icons) expect(existsSync(join(ATRIUM, i.src))).toBe(true);
   });

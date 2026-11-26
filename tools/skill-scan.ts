@@ -10,5 +10,7 @@ if (!dir) {
 }
 const s = scanTree(dir);
 for (const f of s.findings) console.log(`${f.file}:${f.line}  ${f.rule} (${f.severity})  ${f.excerpt}`);
+if (s.sha256) console.log(`sha256 ${s.sha256}`);
+else console.log("sha256 unavailable: the tree was not fully scanned");
 console.log(`${s.verdict}  ${s.findings.length} findings, ${s.files} files, ${s.bytes} bytes`);
 process.exit(s.verdict === "red" ? 2 : s.verdict === "yellow" ? 1 : 0);

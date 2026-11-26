@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { Hono } from "hono";
 import { authApi, authEnabled, authGate, checkPassword, clearPassword, newSession, noteFail, noteOk, setPassword, throttled, validSession } from "../core/auth";
+import { access } from "../core/principal";
 
 const app = () => {
   const a = new Hono(); a.use("*", authGate()); authApi(a, () => true);
@@ -21,7 +22,10 @@ test("with a password the page redirects to the login, the API says login_requir
   const api = await a.request("/api/secret"); expect(api.status).toBe(401); expect(await api.json()).toEqual({ error: "login_required" });
   expect((await a.request("/login")).status).toBe(200);
   expect((await a.request("/api/auth/status")).status).toBe(200);
-  expect((await a.request("/api/secret", { headers: { authorization: "Bearer cae_x_y" } })).status).toBe(200);   // the route checks the key itself
+  expect((await a.request("/api/secret", { headers: { authorization: "Bearer cae_x_y" } })).status).toBe(401);
+  const real = access.issue("repro-agent");
+  expect((await a.request("/api/secret", { headers: { authorization: 'Bearer ' + real } })).status).toBe(200);
+  access.revoke("repro-agent");
   clearPassword();
 });
 test("login sets a session cookie that opens the API; a wrong password does not, and five wrong ones slow the next", async () => {

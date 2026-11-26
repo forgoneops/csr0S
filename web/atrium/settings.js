@@ -30,15 +30,29 @@
    *  the Atrium is one skin (neo.css), so choosing another pack does not swap stylesheets here. */
   function applyLook() {
     const s = D.set; if (!s) return;
-    root.dataset.motion = s.motion === 'off' ? 'off' : 'on';
-    try { localStorage.setItem('caesaros-motion', s.motion === 'off' ? 'off' : 'on'); } catch (_) {}
+    // Three states. Authority: what the operator chose (stored), then the core config when it is a real
+    // choice (off or reduced), then the system preference, then full. Only a real choice is written back,
+    // so a system preference is not frozen into localStorage on the first load.
+    let stored = null;
+    try { stored = localStorage.getItem('caesaros-motion'); } catch (_) {}
+    const system = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const configured = s.motion === 'off' || s.motion === 'reduced';
+    const mv = stored === 'off' || stored === 'reduced' || stored === 'on'
+      ? stored
+      : configured ? s.motion : (system ? 'reduced' : 'on');
+    root.dataset.motion = mv;
+    if (stored || configured) { try { localStorage.setItem('caesaros-motion', mv); } catch (_) {} }
     root.lang = s.language || 'en';
     root.style.fontSize = (16 * (s.textScale || 1)) + 'px';
+    try { localStorage.setItem('caesaros-textscale', String(s.textScale || 1)); } catch (_) {}
     const theme = (D.packs.themes || []).find(t => t.id === s.theme);
+    // a one-letter palette is the shell's own (top bar picker, plain CSS rules): it wins until Settings picks a pack colour
+    let kept = ''; try { kept = localStorage.getItem('cx-pal') || ''; } catch (_) {}
+    if (/^[a-z]$/.test(kept) && !(window.__packPick)) { root.dataset.pal = kept; return; }
     const pal = ((theme && theme.palettes) || []).find(p => p.id === s.palette) || ((theme && theme.palettes) || [])[0];
     // shortcut: a theme pack with no palettes keeps the last two colours, so --p1/--p2 stay valid
     if (!pal) return;
-    root.dataset.pal = pal.id;
+    root.dataset.pal = pal.id; try { localStorage.setItem('cx-pal', pal.id); localStorage.setItem('caesaros-pack-pal', JSON.stringify([pal.id, pal.p1, pal.p2])); } catch (_) {}
     root.style.setProperty('--p1', pal.p1); root.style.setProperty('--p1r', rgb(pal.p1));
     root.style.setProperty('--p2', pal.p2); root.style.setProperty('--p2r', rgb(pal.p2));
   }
@@ -49,7 +63,7 @@
       const r = await put('/api/settings', patch);
       const body = await r.json().catch(() => ({}));
       if (!r.ok) { D.msg[card] = { text: errText(body), bad: true }; render(); return false; }
-      D.set = body; window.SETTINGS = body; D.msg[card] = { text: 'Saved' }; applyLook(); render();
+      D.set = body; window.SETTINGS = body; if (patch.language && window.I18N?.setLanguage) await window.I18N.setLanguage(patch.language); if (patch.language) { try { localStorage.setItem('caesaros-language-choice', patch.language); } catch (_) {} } D.msg[card] = { text: 'Saved' }; applyLook(); render();
       setTimeout(() => {
         if (D.msg[card] && D.msg[card].text === 'Saved') { delete D.msg[card]; if (onPage()) render(); }
       }, 1600);
@@ -81,7 +95,8 @@
         ? `<div class="st-seg pals">${pals.map(p => `<button type="button" class="${p.id === curPal ? 'on' : ''}" data-st="pal:${p.id}" aria-pressed="${p.id === curPal}" aria-label="${esc(p.name)}" title="${esc(p.name)}" style="background:linear-gradient(135deg,${p.p1} 50%,${p.p2} 50%)"></button>`).join('')}</div>`
         : '<span class="su-note">This theme pack has no palettes; it uses its own two colours.</span>'}</div>
       <div class="st-row"><span class="st-lbl">Motion</span><div class="st-seg">
-        <button type="button" class="${s.motion !== 'off' ? 'on' : ''}" data-st="motion:full" aria-pressed="${s.motion !== 'off'}">Full</button>
+        <button type="button" class="${s.motion !== 'off' && s.motion !== 'reduced' ? 'on' : ''}" data-st="motion:full" aria-pressed="${s.motion !== 'off' && s.motion !== 'reduced'}">Full</button>
+        <button type="button" class="${s.motion === 'reduced' ? 'on' : ''}" data-st="motion:reduced" aria-pressed="${s.motion === 'reduced'}">Reduced</button>
         <button type="button" class="${s.motion === 'off' ? 'on' : ''}" data-st="motion:off" aria-pressed="${s.motion === 'off'}">Off</button></div>
         <span class="su-note">One switch for every effect, live.</span></div>
       <div class="st-row"><span class="st-lbl">Text size <b class="st-pct" style="color:var(--text)">${pct}%</b></span>
@@ -100,7 +115,7 @@
   /** Review (7.10): the person's own automatic translations next to the English. Cells carry data-no-i18n: they are data, not interface text. */
   const RV_STATE = { auto: 'Automatic', approved: 'Approved', english: 'English kept' };
   function reviewHtml() {
-    if (!D.rv) { void loadReview(); return '<p class="su-note">Loading…</p>'; }
+    if (!D.rv) { void loadReview(); return ARTSKEL(2, 'Loading'); }
     if (!D.rv.length) return '<p class="su-note">No automatic translations yet. Press Translate what is missing first.</p>';
     const n = D.rvN || 40, rows = D.rv.slice(0, n).map((r, i) => `<div class="st-rv" data-no-i18n><div class="st-rv-en">${esc(r.en)}</div>
       <input class="og-input st-rv-in" data-rv-in="${i}" value="${esc(r.pl)}" aria-label="Polish for: ${esc(r.en)}" lang="pl">
@@ -160,14 +175,14 @@
     const v = D.version || {};
     return `<div class="st-rowline"><span class="st-tool"><b>CAESAR ${esc(v.version || '')}</b><small>build ${esc(v.build || 'dev')}</small></span></div>`;
   }
-  /* Credits, Hall of Fame: the owner's thanks, eight statues with their names, each linking to the person's page on X */
-  const HOF = [['Teknium', 'Teknium', 5.8], ['witcheer', 'witcheer', 19], ['tonysimons', 'tonysimons', 29.5], ['HermesWatcher', 'HermesWatcher', 40.4], ['BkashJosi', 'BkashJosi', 55.1], ['rlaope', 'rlaope', 69.5], ['tonbistudio', 'tonbistudio', 81.1], ['kommechanic', 'kommechanic', 93.2]];
+  /* Credits, Hall of Fame: the owner's thanks, ten statues with their names, each linking to the person's page on X */
+  const HOF = [['Teknium', 'Teknium', 5.2], ['witcheer', 'witcheer', 15.6], ['tonysimons', 'tonysimons', 26.0], ['HermesWatcher', 'HermesWatcher', 36.4], ['BkashJosi', 'BkashJosi', 46.8], ['rlaope', 'rlaope', 57.2], ['tonbistudio', 'tonbistudio', 67.6], ['kommechanic', 'kommechanic', 78.0], ['iamlukethedev', 'iamlukethedev', 88.4], ['BearHuddleston', 'BearHuddleston', 98.0]];
   function credits() {
     const url = h => 'https://x.com/' + encodeURIComponent(h);
     const spots = HOF.map(([n, h, x]) => `<a class="hof-spot" style="left:${Math.max(0, x - 6.2).toFixed(1)}%" href="${url(h)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(n)} on X"><span>${esc(n)}</span></a>`).join('');
     const names = HOF.map(([n, h]) => `<li><a href="${url(h)}" target="_blank" rel="noopener noreferrer">${esc(n)} <small>@${esc(h)}</small></a></li>`).join('');
-    return `<p class="su-note">None of this exists without people who share what they know. Thank you. Press a statue to open that person's page on X.</p>
-      <div class="hof"><img src="art/caesaros-thanks-statues.webp" alt="Eight stone statues with glowing nameplates: ${HOF.map(h => esc(h[0])).join(', ')}. Caesar, a small ape in a laurel wreath, looks up at them." loading="lazy"><div class="hof-spots">${spots}</div></div>
+    return `<p class="su-note">None of this exists without people who share what they know. Thank you. Press a keeper for its legend; its link opens that person's page on X.</p>
+      <div class="hof"><img class="hof-fallback" src="" aria-hidden="true" alt="Ten stone statues with glowing nameplates: ${HOF.map(h => esc(h[0])).join(', ')}. Caesar, a small ape in a laurel wreath, looks up at them." loading="lazy"><div class="hof-spots">${spots}</div></div>
       <ul class="hof-list">${names}</ul>
       <p class="su-note">Built on Hermes Agent by Nous Research (MIT) and the ideas of Oh My Hermes by rlaope. Every component and licence is listed in THIRD-PARTY-NOTICES.md.</p>`;
   }
@@ -220,15 +235,22 @@
     if (!window.xVoice) return '<p class="su-note">Voice is not loaded.</p>';
     if (!D.vinfo) { void window.xVoice.info().then(i => { D.vinfo = i; if (onPage()) render(); }); return '<p class="su-note">Looking for the local voice…</p>'; }
     const i = D.vinfo, on = window.xVoice.on(), cur = window.xVoice.voiceFor(i);
-    const list = i.ready ? `<div class="st-seg">${i.voices.map(v => `<button type="button" class="${v.id === cur ? 'on' : ''}" data-st="voice:pick:${v.id}" aria-pressed="${v.id === cur}" data-no-i18n>${esc(v.label)}</button>`).join('')}</div>` : '<p class="su-note">The local voice (Piper) is not installed, so the browser\'s own voice is used where it has one. Install it with <code>bash tools/speech/install-tts.sh</code>.</p>';
-    return `<div class="st-row"><button type="button" class="su-btn" data-st="voice:on" aria-pressed="${on}">${on ? 'Reading answers aloud: on' : 'Reading answers aloud: off'}</button><button type="button" class="su-btn" data-st="voice:test">Hear a sample</button><button type="button" class="su-btn" data-st="voice:stop">Stop</button></div>${list}<p class="su-note">Text goes to a program on this computer; nothing is sent anywhere. Speech to text (Meetings, the HUD microphone) uses the local Whisper.</p>`;
+    const native = !!window.__TAURI_INTERNALS__;
+    const list = i.ready ? `<div class="st-seg">${i.voices.map(v => `<button type="button" class="${v.id === cur ? 'on' : ''}" data-st="voice:pick:${v.id}" aria-pressed="${v.id === cur}" data-no-i18n>${esc(v.label)}</button>`).join('')}</div>` : `<p class="su-note">The local voice (Piper) is not installed. ${native ? 'Install the local voice to use speech in the desktop app.' : 'This browser can use its built-in voice where available.'} Install Piper with <code>bash tools/speech/install-tts.sh</code>.</p>`;
+    const vl = (window.xVoiceLang && window.xVoiceLang.get()) || 'auto';
+    const vm = !!(window.xVoiceMode && window.xVoiceMode.on);
+    const langRow = `<div class="st-seg" role="group" aria-label="Dictation language">${[['auto', 'Auto'], ['en', 'English'], ['pl', 'Polski']].map(([v, l]) => `<button type="button" class="${vl === v ? 'on' : ''}" data-st="vtlang:${v}" aria-pressed="${vl === v}">${l}</button>`).join('')}</div>`;
+    return `<div class="st-row"><button type="button" class="su-btn" data-st="vmode" aria-pressed="${vm}">${vm ? 'Voice mode: on, I listen after each answer' : 'Voice mode: off'}</button></div>
+      <div class="st-row"><span class="su-note">Dictation language</span>${langRow}</div>
+      <p class="su-note">Hold <kbd>Alt</kbd>+<kbd>Space</kbd> to talk, release to send. <kbd>Alt</kbd>+<kbd>V</kbd> toggles voice mode. With the mode on, the mic reopens after each answer.</p>
+      <div class="st-row"><button type="button" class="su-btn" data-st="voice:on" aria-pressed="${on}">${on ? 'Reading answers aloud: on' : 'Reading answers aloud: off'}</button><button type="button" class="su-btn" data-st="voice:test" ${native && !i.ready ? 'disabled title="Install the local Piper voice first"' : ''}>Hear a sample</button><button type="button" class="su-btn" data-st="voice:stop">Stop</button></div>${list}<p class="su-note">Text goes to a program on this computer; nothing is sent anywhere. Speech to text (Meetings, the HUD microphone) uses the local Whisper.</p>`;
   };
   const BODY = { you, look, lang, help, voice, engines, hermes, brain, backup, data, credits, about };
 
   function settingsView() {
     if (!D.loaded) {
       void load().then(() => { applyLook(); if (onPage()) render(); }).catch(() => { D.loaded = 'error'; if (onPage()) render(); });
-      return `<div class="nx-view enter">${nsHead('Settings', 'Loading what this machine keeps…', 'Ordo', 'system')}<div class="og-wrap"><p class="su-note">Reading the core…</p></div></div>`;
+      return `<div class="nx-view enter">${nsHead('Settings', 'Loading what this machine keeps…', 'Ordo', 'system')}<div class="og-wrap">${ARTSKEL(4, 'Reading the core')}</div></div>`;
     }
     if (D.loaded === 'error') return `<div class="nx-view enter">${nsHead('Settings', 'Press a card to open its options.', 'Ordo', 'system')}<div class="og-wrap"><p class="su-note">The core did not answer. Is it running?</p></div></div>`;
     const card = ([id, title, desc]) => {
@@ -255,7 +277,7 @@
     const [k, v] = t.dataset.st.split(':');
     if (k === 'open') { D.open = D.open === v ? null : v; render(); }
     else if (k === 'theme') { void save('look', { theme: v }); }
-    else if (k === 'pal') { void save('look', { palette: v }); }
+    else if (k === 'pal') { window.__packPick = true; void save('look', { palette: v }); }
     else if (k === 'motion') { void save('look', { motion: v }); }
     else if (k === 'lang') { void save('lang', { language: v }); }
     else if (k === 'voice') {
@@ -263,6 +285,8 @@
       if (v === 'on') { x.setOn(!x.on()); render(); } else if (v === 'pick') { x.setVoice(arg); render(); void window.xSpeak(document.documentElement.lang === 'pl' ? 'Dzień dobry, tu Caesar.' : 'Hello, this is Caesar.', { voice: arg }); }
       else if (v === 'test') void window.xSpeak(document.documentElement.lang === 'pl' ? 'Dzień dobry. Tak będę czytać odpowiedzi.' : 'Hello. This is how I will read answers.'); else if (v === 'stop') window.xSpeakStop();
     }
+    else if (k === 'vtlang') { window.xVoiceLang && window.xVoiceLang.set(v); render(); }
+    else if (k === 'vmode') { window.xVoiceMode && window.xVoiceMode.toggle(); render(); }
     else if (k === 'mascot') { if (window.xMascot) window.xMascot.toggle(); render(); }
     else if (k === 'tour') { if (window.xTour) window.xTour.start(); }
     else if (k === 'rv') { if (v === 'toggle') { D.rvOpen = !D.rvOpen; D.rv = null; D.rvN = 40; render(); } else if (v === 'more') { D.rvN = (D.rvN || 40) + 40; render(); } else void reviewAct(v === 'ok' ? 'ok' : v === 'en' ? 'en' : 'save', +(t.dataset.st.split(':')[2])); }
@@ -314,5 +338,10 @@
     if (label) label.textContent = pct + '%';
   });
 
-  (async () => { try { await load(); applyLook(); if (onPage()) render(); } catch { D.loaded = 'error'; if (onPage()) render(); } })();
+  // The look (language, text size, palette) needs only settings and packs; it must not wait for the slow engine probe.
+  window.xLook = patch => { if (D.set) { Object.assign(D.set, patch); applyLook(); } };
+  (async () => {
+    try { const [set, packs] = await Promise.all([get('/api/settings'), get('/api/packs')]); if (!D.set) { D.set = set; D.packs = packs; window.SETTINGS = window.SETTINGS || set; applyLook(); } } catch { /* the core is down: the saved look stays */ }
+    try { await load(); applyLook(); if (onPage()) render(); } catch { D.loaded = 'error'; if (onPage()) render(); }
+  })();
 })();

@@ -9,14 +9,33 @@ const NSIA = [
   ['Private Data', 'lock', [['Vault', 'Arca', 'lock'], ['Clipboard', 'Fasces', 'folder'], ['Devices', 'Castra', 'crew']]],
   ['System', 'system', [['Integrations', 'Connexio', 'plugin'], ['Models', 'Armamentarium', 'engine'], ['Engines', 'Machinae', 'system'], ['Gateway', 'Porta', 'system'], ['Marketplace', 'Mercatus', 'plugin'], ['Usage', 'Rations', 'usage'], ['Cost', 'Computus', 'usage'], ['Fleet', '', 'system'], ['Health', 'Vitals', 'health'], ['Skills', '', 'skills'], ['Terminal', 'Armilla', 'terminal'], ['Notifications', 'Nuntii', 'alert'], ['Updates', '', 'arrow']]]
 ];
+// Optional tools are grouped by the workspace they surface in. Keep core tools out of this list.
+const MODULE_GROUPS = [
+  { id: 'day', title: 'Plan your day', workspace: 'Planning', apps: ['Schedule', 'Mail', 'Goals', 'Daily review', 'Watchers', 'Weather'], defaults: [] },
+  { id: 'knowledge', title: 'Keep what you know', workspace: 'Knowledge', apps: ['Memory', 'Search', 'Meetings', 'Folders', 'Reading', 'Library', 'Media Gallery', 'Editor', 'News'], defaults: ['Search'] },
+  { id: 'studio', title: 'Make things', workspace: 'Business', apps: ['Image Studio', 'Reels', 'Web tools', 'Offer Boards'], defaults: [] },
+  { id: 'business', title: 'Run a business', workspace: 'Business', apps: ['Business', 'Finance', 'Leads', 'Social', 'Fleet'], defaults: [] },
+  { id: 'crew', title: 'Run the crew', workspace: 'Crew', apps: ['Missions', 'Builds', 'Horde desk', 'Command', 'Evidence', 'Ideas', 'Tool graph', 'Mirror'], defaults: [] },
+  { id: 'system', title: 'Look after the machine', workspace: 'System', apps: ['Usage', 'Cost', 'Health', 'Devices', 'Updates', 'Skills', 'Engines', 'Vault', 'Clipboard'], defaults: ['Usage', 'Health', 'Devices'] },
+];
+window.MODULE_GROUPS = MODULE_GROUPS;
+window.applyOptionalModules = settings => {
+  const disabled = new Set(settings?.disabledModules || []), enabled = new Set(settings?.enabledModules || []);
+  OGS.mods = new Set(MODULE_GROUPS.flatMap(g => g.apps).filter(name => {
+    const key = 'app-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const group = MODULE_GROUPS.find(g => g.apps.includes(name));
+    return !disabled.has(key) && (enabled.has(key) || group.defaults.includes(name));
+  }));
+};
 const NS = { open: { Talk: true, Day: true, Knowledge: false, Work: false, Make: false, 'Private Data': false, System: false }, pin: false };
+try { if (localStorage.getItem('caesaros-menu-pin') === '1') { NS.pin = true; document.documentElement.classList.add('ns-pinned'); } } catch (_) {}
 /* Beginner first: a fresh install shows Start, Home, Chat, Notes, Settings and More. A group the person opened
    stays in the menu, remembered on this device; More reveals the rest for this session. */
 const NXG = (() => { try { return new Set(JSON.parse(localStorage.getItem('caesaros-menu-groups') || '[]')); } catch { return new Set(); } })();
 const NXMORE = { on: false };
 const nxKeep = g => { NXG.add(g); try { localStorage.setItem('caesaros-menu-groups', JSON.stringify([...NXG])); } catch (_) {} };
-/* every optional app is on in this view; "fresh install" empties it */
-OGS.mods = new Set(NSIA.flatMap(g => g[2].map(x => x[0])));
+/* Start with the explicit defaults; saved settings replace this in hubs.js. */
+OGS.mods = new Set(MODULE_GROUPS.flatMap(g => g.defaults));
 /* routing: which engine answers each job (a policy, never an on/off for cloud tools) */
 const ENGROWS = [['Chat', 'chat'], ['Vision', 'vis'], ['Image', 'img'], ['Video', 'vid'], ['Speech to text', 'stt'], ['Text to speech', 'tts'], ['Brain recall (embeddings)', 'emb'], ['Crew runs', 'crew']];
 OGS.eng = {};
@@ -63,10 +82,19 @@ function railHtml() {
       <button class="ns-it" data-app="Mobile app" title="Mobile app">${I('chat', 20)}<span class="ns-lab">Mobile app</span></button>
     </div></aside></div>`;
 }
-function flyHtml() { return ''; }
+function flyHtml() {
+  // The Sessions strip in the footer and the rail both land here: a real list of open conversations,
+  // each a button that opens that thread. Empty state says so instead of rendering nothing.
+  if (typeof S === 'undefined' || S.flyout !== 'ses') return '';
+  const E = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const rows = (typeof THREADS !== 'undefined' ? THREADS : []).slice(0, 14)
+    .map((t) => `<button type="button" class="fly-row" data-ses="${E(t.id)}"><span class="fly-t"><b>${E(t.t)}</b><small>${E(((typeof C !== 'undefined' && C[t.a]) || {}).n || '')} · ${E(t.s)}</small></span><span class="fly-go" aria-hidden="true">›</span></button>`).join('');
+  return `<div class="fly" role="dialog" aria-label="Sessions"><div class="fly-head"><span class="label">Sessions</span><button type="button" class="fly-x" data-nx="fly-ses" aria-label="Close sessions">×</button></div>
+    <div class="fly-body">${rows || '<p class="su-note">No conversations yet. Start one from Chat.</p>'}</div></div>`;
+}
 
 /* ---------- pages ---------- */
-const nsHead = (name, sub, la, sc) => `${name === 'Start' ? scene(sc || 'atrium-hero', 100) : ''}<div class="nx-phead"><h2>${OGE(name.toUpperCase())}</h2><span class="label">${OGE(la || '')}</span></div><p style="margin:6px 0 0;color:var(--muted);font-size:13px;max-width:820px">${OGE(sub)}</p>`;
+const nsHead = (name, sub, la, sc) => `${typeof ARTHEAD === 'function' ? ARTHEAD(name, sc) : ''}<div class="nx-phead"><h2>${OGE(name.toUpperCase())}</h2><span class="label">${OGE(la || '')}</span></div><p style="margin:6px 0 0;color:var(--muted);font-size:13px;max-width:820px">${OGE(sub)}</p>`;
 
 function nsStart() {
   const groups = [['Talk', 'Chat with Caesar and the crew', 'chat'], ['Day', 'Plan the day: board, mail, schedule, goals', 'calendar'], ['Knowledge', 'The Brain: notes, meetings, search, files', 'brain'], ['Work', 'Missions, builds, business, evidence', 'missions'], ['Make', 'Images, films, sites, leads', 'design'], ['Private Data', 'Vault, clipboard, devices, Shared Brain', 'lock'], ['System', 'Integrations, models, engines, gateway', 'system']];
@@ -132,7 +160,7 @@ document.addEventListener('keydown', e => { if (e.ctrlKey && !e.shiftKey && e.ke
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-ns]'); if (!t) return;
   const [k, a, b] = t.dataset.ns.split(':');
-  if (k === 'pin') { NS.pin = !NS.pin; document.documentElement.classList.toggle('ns-pinned', NS.pin); t.classList.toggle('on', NS.pin); return; }
+  if (k === 'pin') { NS.pin = !NS.pin; document.documentElement.classList.toggle('ns-pinned', NS.pin); try { localStorage.setItem('caesaros-menu-pin', NS.pin ? '1' : '0'); } catch (_) {} t.classList.toggle('on', NS.pin); return; }
   if (k === 'grp') { nxKeep(a); NS.open[a] = !NS.open[a]; t.classList.toggle('open', NS.open[a]); t.nextElementSibling.classList.toggle('open', NS.open[a]); return; }
   if (k === 'more') { NXMORE.on = true; }
   else if (k === 'home') { S.act = Math.max(0, S.tabs.findIndex(x => x.k === 'ws')); }
@@ -142,7 +170,7 @@ document.addEventListener('click', e => {
   else if (k === 'eng') { OGS.eng[a] = b; }
   else if (k === 'appr') { S.waiting.splice(+a, 1); }
   else if (k === 'sc') { NS.sc.has(a) ? NS.sc.delete(a) : NS.sc.add(a); }
-  else if (k === 'pal') { NS.pal = a; document.documentElement.dataset.pal = a; try { localStorage.setItem('cx-pal', a); } catch (_) {} render(); return; }
+  else if (k === 'pal') { NS.pal = a; document.documentElement.dataset.pal = a; try { localStorage.setItem('cx-pal', a); } catch (_) {} ['--p1', '--p1r', '--p2', '--p2r'].forEach(v => document.documentElement.style.removeProperty(v)); try { localStorage.removeItem('caesaros-pack-pal'); } catch (_) {} /* the shell palette's own CSS rules take over from a Settings pack colour */ render(); return; }
   else if (k === 'opt') { NS.opt[a] = b; if (a === 'mo') setMotion(b.toLowerCase()); if (a === 'th') window.caesarosTheme.set(b === 'Neutral' ? 'neutral' : 'caesaros'); }
   else if (k === 'optt') { NS.opt[a] = !NS.opt[a]; }
   else if (k === 'theme') { window.caesarosTheme.toggle(); NS.opt.th = document.documentElement.dataset.theme === 'neutral' ? 'Neutral' : 'CaesarOS'; }
@@ -184,7 +212,7 @@ function obBody() {
   if (s === 3) return `<h1 class="ob-h">Start your Brain</h1><p class="ob-p">Notes, memory and recall, shared by you and the crew. Plain markdown files you own.</p><div class="ob-grid" style="grid-template-columns:repeat(2,1fr)">${obPick('brain', 'new', 'A new Brain', 'Start empty here. The crew adds proposals, you accept them.', OB.brain === 'new')}${obPick('brain', 'open', 'Open an existing vault', 'Point it at an Obsidian vault. Files stay where they are.', OB.brain === 'open')}</div><div class="og-card" style="width:100%;text-align:left"><div class="og-row" style="justify-content:space-between"><div><h4>Back it up to the VPS</h4><p>The Shared Brain: a copy on your server, in step with your devices.</p></div><span class="og-sw ${OB.share ? 'on' : ''}" data-ob="share:1"></span></div></div>`;
   if (s === 4) { const C = [['Google', 'Gmail, Calendar, Drive'], ['Microsoft', 'Outlook, Calendar'], ['GitHub', 'Repos and issues'], ['Notion', 'Pages and docs'], ['Linear', 'Issues and cycles'], ['Obsidian', 'Local vaults']]; return `<h1 class="ob-h">Connect your tools</h1><p class="ob-p">Our own tools are already built in. Add the ones you use, or your own server. <b>Accounts are read live and never copied into the Brain.</b> Actions always ask first.</p><div class="ob-grid" style="grid-template-columns:repeat(3,1fr)">${C.map(([n, d]) => obPick('conn', n, n, d, OB.conn.has(n))).join('')}</div><span class="label">Add your own (MCP) and more later in Integrations</span>`; }
   if (s === 5) { const A = [['Claude Code A', 'signed in · 5h window 17%'], ['Claude Code B', 'signed in · 5h window 17%'], ['Codex', 'limit reached · resets in 3 h'], ['Hermes', 'v0.23.2 · gateway running'], ['Local engines', 'ready after setup']]; return `<h1 class="ob-h">Your agents are already here</h1><p class="ob-p">CaesarOS found these on this machine. They keep their own login and network. <b>Nothing here changes them.</b></p><div class="ob-grid" style="grid-template-columns:repeat(2,1fr)">${A.map(([n, d]) => obPick('agent', n, n, d, OB.agents.has(n))).join('')}</div>`; }
-  if (s === 6) { const P = [['Day', 'Board, Mail, Schedule, Goals, Daily review'], ['Knowledge', 'Search, Meetings, Folders, Reading, Editor'], ['Work', 'Missions, Builds, Command, Business, Evidence'], ['Make', 'Image Studio, Reels, Web tools, Leads'], ['Private Data', 'Vault, Clipboard, Devices']]; return `<h1 class="ob-h">Start bare. Add what you use.</h1><p class="ob-p">The core is always on: <b>Chat, Crew, Board, Brain, Terminal, Integrations, Models</b>. Add groups now or any time from Add apps.</p><div class="ob-grid" style="grid-template-columns:repeat(2,1fr)">${P.map(([n, d]) => obPick('pack', n, n, d, OB.packs.has(n))).join('')}</div>`; }
+  if (s === 6) { const P = [['Day', 'Board, Mail, Schedule, Goals, Daily review'], ['Knowledge', 'Search, Meetings, Folders, Reading, Editor'], ['Work', 'Missions, Builds, Command, Business, Evidence'], ['Make', 'Image Studio, Web tools, Leads'], ['Studio', 'Social desk, Reels, Offer Boards'], ['Private Data', 'Vault, Clipboard, Devices']]; return `<h1 class="ob-h">Start bare. Add what you use.</h1><p class="ob-p">The core is always on: <b>Chat, Crew, Board, Brain, Terminal, Integrations, Models</b>. Add groups now or any time from Add apps.</p><div class="ob-grid" style="grid-template-columns:repeat(2,1fr)">${P.map(([n, d]) => obPick('pack', n, n, d, OB.packs.has(n))).join('')}</div>`; }
   if (s === 7) return `<h1 class="ob-h">Pair your phone</h1><p class="ob-p">Scan the code from the CaesarOS app on your phone, or enter it. Sessions are then shared across Desktop, Web and Phone.</p><div class="ob-qr"></div><div class="og-code" style="font-size:20px;letter-spacing:.3em">CSR-4K7M-2QXA</div><span class="label">You can do this later in Devices</span>`;
   return `<h1 class="ob-h">Ready<small>The troop is listening</small></h1><p class="ob-p">Here is what you chose.</p><div class="og-list" style="width:100%;text-align:left">${[['Runs', OGS.mode === 'vps' ? 'VPS and Shared Brain' : OGS.mode === 'local' ? 'Local' : 'Offline'], ['Engines', OB.lvl + ' · picks shown before any download'], ['Brain', (OB.brain === 'new' ? 'New Brain' : 'Existing vault') + (OB.share ? ' · backed up to the VPS' : ' · not backed up')], ['Connected', [...OB.conn].join(', ') || 'Nothing yet'], ['Agents', [...OB.agents].join(', ') || 'None'], ['Apps', 'Core + ' + ([...OB.packs].join(', ') || 'nothing else')]].map(r => `<div style="grid-template-columns:110px 1fr auto"><span class="label">${r[0]}</span><span>${OGE(r[1])}</span><span class="og-tag sig">Set</span></div>`).join('')}</div>`;
 }
@@ -196,7 +224,6 @@ function obRender() {
 }
 function obFinish() {
   OB.open = false;
-  OGS.mods = new Set(NSIA.filter(g => ['Talk', 'Day', 'Knowledge', 'Work', 'Make', 'Private Data', 'System'].includes(g[0])).flatMap(g => g[2]).map(x => x[0]).filter(n => OGCORE.has(n) || [...OB.packs].some(p => NSIA.find(g => g[0] === p)[2].some(x => x[0] === n)) || ['Chat', 'Crew', 'Board', 'Memory', 'Terminal', 'Integrations', 'Models', 'Engines', 'Gateway', 'Marketplace', 'Settings', 'Notifications', 'Search'].includes(n)));
   OGS.setup = { where: true, models: true, brain: true, tool: OB.conn.size > 0, apps: true, device: false };
   ogPreset(OGS.mode); S.act = 0; obRender(); render();
 }

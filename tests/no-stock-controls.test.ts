@@ -1,4 +1,4 @@
-// Rule (Konrad): no browser-native select, details, dialog or alert in the UI. The app draws its own controls so
+// Rule (owner): no browser-native select, details, dialog or alert in the UI. The app draws its own controls so
 // they follow the theme and behave the same on desktop and phone. (A styled range slider is allowed, and the install
 // prompt object of a PWA, `event.prompt()`, is not window.prompt.)
 import { expect, test } from "bun:test";

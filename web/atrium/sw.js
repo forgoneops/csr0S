@@ -8,9 +8,9 @@ const SHELL = [
   "/",
   "/manifest.webmanifest",
   "/index.html",
-  "/background.js", "/og.js", "/registry.js", "/pages.js", "/ns.js", "/bridge.js", "/setup.js", "/real.js", "/a11y.js", "/i18n.js", "/board.js", "/dock.js", "/pop.js", "/limits.js", "/mail.js", "/tour.js", "/mascot.js", "/voice.js", "/hud.js", "/hof3d.js",
+  "/ascii.js", "/art.js", "/skills.js", "/skills.css", "/qr.js", "/gateway.js", "/library.css", "/library.js", "/media.js", "/media.css", "/business.js", "/graph.js", "/live.js", "/live.css", "/lair.css", "/lair.js", "/background.js", "/og.js", "/registry.js", "/pages.js", "/ns.js", "/bridge.js", "/setup.js", "/viz.js", "/real.js", "/studio.js", "/studio-logic.js", "/studio.css", "/a11y.js", "/i18n.js", "/board.js", "/dock.js", "/pop.js", "/limits.js", "/mail.js", "/tour.js", "/mascot.js", "/voice.js", "/hud.js", "/hof3d.js",
   "/real.css", "/kit.css", "/board.css", "/ns.css", "/neo.css", "/og.css", "/dock.css", "/hof3d.css",
-  "/vendor/xterm.js", "/vendor/addon-fit.js", "/vendor/xterm.css",
+  "/vendor/xterm.js", "/vendor/addon-fit.js", "/vendor/xterm.css", "/vendor/three.min.js",
   "/icons/legio.svg", "/icons/icon-192.png", "/icons/icon-512.png",
   "/icons/icon-maskable-512.png", "/icons/apple-touch-icon.png",
   "/caesar/portrait-neo.png",
@@ -19,7 +19,18 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // The page names its own files (with this build's ?v=), so those are cached too; one missing file never blocks the install.
+  e.waitUntil((async () => {
+    const c = await caches.open(CACHE);
+    let urls = SHELL;
+    try {
+      const r = await fetch("/", { cache: "reload" }); const html = await r.clone().text();
+      await c.put("/", r);
+      urls = [...new Set([...SHELL, ...[...html.matchAll(/(?:src|href)="([^":#]+\.(?:js|css|webmanifest)\?v=[^"]+)"/g)].map((m) => "/" + m[1])])];
+    } catch { /* offline install: the static list only */ }
+    await Promise.all(urls.map((u) => c.add(u).catch(() => {})));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", (e) => {
@@ -40,7 +51,7 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   // shell files are precached: cache first, then network; anything else fills the cache on first use.
-  e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((r) => {
+  e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((r) => {
     if (r.ok) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
     return r;
   })));

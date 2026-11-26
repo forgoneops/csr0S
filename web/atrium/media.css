@@ -1,0 +1,25 @@
+/* Media Archive. Colours only from tokens; cut corners, no round shapes. */
+.md .md-bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin:0 0 10px}
+.md .md-tabs{display:flex;gap:6px}.md .md-tabs .btn,.md .md-imp{min-height:44px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.md .md-tabs .btn.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.md .md-msg{margin:0 0 10px;color:var(--muted)}
+.md .md-hall{position:relative;min-height:320px;padding:16px;border:1px solid var(--line);isolation:isolate;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--bg,#0b0a08) 70%,transparent),color-mix(in srgb,var(--bg,#0b0a08) 94%,transparent)),url(art/caesaros-scenes/media.webp) center/cover;
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.md .md-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.md .md-tile{position:relative;aspect-ratio:1;padding:0;border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);background:var(--bg,#0b0a08);cursor:pointer;overflow:hidden;color:inherit;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.md .md-tile img,.md .md-tile video{width:100%;height:100%;object-fit:cover;display:block}
+.md .md-tile:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.md .md-name{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 6px;font-size:.72rem;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:linear-gradient(transparent,#000c)}
+.md .md-play{position:absolute;top:8px;left:8px;color:var(--accent)}
+.md .md-trow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.md .md-trow span{flex:1;min-width:140px;overflow-wrap:anywhere}
+.md .md-trow .btn{min-height:44px}
+.md .md-viewer{position:fixed;inset:0;z-index:60;display:grid;grid-template-rows:auto 1fr auto;background:color-mix(in srgb,var(--bg,#0b0a08) 96%,#000)}
+.md .md-vbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)}
+.md .md-vbar span:first-child{flex:1;min-width:140px;overflow-wrap:anywhere}.md .md-vbar .btn{min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.md .md-stage{position:relative;overflow:hidden;touch-action:none;display:grid;place-items:center;cursor:grab}
+.md .md-media{max-width:100%;max-height:100%;transform-origin:center;user-select:none}
+.md .md-nav{position:absolute;top:50%;min-width:44px;min-height:64px;display:grid;place-items:center;background:color-mix(in srgb,var(--bg,#0b0a08) 70%,transparent)}
+.md .md-nav.prev{left:8px}.md .md-nav.next{right:8px}.md .md-nav.prev svg{transform:scaleX(-1)}.md .md-nav:disabled{opacity:.3}
+.md .md-hint{margin:0;padding:6px 12px;text-align:center;color:var(--muted);font-size:.78rem}

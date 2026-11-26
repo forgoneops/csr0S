@@ -12,7 +12,9 @@
   const aOf = e => e === SOLO ? 'caesar-alone' : e.startsWith('hermes:') ? e.slice(7) : e;       // which person a conversation is with
   const engineOf = a => a === 'caesar-alone' ? SOLO : (CREW.some(m => m.id === a) ? 'hermes:' + a : a);
   S.ctx = true;
-  S.think = false; S.model = ''; S.models = [];
+  S.think = false; S.model = ''; S.models = []; S.perThread = {};
+  try { S.hideWork = localStorage.getItem('caesaros-hidework') === '1'; } catch { S.hideWork = false; }
+  S.histOpen = false;   // the History panel above the messages (chat-level), closed unless asked
   S.files = [];                                                                                    // files picked for the next message
   const LIM = { files: 4, image: 8 * 1024 * 1024, text: 1024 * 1024, total: 16 * 1024 * 1024 };
   const IMG = /^image\/(png|jpeg|webp|gif)$/, TXT = /\.(txt|md|markdown|csv|tsv|json|jsonl|yaml|yml|toml|xml|html|css|js|ts|tsx|jsx|py|rs|go|java|c|h|cpp|sh|sql|log|ini|conf)$/i;
@@ -43,13 +45,14 @@
 
   async function loadCrew() {
     const crew = await j('/api/crew');
-    const key = JSON.stringify(crew.map(m => [m.id, m.status, m.doing]));
+    const key = JSON.stringify(crew.map(m => [m.id, m.name, m.role, m.status, m.doing]));
     if (key === stat) return false; stat = key;
     CREW.splice(0, CREW.length, ...crew.map(m => ({ id: m.id, n: m.name, r: m.role, img: m.img, st: m.status, doing: m.doing, does: m.does, model: m.model })));
     const keep = Object.entries(C).filter(([k]) => !CREW.some(m => m.id === k) && k !== 'undefined'); for (const k of Object.keys(C)) delete C[k]; CREW.forEach(m => { C[m.id] = m; }); keep.forEach(([k, v]) => { C[k] = v; });
     C.undefined = { id: '', n: 'New conversation', r: 'Pick who to talk to', img: 'caesar/portrait-neo.png', st: 'idle', doing: '' };   // a tab with no conversation yet
     return true;
   }
+  window.xCrewReload = async () => { stat = ''; if (await loadCrew()) render(); };   // the Lair changed the roster
   async function loadTargets() {
     TARGETS = await j('/api/chat-targets');
     for (const t of TARGETS) if (t.group !== 'crew') C[aOf(t.id)] = { id: aOf(t.id), n: t.label + (t.group === 'caesar' ? ' · alone' : ''), r: t.role, img: t.group === 'caesar' ? 'art/caesaros-caesar-neo.webp' : (TOOLART[t.id] || 'art/caesaros-caesar-neo.webp'), st: t.ok ? 'idle' : 'wait', doing: '' };
@@ -96,7 +99,12 @@
   async function toggleRoute() {
     const next = !localOnly();
     try { window.SETTINGS = await j('/api/settings', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ localOnly: next }) }); } catch { return; }
-    applyRouting(true); await loadTargets().catch(() => {}); render();
+    // Flip the routing class and any visible chip in place; the chat and shell do not need a full
+    // re-render (which rebuilt the whole #shell and read as a page reload). The picker refresh happens
+    // in the background so an available local engine appears without a page jump.
+    applyRouting(true);
+    document.querySelectorAll('.route-sw').forEach(chip => { chip.setAttribute('aria-checked', String(next)); });
+    await loadTargets().catch(() => {});
   }
   // "What now?" is real: only things that are true right now
   async function loadFeed() {
@@ -125,11 +133,15 @@
   const _render = render;
   // The prototype rebuilds the whole view on every action and replays its entry animation each time, which reads as a
   // reload. The entry animation belongs to changing views, not to pressing Edit layout, so it only plays when the view changes.
-  let lastView = '';
+  let lastView = '', stillPending = false;
   render = function () {
     if (S.cur && !loaded.has(S.cur) && THR(S.cur)) void loadMessages(S.cur);
-    const x = S.tabs[S.act] || {}; const view = (x.k || '') + ':' + (x.id || '') + ':' + (OGS && OGS.sp && OGS.sp.on ? 'sp' : '') + (S.split ? 'split' : '');
-    const same = view === lastView; lastView = view;
+    const x = S.tabs[S.act] || {}; const view = (x.k || '') + ':' + (x.id || '') + (x.k === 'ws' ? 'ws' + S.ws : '') + ':' + (OGS && OGS.sp && OGS.sp.on ? 'sp' : '') + (S.split ? 'split' : '');
+    const same = view === lastView;
+    // a repaint on an unchanged route must not land inside a running entrance: it rebuilds the view and sets
+    // data-still, which cuts nxrise before animationend. Hold it until the entrance is over.
+    if (same) { const left = (typeof window.nxEntranceLeft === 'function') ? window.nxEntranceLeft() : 0; if (left > 0) { if (!stillPending) { stillPending = true; setTimeout(() => { stillPending = false; render(); }, Math.ceil(left) + 32); } return; } }
+    lastView = view;
     root.toggleAttribute('data-still', same);
     const r = _render();
     try { mountTerminal(); } catch (e) { console.warn('terminal', e); }
@@ -145,9 +157,11 @@
     if (THR(id)) {
       let v = _chatView(id);
       if (S.waiting.some(w => w.th === id)) v = v.replace(/(<textarea id="inp"[^>]*placeholder=")[^"]*"/, '$1An approval is waiting: type /approve, or reply here"');
-      const th = THR(id), em = engineLabelOf(th), cur = S.model && em.models.some(m => m.id === S.model) ? S.model : ((em.models[0] || {}).label || 'default');
-      const modelChip = `<span class="pk-menu"><button class="pk-ctx" data-model-chip aria-haspopup="true" aria-expanded="${!!S.modelOpen}" title="The engine and model this conversation talks to">${I('engine', 16)}<span>${esc(em.label || 'engine')} · ${esc(cur)}</span>${em.models.length > 1 ? I('chevron-down', 14) : ''}</button>${S.modelOpen && em.models.length > 1 ? `<ul class="pk-pop" role="menu">${em.models.map(m => `<li><button class="pk-pop-b ${m.id === (S.model || em.models[0].id) ? 'on' : ''}" role="menuitemradio" data-model-pick="${esc(m.id)}">${esc(m.label)}</button></li>`).join('')}</ul>` : ''}</span>`;
-      return v.replace('<div class="nx-box">', `${tray()}<div class="nx-ctx">${modelChip}<button class="pk-ctx" data-hist title="Bring back what you sent before (Arrow up and down do the same)">${I('clock', 16)}<span>Earlier</span></button><button class="pk-ctx ${S.think ? 'on' : ''}" data-think aria-pressed="${S.think}" title="Ask the model to reason before it answers (engines that support it)">${I('sparkle', 16)}<span>Thinking ${S.think ? 'on' : 'off'}</span></button><button class="pk-ctx pk-attach" data-attach title="Add images or text files. You can also drop them on the conversation or paste an image.">${I('attach', 16)}<span>Attach</span></button><button class="pk-ctx ${S.ctx ? 'on' : ''}" data-ctx aria-pressed="${S.ctx}" title="Context: your documents are searched and the best passages go to the agent. Off: a clean conversation.">${I('brain', 16)}<span>Context ${S.ctx ? 'on' : 'off'}</span></button></div><div class="nx-box">`);
+      const th = THR(id), em = engineLabelOf(th), threadModel = (S.perThread && S.perThread[id]) || '';
+      const cur = threadModel && em.models.some(m => m.id === threadModel) ? threadModel : ((em.models[0] || {}).id || '');
+      const curLabel = (em.models.find(m => m.id === cur) || {}).label || cur || 'default';
+      const modelChip = `<span class="pk-menu"><button class="pk-ctx" data-model-chip aria-haspopup="true" aria-expanded="${!!S.modelOpen}" title="The engine and model this conversation talks to">${I('engine', 16)}<span>${esc(em.label || 'engine')} · ${esc(curLabel)}</span>${em.models.length > 1 ? I('chevron-down', 14) : ''}</button>${S.modelOpen && em.models.length ? `<ul class="pk-pop" role="menu">${em.models.map(m => `<li><button class="pk-pop-b ${m.id === (threadModel || (em.models[0] || {}).id) ? 'on' : ''}" role="menuitemradio" data-model-pick="${esc(m.id)}">${esc(m.label)}</button></li>`).join('')}</ul>` : ''}</span>`;
+      return v.replace('<div class="nx-box">', `${tray()}<div class="nx-ctx">${modelChip}<button class="pk-ctx ${S.histOpen ? 'on' : ''}" data-history aria-pressed="${S.histOpen}" title="Show or hide this conversation's history">${I('clock', 16)}<span>History</span></button><button class="pk-ctx ${S.hideWork ? 'on' : ''}" data-work aria-pressed="${S.hideWork}" title="Show or hide the steps the model takes while it works (files read, tools used)">${I('sparkle', 16)}<span>Work ${S.hideWork ? 'hidden' : 'shown'}</span></button><button class="pk-ctx" data-hist title="Bring back what you sent before (Arrow up and down do the same)">${I('clock', 16)}<span>Earlier</span></button><button class="pk-ctx ${S.think ? 'on' : ''}" data-think aria-pressed="${S.think}" title="Ask the model to reason before it answers (engines that support it)">${I('sparkle', 16)}<span>Thinking ${S.think ? 'on' : 'off'}</span></button><button class="pk-ctx pk-attach" data-attach title="Add images or text files. You can also drop them on the conversation or paste an image.">${I('attach', 16)}<span>Attach</span></button><button class="pk-ctx ${S.ctx ? 'on' : ''}" data-ctx aria-pressed="${S.ctx}" title="Context: your documents are searched and the best passages go to the agent. Off: a clean conversation.">${I('brain', 16)}<span>Context ${S.ctx ? 'on' : 'off'}</span></button></div><div class="nx-box">`);
     }
     const grp = (title, hint, list) => list.length ? `<section class="pk-g"><h3>${title}</h3><p>${hint}</p><div class="pk-row">${list.map(pickCard).join('')}</div></section>` : '';
     return `<div class="nx-view chat enter">${scene('chat', phone() ? 56 : 72)}<div class="nx-chat-in pk-wrap"><h2 class="pk-h">Who do you want to talk to?</h2><div class="pk-route">${window.xRouteChip('big')}</div>
@@ -199,7 +213,7 @@
     if (RT.term) return;
     RT.el = document.createElement('div'); RT.el.className = 'rt';
     RT.term = new Terminal({ fontFamily: (css('--font-mono') || 'monospace') + ', monospace', fontSize: 13, lineHeight: 1.2, cursorBlink: root.dataset.motion !== 'off', scrollback: 2000, allowTransparency: true,
-      theme: { background: 'rgba(0,0,0,0)', foreground: css('--text') || '#e8e2d2', cursor: css('--accent') || '#ff8a3d', selectionBackground: 'rgba(255,138,61,.28)' } });
+      theme: { background: 'rgba(0,0,0,0)', foreground: css('--text') || '#e8e2d2', cursor: css('--p1') || css('--accent'), selectionBackground: /^#[0-9a-f]{6}$/i.test(css('--p1')) ? css('--p1') + '47' : 'rgba(128,128,128,.3)' } });
     RT.fit = new FitAddon.FitAddon(); RT.term.loadAddon(RT.fit); RT.term.open(RT.el);
     RT.term.onData(d => { if (!RT.sid && !RT.parked && !RT.opening) { void rtOpen(); return; } if (RT.ws && RT.ws.readyState === 1) RT.ws.send(JSON.stringify({ t: 'in', d })); });
     new ResizeObserver(() => rtFit()).observe(RT.el);
@@ -261,7 +275,13 @@
     const id = await newThread('');
     const box = id && document.getElementById('inp'); if (box) { box.value = text; send(); }
   }
-  window.CX = { newThread: (a) => newThread(a), send: () => send(), ask: (text) => firstTalk(text) };   // for pages that start a conversation (Computer, Start)
+  // Show the terminal pane (a tap works as well as Ctrl+`), wait for its shell, type one line and press Enter. Resolves false when no shell came up.
+  async function runInTerminal(cmd) {
+    S.term = true; render();
+    for (let i = 0; i < 40; i++) { if (RT.ws && RT.ws.readyState === 1) { RT.ws.send(JSON.stringify({ t: 'in', d: cmd + '\r' })); return true; } await new Promise(r => setTimeout(r, 250)); }
+    return false;
+  }
+  window.CX = { newThread: (a) => newThread(a), send: () => send(), ask: (text) => firstTalk(text), runInTerminal };   // for pages that start a conversation (Computer, Start)
 
   // ---- the phone: a chat app first, an operational tool second. Same functions, lighter screen. ----
   const _wsView = wsView;
@@ -276,6 +296,7 @@
     const now = FEED.map(f => `<li class="ph-n"><div><small>${esc(f[0])}</small><b>${esc(f[1])}</b></div><button class="su-btn" data-open-app="${esc(f[3] || 'Start')}"><span>${esc(f[4] || 'Open')}</span></button></li>`).join('');
     return `<div class="nx-view enter ph" id="v-ws"><header class="ph-head"><small>${d.toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' })}</small><h1>${g}${who ? ', ' + esc(who) : ''}</h1></header>
       <section class="ph-s"><button class="su-btn go ph-main" data-ph-chat>${I('send', 18)}<span>Chat</span></button>${window.xRouteChip('big')}</section>
+      ${typeof gridHtml === 'function' ? `<section class="ph-s ph-widgets"><h2>This workspace</h2><div class="dw-stage" id="stage">${gridHtml(Math.max(300, (document.querySelector('.nx-views') || {}).clientWidth || innerWidth - 32))}</div></section>` : ''}
       ${S.waiting.length ? `<section class="ph-s"><h2>Waiting for you <em>${S.waiting.length}</em></h2><ul class="ph-wl">${wait}</ul></section>` : ''}
       ${typeof WSN !== 'undefined' && WSN.length > 1 ? `<section class="ph-s"><h2>Workspaces</h2><div class="ph-ws">${WSN.map((n, i) => `<button type="button" class="su-btn ${i === S.ws ? 'go' : ''}" data-ws="${i}" aria-pressed="${i === S.ws}"><span>${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][i] || i + 1} ${esc(n)}</span></button>`).join('')}</div></section>` : ''}
       ${window.xSync && window.xSync.paired ? `<section class="ph-s"><h2>Sync</h2><p class="ph-empty" role="status">${esc(window.xSync.line)}</p><button class="su-btn" data-rd="syncall"><span>Sync now</span></button></section>` : ''}
@@ -286,14 +307,127 @@
 
   // the message box grows with what is typed, up to 40 percent of the screen, and shrinks again after sending
   const growBox = () => { const i = $('#inp'); if (!i) return; i.style.height = 'auto'; i.style.height = Math.min(i.scrollHeight, Math.round(innerHeight * 0.4)) + 'px'; };
-  document.addEventListener('input', e => { if (e.target && e.target.id === 'inp') growBox(); });
+  document.addEventListener('input', e => { if (e.target && e.target.id === 'inp') { S.draft = e.target.value; growBox(); } });
   document.addEventListener('keydown', e => { if (e.target && e.target.id === 'inp') setTimeout(growBox, 30); });
   document.addEventListener('click', () => setTimeout(growBox, 80));
+  // Voice input in the Atrium (chat-level, works from any client that reaches the core):
+  // press the mic, speak, press again; the audio goes to the core's /api/transcribe and the text
+  // lands in the composer. Same flow as the HUD mic, but targeting the Atrium's own input.
+  /* ---------------- voice input ----------------
+     Premium rules: every state is visible (recording, transcribing, error), every action has a keyboard
+     path, and nothing sends audio until the operator stops talking. Push-to-talk is hold Alt+Space;
+     Alt+V toggles the continuous voice mode; the mic button is the same toggle for a mouse. */
+  const VK = { lang: 'caesaros-vt-lang', mode: 'caesaros-voice-mode' };
+  const vls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { /* private */ } return null; };
+  let rec = null, chunks = [], vstream = null, vctx = null, analyser = null, vraf = 0, ptt = false, busy = false;
+  let voiceMode = vls(VK.mode) === '1';
+  const micBtn = () => document.querySelector('[data-nx="mic"]');
+  const vstate = () => document.querySelector('#nx-vstate');
+  const micStatus = (text, state) => {
+    const b = micBtn(); if (b) { b.title = text; b.dataset.state = state || 'idle'; b.dataset.mode = voiceMode ? 'on' : 'off'; }
+    const s = vstate(); if (s) { s.textContent = state === 'rec' || state === 'err' || state === 'busy' ? text : ''; s.dataset.state = state || ''; }
+  };
+  const vtLang = () => { const v = vls(VK.lang); return v === 'en' || v === 'pl' ? v : 'auto'; };
+
+  function meter(on) {
+    cancelAnimationFrame(vraf);
+    const b = micBtn(); if (!b) return;
+    if (!on) { b.style.removeProperty('--lvl'); return; }
+    if (!vctx) { try { vctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; } }
+    if (!vstream) return;
+    const src = vctx.createMediaStreamSource(vstream);
+    analyser = vctx.createAnalyser(); analyser.fftSize = 512; analyser.smoothingTimeConstant = .75;
+    src.connect(analyser);
+    const buf = new Uint8Array(analyser.fftSize);
+    const tick = () => {
+      if (!micBtn() || rec === null) return;
+      analyser.getByteTimeDomainData(buf);
+      let sum = 0; for (let i = 0; i < buf.length; i++) { const d = (buf[i] - 128) / 128; sum += d * d; }
+      const rms = Math.sqrt(sum / buf.length);
+      b.style.setProperty('--lvl', String(Math.min(1, rms * 4.2)));
+      vraf = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  async function startRec(source) {
+    if (rec || busy) return false;
+    if (!navigator.mediaDevices || !window.MediaRecorder) { micStatus('This browser has no recorder', 'err'); return false; }
+    try {
+      const st = await fetch('/api/transcribe/status').then(r => r.json());
+      if (!st || !st.ready) { micStatus('Speech to text is not installed — see Settings, Voice', 'err'); return false; }
+    } catch { micStatus('The core is not answering; speech to text is unavailable', 'err'); return false; }
+    try { vstream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch { micStatus('The microphone is blocked — allow it for CaesarOS', 'err'); return false; }
+    chunks = [];
+    const r = new MediaRecorder(vstream);
+    rec = r; ptt = source === 'ptt';
+    micStatus(source === 'ptt' ? 'Listening — release Alt+Space to transcribe' : 'Listening — press the mic again to stop', 'rec');
+    r.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    r.onstop = () => finishRec(r.mimeType);
+    r.start();
+    meter(true);
+    return true;
+  }
+
+  function stopRec(cancel = false) {
+    if (!rec) return;
+    const r = rec; rec = null; cancelAnimationFrame(vraf); meter(false);
+    try { r.stop(); } catch { /* already stopped */ }
+    if (cancel) chunks = [];
+  }
+
+  async function finishRec(mime) {
+    const parts = chunks.slice(); chunks = [];
+    if (vstream) { vstream.getTracks().forEach(t => t.stop()); vstream = null; }
+    if (!parts.length) { micStatus('Nothing was recorded', 'idle'); return; }
+    busy = true; micStatus('Transcribing…', 'busy');
+    try {
+      const resp = await fetch('/api/transcribe' + (vtLang() === 'auto' ? '' : '?lang=' + vtLang()), { method: 'POST', body: new Blob(parts, { type: mime || 'audio/webm' }) });
+      const j = await resp.json().catch(() => ({}));
+      if (resp.ok && j.text) {
+        micStatus('Microphone · speak instead of typing', 'idle');
+        if (window.xVoiceMsg) window.xVoiceMsg(j.text); else { const box = $('#inp'); if (box) { box.value = j.text; box.focus(); } }
+      } else {
+        micStatus(j.error === 'not_installed' ? 'Speech to text is not installed' : 'Not understood — try again', 'err');
+      }
+    } catch { micStatus('Transcription failed — the core did not answer', 'err'); }
+    busy = false;
+  }
+
+  window.xAtriumMic = async () => (rec ? stopRec() : startRec('click'));
+  window.xVoiceMode = {
+    get on() { return voiceMode; },
+    set(v) { voiceMode = !!v; vls(VK.mode, v ? '1' : '0'); const b = micBtn(); if (b) b.dataset.mode = v ? 'on' : 'off'; micStatus(v ? 'Voice mode on — I listen after each answer' : 'Microphone · speak instead of typing', 'idle'); return voiceMode; },
+    toggle() { return this.set(!voiceMode); },
+  };
+  window.xVoiceLang = { get: vtLang, set(v) { vls(VK.lang, v === 'en' || v === 'pl' ? v : 'auto'); } };
+
+  // hold Alt+Space to talk, release to transcribe; Alt+V toggles the continuous mode
+  addEventListener('keydown', e => {
+    if (e.altKey && e.code === 'Space' && !e.repeat) { e.preventDefault(); void startRec('ptt'); }
+    else if (e.altKey && !e.ctrlKey && String(e.key).toLowerCase() === 'v') { e.preventDefault(); window.xVoiceMode.toggle(); render(); }
+    else if (e.key === 'Escape' && rec) { e.preventDefault(); stopRec(true); micStatus('Recording cancelled', 'idle'); }
+  }, true);
+  addEventListener('keyup', e => { if (e.code === 'Space' && ptt) { e.preventDefault(); ptt = false; stopRec(); } }, true);
+
+  // a spoken turn: paste it and send, like a voice note
+  window.xVoiceMsg = (text) => {
+    const box = $('#inp'); if (!box) return;
+    box.value = (box.value ? box.value + ' ' : '') + text; S.draft = box.value;
+    if (THR(S.cur)) send(); else box.focus();
+  };
+
+  // voice mode: after the answer is spoken, listen again
+  window.xAfterSpoken = () => { if (voiceMode && !rec && window.xVoice && window.xVoice.on()) void startRec('mode'); };
+  const micNow = micBtn();
+  if (micNow) micNow.dataset.mode = voiceMode ? 'on' : 'off';
+
   // sending: the real turn, streamed into the last message
   send = function () {
     const i = $('#inp'); if (!i) return; const v = i.value.trim(); const id = S.cur; if (!v || !id || !THR(id)) return;
     const th = THR(id), list = (MSG[id] = MSG[id] || []);
-    const sendFiles = S.files.slice(); list.push({ me: 1, x: v, files: sendFiles.map(f => ({ name: f.name, kind: f.kind, size: f.size })) }); S.files = []; attProblem = ''; const reply = { a: th.a, x: '' }; list.push(reply); i.value = ''; C[th.a].st = 'work'; render();
+    const sendFiles = S.files.slice(); list.push({ me: 1, x: v, files: sendFiles.map(f => ({ name: f.name, kind: f.kind, size: f.size })) }); S.files = []; S.draft = ''; attProblem = ''; const reply = { a: th.a, x: '' }; list.push(reply); i.value = ''; C[th.a].st = 'work'; render();
     let raf = 0; const paint = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (S.cur === id) { const m = $('#msgs'); const t = document.createElement('div'); t.innerHTML = chatView(id); const n = t.querySelector('#msgs'); if (m && n) { m.innerHTML = n.innerHTML; m.scrollTop = m.scrollHeight; } else render(); } }); };
     void runTurn(id, v, sendFiles, reply, paint);
   };
@@ -308,7 +442,7 @@
     RUNNING.add(id);
     const th = THR(id);
     try {
-      const res = await fetch('/api/chat/sessions/' + id + '/turns', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content: v, model: S.model || '', think: !!S.think, useKnowledge: !!S.ctx, attachments: sendFiles.map(({ name, mime, data }) => ({ name, mime, data })) }) });
+      const res = await fetch('/api/chat/sessions/' + id + '/turns', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content: v, model: (S.perThread && S.perThread[id]) || '', think: !!S.think, useKnowledge: !!S.ctx, attachments: sendFiles.map(({ name, mime, data }) => ({ name, mime, data })) }) });
       if (!res.ok || !res.body) { const b = await res.json().catch(() => ({})); reply.x = b.error === 'attachment-refused' ? ({ 'no-vision': 'This engine cannot take images. Choose another engine or remove the image.', unsupported: (b.name || 'A file') + ' cannot be read yet.', 'too-large': (b.name || 'A file') + ' is too large.' }[b.why] || 'A file was refused.') : (b.message || b.error || 'The crew member could not answer.'); return; }
       const rd = res.body.getReader(), dec = new TextDecoder(); let buf = '';
       for (;;) {
@@ -329,7 +463,9 @@
     } catch (e) { reply.x = reply.x || 'Connection lost.'; }
     finally {
       if (th) th.s = 'just now'; await Promise.all([loadCrew(), loadSessions(), loadApprovals()]).catch(() => {}); render(); if (paint) paint();
-      if (window.xVoice && window.xVoice.on() && reply.x && !reply.queued) void window.xSpeak(reply.x);
+      if (window.xVoice && window.xVoice.on() && reply.x && !reply.queued) {
+        Promise.resolve(window.xSpeak(reply.x)).then(() => window.xAfterSpoken && window.xAfterSpoken());
+      } else if (reply.x && !reply.queued && window.xAfterSpoken) window.xAfterSpoken();
       RUNNING.delete(id); const nx = (QUEUE[id] || []).shift(); if (nx) { nx.reply.queued = false; void runTurn(id, nx.v, nx.sendFiles, nx.reply, nx.paint); }
     }
   }
@@ -404,8 +540,10 @@
     if (e.target.closest('[data-route-toggle]')) { e.preventDefault(); e.stopPropagation(); void toggleRoute(); return; }
     if (e.target.closest('[data-ph-chat]')) { e.preventDefault(); e.stopPropagation(); const t = THREADS[0]; if (t) { open_({ k: 'chat', id: t.id }); render(); } else void newThread(''); return; }
     if (e.target.closest('[data-think]')) { e.preventDefault(); e.stopPropagation(); S.think = !S.think; render(); return; }
+    if (e.target.closest('[data-history]')) { e.preventDefault(); e.stopPropagation(); S.histOpen = !S.histOpen; render(); return; }
+    if (e.target.closest('[data-work]')) { e.preventDefault(); e.stopPropagation(); S.hideWork = !S.hideWork; try { localStorage.setItem('caesaros-hidework', S.hideWork ? '1' : '0'); } catch { /* private window */ } render(); return; }
     const mc = e.target.closest('[data-model-chip]'); if (mc) { e.preventDefault(); e.stopPropagation(); S.modelOpen = !S.modelOpen; render(); return; }
-    const mp = e.target.closest('[data-model-pick]'); if (mp) { e.preventDefault(); e.stopPropagation(); S.model = mp.dataset.modelPick; S.modelOpen = false; render(); return; }
+    const mp = e.target.closest('[data-model-pick]'); if (mp) { e.preventDefault(); e.stopPropagation(); if (S.cur) S.perThread[S.cur] = mp.dataset.modelPick; S.modelOpen = false; render(); return; }
     if (S.modelOpen && !e.target.closest('.pk-menu')) { S.modelOpen = false; render(); }
     if (e.target.closest('[data-attach]')) { e.preventDefault(); e.stopPropagation(); picker.click(); return; }
     const rm = e.target.closest('[data-rmfile]'); if (rm) { e.preventDefault(); e.stopPropagation(); S.files.splice(+rm.dataset.rmfile, 1); attProblem = ''; render(); return; }
@@ -418,8 +556,10 @@
   }, true);
 
   (async () => {
-    try { await loadSettings(); await loadEngines(); await loadCrew(); await loadTargets(); await loadCommands(); await loadSessions(); await loadApprovals(); await loadLive(); await loadFeed(); } catch (e) { console.warn('core not reachable', e); }
+    try { await loadSettings(); await loadEngines(); await loadCrew(); await loadTargets(); await loadCommands(); await loadSessions(); await loadApprovals(); await loadLive(); await loadFeed(); root.removeAttribute('data-core-down'); } catch (e) { console.warn('core not reachable', e); root.setAttribute('data-core-down', ''); }
+    // a restored chat tab whose conversation is gone (core restarted on empty data) falls back to the Home tab
+    if (!root.hasAttribute('data-core-down')) { const keep = S.tabs.filter(t => t.k !== 'chat' || !t.id || THR(t.id)); if (keep.length !== S.tabs.length) { const cur = S.tabs[S.act]; S.tabs = keep; S.act = Math.max(0, keep.findIndex(t => t === cur)); if (S.cur && !THR(S.cur)) S.cur = null; } }
     render();
-    setInterval(async () => { try { root.toggleAttribute('data-busy', CREW.some(c => c.st === 'work') || S.waiting.length > 0); const ch = await loadCrew(); const p = await loadApprovals(); if (ch || p.length !== S.waiting.length) render(); } catch { /* the next tick asks again */ } }, 5000);
+    setInterval(async () => { try { root.toggleAttribute('data-busy', CREW.some(c => c.st === 'work') || S.waiting.length > 0); const ch = await loadCrew(); const p = await loadApprovals(); const was = root.hasAttribute('data-core-down'); root.removeAttribute('data-core-down'); if (ch || was || p.length !== S.waiting.length) render(); } catch { root.setAttribute('data-core-down', ''); } }, 5000);
   })();
 })();
