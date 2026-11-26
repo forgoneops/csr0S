@@ -6,7 +6,8 @@ import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { buildIdOf } from "./build-id";
-import { join } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
+import { homedir } from "node:os";
 import { DATA, kv } from "./db";
 import { isolationStatus } from "./sandbox";
 import { stream } from "./events";
@@ -41,10 +42,11 @@ import { createMail, mailApi, type Mail } from "./mail";
 import { calendarApi } from "./calendar";
 import { usageApi } from "./usage";
 import { skillsApi } from "./skills";
+import { installGateApi } from "./install-gate";
 import { searchApi } from "./search";
 import { listsApi } from "./lists";
 import { vaultApi } from "./vault";
-import { gatewayRoutes } from "./gateways";
+import { gatewayRoutes, secretStore } from "./gateways";
 import { modelServerRoutes, syncModelServers } from "./model-servers";
 import { noteRoutes } from "./notes";
 import { crossSiteWrite, isWrite } from "./csrf";
@@ -61,6 +63,8 @@ import { commandsApi } from "./commands";
 import { hermesConfApi } from "./hermesconf";
 import { engineRun } from "./engine-run";
 import { computerApi } from "./computer";
+import { exposeApi } from "./expose";
+import { createWebGate } from "./webgate";
 import { listEngines } from "./engines";
 import { terminalSocket, terminals, useTerminal } from "./terminal";
 import { ROOT } from "./root";
@@ -78,6 +82,9 @@ const dev = process.argv.includes("--dev");
 export const app = new Hono();
 const core = kv("core");
 
+// Serve as web app (optional second listener): anything that is not on this machine must carry the gateway token.
+const webgate = createWebGate({ store: kv("webgate"), port: Number(process.env.CAESAROS_GATEWAY_PORT ?? PORT), fetch: (req, env) => app.fetch(req, env) });
+app.use("*", webgate.gate());
 // An optional owner password (off by default): with one set, the page and the API ask for a login first.
 app.use("*", authGate());
 authApi(app, (c) => access.principal(c).kind === "operator");
@@ -115,7 +122,7 @@ app.put("/api/settings", async (c) => {
   return c.json(next.data);
 });
 
-gatewayRoutes(app, { read: settings, save: (next) => core.set("settings", next), version: VERSION });
+gatewayRoutes(app, { read: settings, save: (next) => core.set("settings", next), version: VERSION, secrets: secretStore(join(DATA, "gateway-secrets.json")), isOperator: (c) => access.principal(c).kind === "operator" });
 modelServerRoutes(app, { read: settings, save: (next) => core.set("settings", next) });
 noteRoutes(app);
 syncModelServers(settings().modelServers);
@@ -152,6 +159,8 @@ i18nApi(app, (c) => access.principal(c).kind === "operator", () => engineRun(() 
 computerApi(app, (c) => access.principal(c).kind === "operator", undefined,
   (c) => { const p = access.principal(c); return p.kind === "agent" && !!p.scopes?.includes("computer"); },
   () => { const t = access.issueScoped("computer", ["computer"], 7 * 24 * 60 * 60 * 1000); writeFileSync(join(DATA, "computer-token"), t, { mode: 0o600 }); return t; });
+exposeApi(app, (c) => access.principal(c).kind === "operator");
+webgate.routes(app, (c) => access.principal(c).kind === "operator");
 projectsApi(app);
 boardApi(app, (c) => { const p = access.principal(c); return p.kind === "agent" && !!p.scopes?.includes("board"); },
   (who, claim, id) => { try { recordAudit({ source: "tool", actor: who, subjectKind: "board", subjectId: id, confidence: "done", claim }); } catch { /* the card is already saved */ } });
@@ -178,7 +187,19 @@ imageApi(app, (c) => access.principal(c).kind === "operator");
 listsApi(app);
 vaultApi(app, (c) => access.principal(c).kind === "operator");
 searchApi(app, (c) => access.principal(c).kind === "operator");
-skillsApi(app, (c) => access.principal(c).kind === "operator");
+const agentHome = homedir();
+const insideAgentHome = (configured: string | undefined, fallback: string): string => {
+  if (!configured) return fallback;
+  const candidate = resolve(configured), rel = relative(agentHome, candidate);
+  return rel === "" || (rel !== ".." && !rel.startsWith(".." + sep)) ? candidate : fallback;
+};
+const agentRoots = {
+  hermes: insideAgentHome(process.env.CAESAROS_SKILLS_DIR?.split(":")[0], join(agentHome, ".hermes", "skills")),
+  "claude-code": join(insideAgentHome(process.env.CLAUDE_CONFIG_DIR, join(agentHome, ".claude")), "skills"),
+  codex: join(insideAgentHome(process.env.CODEX_HOME, join(agentHome, ".agents")), "skills"),
+};
+skillsApi(app, (c) => access.principal(c).kind === "operator", [join(DATA, "marketplace", "installed", "skills"), ...Object.values(agentRoots)]);
+app.route("/api/install-gate", installGateApi({ root: join(DATA, "marketplace"), store: kv("install-gate"), isOperator: (c) => access.principal(c).kind === "operator", agentRoots, agentBoundary: agentHome }));
 runningApi(app, (c) => access.principal(c).kind === "operator");
 pairingApi(app, (c) => access.principal(c).kind === "operator", fetch, { issue: (n) => access.issue(n) });
 handoffApi(app, (c) => access.principal(c).kind === "operator", (c) => { const p = access.principal(c); return p.kind === "agent" ? p.name : null; });
@@ -222,6 +243,16 @@ app.put("/api/plugins/:id/enabled", async (c) => {
 });
 app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 
+
+// The Atrium's index is served with this build's id on every local script and style, so a webview that
+// still holds an older service worker or HTTP cache fetches the new files instead of replaying its copy.
+function atriumIndex(build: string): Response {
+  let html = readFileSync(join(ATRIUM, "index.html"), "utf8");
+  html = html.replace(/(src|href)="([^":?#]+\.(?:js|css|webmanifest))"/g, (_m, attr: string, path: string) =>
+    `${attr}="${path}?v=${build}"`);
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" } });
+}
+
 if (!dev) {
   if (!existsSync(WEB)) console.warn("web/dist missing: run `bun run build` first");
   app.use("/packs/*", serveStatic({ root: ROOT }));
@@ -232,10 +263,10 @@ if (!dev) {
     try { src = readFileSync(join(ATRIUM, "sw.js"), "utf8"); } catch { try { src = readFileSync(join(WEB, "sw.js"), "utf8"); } catch { return c.notFound(); } }
     return new Response(src.replace("__BUILD__", buildId()), { headers: { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache", "Service-Worker-Allowed": "/" } });
   });
-  app.use("/*", async (c, next) => { await next(); const p = new URL(c.req.url).pathname; if (p === "/" || p.endsWith(".html") || p === "/manifest.webmanifest") c.header("Cache-Control", "no-cache"); });
+  app.use("/*", async (c, next) => { await next(); const p = new URL(c.req.url).pathname; if (p === "/" || /\.(html|js|css|json|webmanifest|webp|png|svg|woff2?|ttf)$/i.test(p)) c.header("Cache-Control", "no-cache"); });   // a desktop app updates in place: revalidate every asset
   app.get("/", (c) => new URL(c.req.url).searchParams.has("classic")
     ? new Response(readFileSync(join(WEB, "index.html")), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" } })
-    : new Response(readFileSync(join(ATRIUM, "index.html")), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" } }));
+    : atriumIndex(buildId()));
   app.use("/*", serveStatic({ root: ATRIUM }));
   app.use("/*", serveStatic({ root: WEB }));
   // App routes (/chat, /settings, …) all load index.html; real files that are missing stay 404.
@@ -249,6 +280,7 @@ if (!dev) {
 if (import.meta.main) {
   startNoteSync();
   startChatSync();
+  webgate.restore();
   Bun.serve<{ id: string }>({
     hostname: HOST,
     port: PORT,

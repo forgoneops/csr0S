@@ -127,6 +127,9 @@ mod tests {
     #[test]
     fn title_channel() {
         assert_eq!(parse_title("CaesarOS HUD \u{b7}h192"), Some(TitleCmd::Height(192.0)));
+        assert_eq!(parse_title("CaesarOS HUD \u{b7}h1e2"), Some(TitleCmd::Height(100.0)));
+        assert_eq!(parse_title("CaesarOS HUD \u{b7}h+120"), Some(TitleCmd::Height(120.0)));
+        assert_eq!(parse_title("CaesarOS HUD \u{b7}h.5"), Some(TitleCmd::Height(MIN_HEIGHT)));
         assert_eq!(parse_title("CaesarOS HUD \u{b7}h9999"), Some(TitleCmd::Height(MAX_HEIGHT)));
         assert_eq!(parse_title("CaesarOS HUD \u{b7}h1"), Some(TitleCmd::Height(MIN_HEIGHT)));
         assert_eq!(parse_title("CaesarOS HUD \u{b7}close"), Some(TitleCmd::Close));

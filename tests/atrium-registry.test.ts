@@ -62,8 +62,8 @@ describe("Atrium module registry", () => {
   test("every script loads in the page's order and registers its views", () => {
     const { OG, OG_MODULES } = load(scripts);
     for (const s of scripts) expect(html).toContain(`<script src="${s}"></script>`);
-    expect(OG_MODULES.size).toBe(13);
-    expect([...OG_MODULES.keys()]).toEqual(["pages", "ns", "ns-mobile", "ns-gateway", "setup", "notes", "mail", "settings", "computer", "real", "board", "dock", "hof3d"]);
+    expect(OG_MODULES.size).toBe(14);
+    expect([...OG_MODULES.keys()]).toEqual(["pages", "ns", "ns-mobile", "ns-gateway", "setup", "notes", "mail", "settings", "computer", "real", "skills", "board", "dock", "hof3d"]);
     expect(Object.keys(OG).length).toBe(53);
     for (const name of Object.keys(OG)) expect(typeof OG[name]).toBe("function");
   });

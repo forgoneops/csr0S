@@ -414,7 +414,7 @@ export function terminalSocket(sessions: TerminalSessions) {
       if (!sessions.attach(ws.data.id, ws)) { try { ws.close(4004, "no such terminal session"); } catch { /* gone */ } }
     },
     message(ws: Socket, raw: string | Uint8Array) {
-      if (typeof raw !== "string") { sessions.input(ws.data.id, raw); return; }
+      if (typeof raw !== "string") { if (raw.length > MAX_MESSAGE) return; sessions.input(ws.data.id, raw); return; }
       if (raw.length > MAX_MESSAGE) return;
       let msg: { t?: string; d?: string; cols?: number; rows?: number };
       try { msg = JSON.parse(raw) as typeof msg; } catch { return; }

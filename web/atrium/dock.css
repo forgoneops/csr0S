@@ -1,25 +1,21 @@
 /* Chat dock (plan 8.10, 8.10a): light on dark, not glass. Every rule is rooted at .cdk, the module's own root.
-   neo-Roma (default) = ember-gold edge and meander; neutral = cool cyan edge and a hairline.
+   neo-Roma (default) = ember-gold edge and meander; every colour comes from the palette tokens (--p1, --p2, --surface); neutral keeps a hairline.
    Shortcut: one theme pair only, add tokens here when a third theme ships. */
 .cdk {
-  --edge:#e8a94a; --edge-r:232,169,74; --glow:#ff7a3d; --glow-r:255,122,61;
-  --ink:#f3e7cf; --panel:rgba(16,11,8,.80); --panel-2:rgba(34,22,12,.55); --muted:#b59f80; --line:rgba(232,169,74,.28);
+  --edge:var(--p1,#ff8a3d); --edge-r:var(--p1r,255,138,61); --glow:var(--p2,#33e8ff); --glow-r:var(--p2r,51,232,255);
+  --ink:var(--text,#e8ecff); --panel:color-mix(in srgb,var(--surface,#0b0d1a) 94%,transparent); --panel-2:color-mix(in srgb,var(--edge) 9%,transparent);
+  --line:rgba(var(--edge-r),.28);
   position:fixed; inset:0; z-index:95; pointer-events:none;
   font-family:var(--font-body,"CaesarOS Humanist",system-ui,sans-serif); color:var(--ink);
 }
-.cdk[data-theme=neutral] {
-  --edge:#7fd9ff; --edge-r:127,217,255; --glow:#9bb6ff; --glow-r:155,182,255;
-  --ink:#e8f1ff; --panel:rgba(8,13,24,.80); --panel-2:rgba(20,32,52,.55); --muted:#8da3c2; --line:rgba(127,217,255,.26);
-}
 .cdk.cdk-simple { display:none; }
-@media (max-width:760px) { .cdk { display:none; } }
 
 /* ---- launcher: 44px, a small diamond when a reply runs or an approval waits ---- */
 .cdk .cdk-launch {
-  position:absolute; right:24px; bottom:24px; width:44px; height:44px; padding:0; pointer-events:auto;
+  position:absolute; right:var(--cdk-r,24px); bottom:var(--cdk-b,40px); width:52px; height:52px; padding:0; pointer-events:auto; touch-action:none;
   display:grid; place-items:center; color:var(--ink); cursor:pointer;
   background:var(--panel); border:0;
-  clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,9px 100%,0 calc(100% - 9px));
+  clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,11px 100%,0 calc(100% - 11px));
   box-shadow:0 0 0 1px rgba(var(--edge-r),.6),0 0 18px -4px rgba(var(--glow-r),.5);
 }
 .cdk .cdk-launch:hover { box-shadow:0 0 0 1px var(--edge),0 0 20px -2px rgba(var(--glow-r),.6); }
@@ -30,7 +26,7 @@
 
 /* ---- the window ---- */
 .cdk .cdk-win {
-  position:absolute; right:24px; bottom:24px; width:380px; height:520px; display:none; pointer-events:auto;
+  position:absolute; right:var(--cdk-r,24px); bottom:var(--cdk-b,40px); width:380px; height:520px; display:none; pointer-events:auto;
   background:linear-gradient(180deg,rgba(var(--edge-r),.95),rgba(var(--edge-r),.45) 55%,rgba(var(--edge-r),.2));
   clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));
   filter:drop-shadow(0 0 16px rgba(var(--glow-r),.34));
@@ -58,7 +54,6 @@
 .cdk .cdk-hd { display:flex; align-items:center; gap:10px; padding:12px 14px 8px; flex:none; }
 .cdk .cdk-av { width:38px; height:38px; flex:none; overflow:hidden; background:#000; box-shadow:0 0 0 1px rgba(var(--edge-r),.7); clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px)); }
 .cdk .cdk-av img { width:100%; height:100%; object-fit:cover; display:block; }
-.cdk[data-theme=neutral] .cdk-av img { filter:grayscale(1) contrast(1.05); }
 .cdk .cdk-id { display:grid; line-height:1.2; min-width:0; }
 .cdk .cdk-id b { font-weight:600; font-size:17px; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cdk .cdk-id small { font:10px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
@@ -122,3 +117,22 @@
 @keyframes cdk-sweep { from { opacity:0; top:0; } 20% { opacity:1; } to { opacity:0; top:100%; } }
 @keyframes cdk-pulse { 0%,100% { opacity:.55; } 50% { opacity:1; } }
 @media (prefers-reduced-motion: reduce) { .cdk .cdk-sweep, .cdk .cdk-diamond { animation:none !important; } }
+
+/* ---- launcher portrait, label and the move handle ---- */
+.cdk .cdk-launch img { width:46px; height:46px; object-fit:cover; display:block; pointer-events:none; }
+.cdk .cdk-launch .cdk-tag { position:absolute; left:0; right:0; bottom:0; padding:1px 0 2px; text-align:center; font:8px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.16em; background:rgba(0,0,0,.72); color:var(--edge); }
+.cdk.cdk-anim .cdk-launch { animation:cdk-ember 3.2s ease-in-out infinite; }
+@keyframes cdk-ember { 0%,100% { filter:drop-shadow(0 0 4px rgba(var(--glow-r),.35)); } 50% { filter:drop-shadow(0 0 12px rgba(var(--glow-r),.75)); } }
+.cdk .cdk-hd { cursor:grab; touch-action:none; }
+.cdk .cdk-hd button { cursor:pointer; }
+.cdk.cdk-moving .cdk-hd, .cdk.cdk-moving .cdk-launch { cursor:grabbing; }
+
+/* ---- phone: a sheet above the bottom bar; same conversation, no drag, no resize grips ---- */
+@media (max-width:760px) {
+  .cdk .cdk-launch { right:12px; bottom:calc(70px + env(safe-area-inset-bottom)); }
+  .cdk .cdk-win { left:8px; right:8px; bottom:calc(64px + env(safe-area-inset-bottom)); width:auto !important; height:min(74dvh,640px) !important; }
+  .cdk .cdk-grip { display:none; }
+  .cdk .cdk-hd { cursor:default; }
+  .cdk .cdk-btn { width:40px; height:40px; }
+  .cdk .cdk-send { width:44px; height:40px; }
+}

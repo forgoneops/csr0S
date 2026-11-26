@@ -21,6 +21,7 @@ pub fn create_main(app: &AppHandle, saved: Option<Geometry>, shared: Arc<Shared>
     let g = clamp(saved.unwrap_or_default());
     let mut b = WebviewWindowBuilder::new(app, MAIN_LABEL, WebviewUrl::App("index.html".into()))
         .title("CaesarOS")
+        .visible(false) // shown once the gateway answers, so the picker page never flashes at launch
         .inner_size(g.width, g.height)
         .min_inner_size(MIN_WIDTH, MIN_HEIGHT);
     b = guard_navigation(b, app, shared);
@@ -103,6 +104,14 @@ fn guard_navigation<'a>(b: Builder<'a>, app: &AppHandle, shared: Arc<Shared>) ->
             // Built off this callback's thread: a window cannot be created while the webview waits for the answer.
             let app = app.clone();
             std::thread::spawn(move || open_pop(&app, url, None, None));
+        } else if matches!(url.scheme(), "http" | "https") && url.host().is_some() {
+            // External links such as Hall of Fame profiles belong in the user's browser.
+            let app = app.clone();
+            std::thread::spawn(move || {
+                if let Err(error) = tauri_plugin_opener::OpenerExt::opener(&app).open_url(url.as_str(), None::<&str>) {
+                    eprintln!("caesaros-shell: could not open external link: {error}");
+                }
+            });
         } else {
             eprintln!("caesaros-shell: new window denied to {}", url.origin().ascii_serialization());
         }

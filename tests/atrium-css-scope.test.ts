@@ -39,6 +39,7 @@ const MODULES: Record<string, string> = {
   "board.css": ".bd",
   "dock.css": ".cdk",
   "hof3d.css": ".hf3",
+  "skills.css": ".sk",
 };
 
 // names a module stylesheet takes once its rules leave kit.css

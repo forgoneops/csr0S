@@ -12,7 +12,7 @@ function ogMode() {
   return `<div class="og-mode" role="group" aria-label="Where CaesarOS runs" tabindex="0"><span class="cur">${cur[1]}<em>▾</em></span><div class="pop">${M.map(([k, n, r]) => `<button class="${OGS.mode === k ? 'on' : ''}" data-og="mode:${k}" title="${k === 'local' ? 'Everything on this device. Nothing leaves it.' : k === 'vps' ? 'Engine and Shared Brain on your VPS. Recommended.' : 'No network at all. Installed models and files only.'}">${n}${r ? `<i>${r}</i>` : ''}</button>`).join('')}</div></div>`;
 }
 
-const ogHead = (name, sub, la) => `${''&&scene(({ Integrations: 'hermes-marketplace', Models: 'forge', Gateway: 'herdr', Vault: 'library', Clipboard: 'folders', Devices: 'fleet' })[name] || 'atrium-hero', 100)}<div class="nx-phead"><h2>${OGE(name.toUpperCase())}</h2><span class="label">${OGE(la)}</span></div><p style="margin:6px 0 0;color:var(--muted);font-size:13px;max-width:760px">${OGE(sub)}</p>`;
+const ogHead = (name, sub, la) => `${typeof ARTHEAD === 'function' ? ARTHEAD(name) : ''}<div class="nx-phead"><h2>${OGE(name.toUpperCase())}</h2><span class="label">${OGE(la)}</span></div><p style="margin:6px 0 0;color:var(--muted);font-size:13px;max-width:760px">${OGE(sub)}</p>`;
 
 const ogModeBanner = () => OGS.mode === 'off'
   ? `<div class="og-banner"><b>Offline</b> No network. Only installed models, local tools and your files work. The Shared Brain waits to sync.</div>`
@@ -29,7 +29,7 @@ function ogIntegrations() {
   const conn = new Set(['Obsidian', 'GitHub']);
   const f = OGS.filt;
   const show = n => f === 'All' || (f === 'Connected' ? conn.has(n) : !conn.has(n));
-  const card = ([n, d, l]) => show(n) ? `<div class="og-card"><h4>${OGE(n)}</h4><p>${OGE(d)}</p><div class="og-act">${conn.has(n) ? '<span class="og-tag sig">Connected</span>' : '<span class="og-tag mut">Not connected</span>'}<button class="btn ghost" style="height:28px;padding:0 10px">${n === 'Obsidian' ? 'Choose vault' : conn.has(n) ? 'Manage' : 'Connect'}</button></div></div>` : '';
+  const card = ([n, d, l]) => show(n) ? `<div class="og-card"><h4>${typeof ARTLOGO === 'function' ? ARTLOGO(n) : ''}${OGE(n)}</h4><p>${OGE(d)}</p><div class="og-act">${conn.has(n) ? '<span class="og-tag sig">Connected</span>' : '<span class="og-tag mut">Not connected</span>'}<button class="btn ghost" style="height:28px;padding:0 10px">${n === 'Obsidian' ? 'Choose vault' : conn.has(n) ? 'Manage' : 'Connect'}</button></div></div>` : '';
   const grp = (t, a) => { const h = a.map(card).join(''); return h ? `<div class="og-sec">${t}</div><div class="og-grid">${h}</div>` : ''; };
   return `<div class="nx-view enter">${ogHead('Integrations', 'Our own tools first. Connect anything else you use. Actions run only after you approve them.', 'Connexio')}
   <div class="og-wrap">${ogModeBanner()}

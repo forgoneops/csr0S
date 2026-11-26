@@ -20,6 +20,15 @@ test("a fullscreen window on the current workspace is reported by app name; one 
   expect((await seeWindows(run([client({ class: "game", fullscreen: 2, workspace: { id: 3 } })]))).fullscreenOver).toBe("");
   expect((await seeWindows(run([client({ class: "CaesarOS HUD", title: "CaesarOS HUD", fullscreen: 2 })]))).fullscreenOver).toBe("");
 });
+test("height titles the shell accepts are filtered, and a lookalike is not", async () => {
+  const titles = ["CaesarOS HUD ·h1e2", "CaesarOS HUD ·h+120", "CaesarOS HUD ·h.5", "CaesarOS HUD ·h1."];
+  for (const title of titles) {
+    const seen = await seeWindows(run([client({ class: "HUD", title, focusHistoryID: 0 }), client({ class: "kitty", title: "~", focusHistoryID: 1 })]));
+    expect(seen.window?.app).toBe("kitty");
+  }
+  const lookalike = await seeWindows(run([client({ class: "HUD", title: "CaesarOS HUD ·h1e2x", focusHistoryID: 0 })]));
+  expect(lookalike.window?.app).toBe("HUD");
+});
 test("no Hyprland, an unreadable answer or nothing open say so instead of guessing", async () => {
   expect(await seeWindows(async () => null)).toMatchObject({ available: false, window: null });
   expect(await seeWindows(async () => "not json")).toMatchObject({ available: false, window: null });

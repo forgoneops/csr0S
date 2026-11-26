@@ -5,11 +5,13 @@ import type { Context, Hono } from "hono";
 import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { ROOT } from "./root";
 
 export type TtsPaths = { python: string; worker: string; voices: string };
 /** Next to the speech-to-text home (`CAESAROS_SPEECH_DIR`, default ~/.local/share/caesaros-speech): tts/venv holds Piper, tts/voices the voice files. */
 const speechDir = () => process.env.CAESAROS_SPEECH_DIR ?? join(homedir(), ".local", "share", "caesaros-speech");
-export const ttsPaths = (repo: string = join(import.meta.dir, "..")): TtsPaths => ({
+// The worker ships in resources/tools/speech next to an installed app; ROOT is the source tree or that resource folder.
+export const ttsPaths = (repo: string = ROOT): TtsPaths => ({
   python: process.env.CAESAROS_TTS_PYTHON ?? join(speechDir(), "tts", "venv", "bin", "python"),
   worker: process.env.CAESAROS_TTS_WORKER ?? join(repo, "tools", "speech", "tts_worker.py"),
   voices: process.env.CAESAROS_TTS_VOICES ?? join(speechDir(), "tts", "voices"),

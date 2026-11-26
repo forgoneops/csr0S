@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
-// `caesar-layer`, level 1 (plan 7.7): the Brain for a coding agent started by hand (Claude Code, Codex). Local-first and
+// `caesar-layer`, level 1 (plan 7.7): the Brain for a coding agent started by hand (Hermes, Claude Code, Codex). Local-first and
 // read-only: it reads the note files in the instance's data folder directly, so it starts at once and works when the core
 // is down; only `caesar_status` asks the core, with a short timeout, and says "Caesar is offline" instead of hanging.
 // Agents never edit the owner's notes (vault ruling), so there is no write tool here. And an agent sees ONLY what the owner shared:
 // `layer-share.json` in the data folder lists the shared folders and notes (written by `bun tools/attach.ts share <folder>`); with no
-// file nothing is shared, because a Claude Code or Codex session sends what it reads to a cloud model.
-//   attach:  bun tools/attach.ts claude-code|codex --apply
+// file nothing is shared, because an agent session may send what it reads to a cloud model.
+//   attach:  bun tools/attach.ts hermes|claude-code|codex --apply
 // Env: CAESAROS_DATA (default ~/.local/share/caesaros-mine), CAESAROS_URL (default http://127.0.0.1:4479)
 import { lstatSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
