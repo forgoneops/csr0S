@@ -1,0 +1,13 @@
+{
+  "id": "goals",
+  "name": "Goals",
+  "version": "0.1.0",
+  "description": "Plan outcomes for today, this week, this month and this quarter.",
+  "group": "day",
+  "tags": ["goals", "planning"],
+  "nav": [{ "id": "goals", "label": "Goals", "icon": "check", "path": "/goals", "category": "day", "order": 24 }],
+  "routes": ["/goals"],
+  "edition": "standard",
+  "defaultOff": false,
+  "permissions": []
+}

@@ -6,6 +6,7 @@
 import type { Context, Hono, MiddlewareHandler } from "hono";
 import { scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
 import { kv } from "./db";
+import { access } from "./principal";
 
 type Rec = { salt: string; hash: string } | null;
 const store = kv("auth");
@@ -39,16 +40,27 @@ export function throttled(key: string, now = Date.now()): boolean { const f = fa
 export function noteFail(key: string, now = Date.now()) { const f = fails.get(key) ?? { n: 0, until: 0 }; f.n++; if (f.n >= 5) { f.until = now + 60_000 * Math.min(30, 2 ** (f.n - 5)); } fails.set(key, f); }
 export const noteOk = (key: string) => fails.delete(key);
 
+/** Who is knocking, for the rate limit: the socket's own address. X-Forwarded-For is typed by the caller, so it
+ *  counts only when a proxy on this machine sent the request, and then only the last entry, the one the proxy added. */
+export function clientAddress(c: Context): string | undefined {
+  const ip = (c.env as { server?: { requestIP?: (r: Request) => { address: string } | null } } | undefined)?.server?.requestIP?.(c.req.raw)?.address;
+  const via = /^(127\.|::1$|::ffff:127\.)/.test(ip ?? "") ? c.req.header("x-forwarded-for")?.split(",").pop()?.trim() : undefined;
+  return via || ip;
+}
+
 /** Paths a stranger may always reach: the login page, the status, and the routes that carry their own key. */
 const OPEN = [/^\/login$/, /^\/api\/login$/, /^\/api\/auth\/status$/, /^\/api\/health$/, /^\/api\/pair$/, /^\/api\/handoff$/, /^\/api\/sync\/notes$/, /^\/sw\.js$/, /^\/manifest\.webmanifest$/, /^\/icons\//];
 
 export function authGate(): MiddlewareHandler {
   return async (c, next) => {
     if (!authEnabled()) return next();
-    const path = new URL(c.req.url).pathname;
+    const path = c.req.path;
     if (OPEN.some((r) => r.test(path))) return next();
     if (validSession(cookieOf(c))) return next();
-    if ((c.req.header("authorization") ?? "").toLowerCase().startsWith("bearer ")) return next();   // an agent or a paired device: its own key is checked by the route
+    // An agent or a paired device carries its own bearer token. Pass it only when the token is a
+    // real issued agent key, not for any header that merely starts with "Bearer " (a bare header
+    // would otherwise bypass the login wall on routes that do not re-check the token themselves).
+    if (access.principal(c).kind === "agent") return next();
     if (path.startsWith("/api/") || path.startsWith("/v1/")) return c.json({ error: "login_required" }, 401);
     return c.redirect("/login");
   };
@@ -60,9 +72,8 @@ input,button{min-height:44px;box-sizing:border-box;font:inherit;padding:0 14px;c
 <body><form method="post" action="/login"><h1>CaesarOS</h1><input type="password" name="password" placeholder="Password" autocomplete="current-password" autofocus><button>Open</button><p role="alert">${msg}</p></form></body></html>`;
 
 export function authApi(app: Hono, isOperator: (c: Context) => boolean) {
-  const ip = (c: Context) => c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? ((c.env as { server?: { requestIP?: (r: Request) => { address: string } | null } } | undefined)?.server?.requestIP?.(c.req.raw)?.address ?? "local");
   const login = async (c: Context, pw: unknown) => {
-    const k = ip(c);
+    const k = clientAddress(c) ?? "local";
     if (throttled(k)) return { ok: false as const, status: 429 as const };
     if (!authEnabled() || !checkPassword(pw)) { noteFail(k); return { ok: false as const, status: 401 as const }; }
     noteOk(k); return { ok: true as const, token: newSession() };

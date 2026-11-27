@@ -8,7 +8,7 @@ export type Seen = { available: boolean; reason?: string; window: { app: string;
 export const HUD_TITLE_PREFIX = "CaesarOS HUD";
 /** The shell accepts only the bare title or a valid `·h<px>`, `·close`, `·open` command. A lookalike prefix is another window. */
 const isHudTitle = (title: string) => title === HUD_TITLE_PREFIX
-  || /^·(h\d+(?:\.\d+)?|close|open)$/.test(title.slice(HUD_TITLE_PREFIX.length).trim());
+  || /^·(h[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|close|open)$/.test(title.slice(HUD_TITLE_PREFIX.length).trim());
 
 /** The real runner: `hyprctl -j <args>` with a short timeout; null when it is absent or fails. */
 export const hyprctl: Run = async (args) => {

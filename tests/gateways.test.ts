@@ -27,7 +27,7 @@ describe("addGateway / removeGateway", () => {
   test("adds with a unique id and picks the kind from the host", () => {
     const a = addGateway([], { name: "My VPS", url: "https://a.example" });
     expect("list" in a && a.list[0]).toEqual({ id: "my-vps", name: "My VPS", url: "https://a.example", kind: "vps" });
-    const b = addGateway((a as { list: Gateway[] }).list, { name: "My VPS", url: "https://b.example" });
+    const b = addGateway((a as { list: Gateway[] }).list, { name: "My-VPS", url: "https://b.example" });
     expect("list" in b && b.list.map((g) => g.id)).toEqual(["my-vps", "my-vps-2"]);
     const l = addGateway([], { name: "Other port", url: "http://127.0.0.1:4411" });
     expect("list" in l && l.list[0].kind).toBe("local");

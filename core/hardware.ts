@@ -2,10 +2,10 @@
 // advice (M1). Reads RAM, CPU, free disk and the GPU vendor from /sys; runs nothing, sends nothing.
 // The catalog below is our own short list: sizes are approximate Q4 downloads, checked against nothing live
 // (shortcut: static list, replace with the remote catalog of M5 when it exists).
-import { cpus, platform, totalmem } from "node:os";
+import { arch, cpus, platform, totalmem } from "node:os";
 import { readFileSync, readdirSync, statfsSync } from "node:fs";
 
-export type Machine = { ramGb: number; cores: number; freeDiskGb: number; gpu: "nvidia" | "amd" | "intel" | "none" | "unknown"; os: string };
+export type Machine = { ramGb: number; cores: number; freeDiskGb: number; gpu: "nvidia" | "amd" | "intel" | "none" | "unknown"; os: string; arch?: string; diskTotalGb?: number };
 export type Tier = "quick" | "balanced" | "max";
 export type Advice = { tier: Tier; model: string; sizeGb: number; why: string };
 
@@ -24,9 +24,9 @@ function gpuVendor(): Machine["gpu"] {
 }
 
 export function readMachine(dataDir: string): Machine {
-  let free = 0;
-  try { const s = statfsSync(dataDir); free = (s.bavail * s.bsize) / GB; } catch { /* unreadable: 0 means "do not recommend a download" */ }
-  return { ramGb: Math.round((totalmem() / GB) * 10) / 10, cores: cpus().length, freeDiskGb: Math.round(free * 10) / 10, gpu: gpuVendor(), os: platform() };
+  let free = 0, total = 0;
+  try { const s = statfsSync(dataDir); free = (s.bavail * s.bsize) / GB; total = (s.blocks * s.bsize) / GB; } catch { /* unreadable: 0 means "do not recommend a download" */ }
+  return { ramGb: Math.round((totalmem() / GB) * 10) / 10, cores: cpus().length, freeDiskGb: Math.round(free * 10) / 10, gpu: gpuVendor(), os: platform(), arch: arch(), diskTotalGb: Math.round(total * 10) / 10 };
 }
 
 /** Our own short list, small to large. Sizes in GB, approximate. */

@@ -1,19 +1,22 @@
 #!/usr/bin/env bun
-// Plan 7.7: give Claude Code or Codex, started by hand, the same Brain as CaesarOS.
-//   bun tools/attach.ts <claude-code|codex>             dry run: says what it would change, writes nothing
-//   bun tools/attach.ts <claude-code|codex> --apply     writes it, after a backup of every file it edits
-//   bun tools/attach.ts <claude-code|codex> --remove    takes out exactly what this tool added, nothing else
-// Config dirs follow the agent's own variables (CLAUDE_CONFIG_DIR, CODEX_HOME), so a scratch dir is a safe trial.
+// Plan 7.7: give Hermes, Claude Code or Codex, started by hand, the same Brain as CaesarOS.
+//   bun tools/attach.ts <hermes|claude-code|codex>             dry run: says what it would change, writes nothing
+//   bun tools/attach.ts <hermes|claude-code|codex> --apply     writes it, after a backup of every file it edits
+//   bun tools/attach.ts <hermes|claude-code|codex> --remove    takes out exactly what this tool added, nothing else
+// Config dirs follow the agent's own variables (HERMES_HOME, CLAUDE_CONFIG_DIR, CODEX_HOME), so a scratch dir is a safe trial.
 //   bun tools/attach.ts share <folder>...    what an attached agent may read (nothing until you say so); unshare <folder>...; shared
-// Level 1 (tools) for both, plus a session-start Brain brief for Claude Code. Codex has no brief hook here: its hook
+// Level 1 (tools) for all three, plus a session-start Brain brief for Claude Code. Codex has no brief hook here: its hook
 // format is not verified yet, so that part is reported as "not supported", never faked.
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 const ROOT = resolve(dirname(import.meta.dir ?? "."), "");
 const MCP = join(ROOT, "tools/caesar-layer-mcp.ts"), BRIEF = join(ROOT, "tools/caesar-layer-brief.ts");
 const NAME = "caesar-layer", MARK_BEGIN = "# >>> caesaros attach (caesar-layer)", MARK_END = "# <<< caesaros attach (caesar-layer)";
+const HERMES_MARK_BEGIN = "# >>> caesaros attach (caesar-layer)";
+const HERMES_MARK_END = "# <<< caesaros attach (caesar-layer)";
 // The data folder and address of YOUR instance: from the environment, else the clean product's own defaults (never somebody else's folder).
 const env = { CAESAROS_DATA: process.env.CAESAROS_DATA ?? join(homedir(), ".local/share/caesaros"), CAESAROS_URL: process.env.CAESAROS_URL ?? "http://127.0.0.1:4480" };
 const claudeDir = () => process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
@@ -39,6 +42,70 @@ export function codexRemove(toml: string): string {
   const a = toml.indexOf(MARK_BEGIN), b = toml.indexOf(MARK_END);
   if (a < 0 || b < a) return toml;
   return toml.slice(0, a).replace(/\n+$/, (m) => (a === 0 ? "" : m.length > 1 ? "\n" : m)) + toml.slice(b + MARK_END.length).replace(/^\n/, "");
+}
+
+// ---- Hermes Agent: a marked block in config.yaml. Existing user MCP entries are preserved. ----
+const hermesDir = () => process.env.HERMES_HOME ?? join(homedir(), ".hermes");
+const yq = (s: string) => JSON.stringify(s); // JSON double-quoted strings are valid YAML scalars.
+function hermesEol(yaml: string): "\n" | "\r\n" {
+  const lfOnly = yaml.replace(/\r\n/g, "");
+  if (lfOnly.includes("\n") && yaml.includes("\r\n") || lfOnly.includes("\r"))
+    throw new Error("config.yaml has mixed or unsupported line endings; leaving it untouched");
+  return yaml.includes("\r\n") ? "\r\n" : "\n";
+}
+function hermesServerLines(indent: "" | "  ", config: { CAESAROS_DATA: string; CAESAROS_URL: string }): string[] {
+  const child = `${indent}  `;
+  return [
+    `${indent}caesar-layer:`,
+    `${child}command: ${yq("bun")}`,
+    `${child}args: [${yq(MCP)}]`,
+    `${child}env:`,
+    `${child}  CAESAROS_DATA: ${yq(config.CAESAROS_DATA)}`,
+    `${child}  CAESAROS_URL: ${yq(config.CAESAROS_URL)}`,
+  ];
+}
+function hermesBlock(indent: "" | "  ", config: { CAESAROS_DATA: string; CAESAROS_URL: string }, root = false): string[] {
+  const body = root ? ["mcp_servers:", ...hermesServerLines("  ", config)] : hermesServerLines(indent, config);
+  const hash = createHash("sha256").update(body.join("\n")).digest("hex");
+  return [`${indent}${HERMES_MARK_BEGIN} sha256=${hash}`, ...body, `${indent}${HERMES_MARK_END}`];
+}
+function hermesMarkerRange(lines: string[]): [number, number] | null {
+  const beginMarkers = lines.flatMap((line, i) => line.trim().startsWith(HERMES_MARK_BEGIN) ? [i] : []);
+  const begins = lines.flatMap((line, i) => /^# >>> caesaros attach \(caesar-layer\) sha256=([a-f0-9]{64})$/.test(line.trim()) ? [i] : []);
+  const ends = lines.flatMap((line, i) => line.trim() === HERMES_MARK_END ? [i] : []);
+  if (beginMarkers.length !== begins.length || begins.length !== ends.length || begins.length > 1 || (begins.length === 1 && ends[0] < begins[0]))
+    throw new Error("config.yaml has invalid caesaros markers; fix it by hand, then run again");
+  if (!begins.length) return null;
+  const expected = lines[begins[0]].trim().match(/sha256=([a-f0-9]{64})$/)![1];
+  const actual = createHash("sha256").update(lines.slice(begins[0] + 1, ends[0]).join("\n")).digest("hex");
+  if (actual !== expected) throw new Error("managed Hermes MCP block changed; leaving the config untouched");
+  return [begins[0], ends[0]];
+}
+export function hermesAdd(yaml: string, config = env): string {
+  const eol = hermesEol(yaml), lines = yaml.split(/\r?\n/);
+  if (lines.some((line) => line.includes("\t"))) throw new Error("config.yaml tabs are unsupported; fix indentation by hand, then run again");
+  if (hermesMarkerRange(lines)) return yaml;
+  const roots = lines.flatMap((line, i) => /^mcp_servers\s*:\s*(?:#.*)?$/.test(line) ? [i] : []);
+  if (roots.length > 1 || lines.some((line) => /^\s+mcp_servers\s*:/.test(line)))
+    throw new Error("config.yaml MCP section is ambiguous; fix it by hand, then run again");
+  if (roots.length === 0) {
+    if (lines.some((line) => /^\s*mcp_servers\s*:/.test(line))) throw new Error("config.yaml MCP section is unsupported");
+    const block = hermesBlock("", config, true), prefix = lines.join(eol).replace(/(?:\r?\n)*$/, "");
+    return `${prefix}${prefix.trim() ? eol + eol : ""}${block.join(eol)}${eol}`;
+  }
+  const root = roots[0]; let end = root + 1;
+  while (end < lines.length && (!lines[end].trim() || lines[end].startsWith(" "))) end++;
+  if (lines.slice(root + 1, end).some((line) => /^\s{2}caesar-layer\s*:/.test(line)))
+    throw new Error("an unmarked caesar-layer MCP server already exists; leaving it unchanged");
+  const block = hermesBlock("  ", config);
+  lines.splice(end, 0, ...block);
+  return lines.join(eol);
+}
+export function hermesRemove(yaml: string): string {
+  const eol = hermesEol(yaml), lines = yaml.split(/\r?\n/), range = hermesMarkerRange(lines);
+  if (!range) return yaml;
+  lines.splice(range[0], range[1] - range[0] + 1);
+  return lines.join(eol);
 }
 
 // ---- Claude Code: the MCP server through its own CLI (it rewrites .claude.json constantly), the hook in settings.json ----
@@ -75,14 +142,20 @@ if (import.meta.main && ["share", "unshare", "shared"].includes(target ?? "")) {
 }
 if (import.meta.main) {
   const apply = flags.includes("--apply"), remove = flags.includes("--remove");
-  if (!["claude-code", "codex"].includes(target ?? "") || (apply && remove)) { console.error("usage: bun tools/attach.ts <claude-code|codex> [--apply | --remove]"); process.exit(2); }
+  if (!["hermes", "claude-code", "codex"].includes(target ?? "") || (apply && remove)) { console.error("usage: bun tools/attach.ts <hermes|claude-code|codex> [--apply | --remove]"); process.exit(2); }
   const say = (s: string) => console.log(s);
   const verb = remove ? "remove" : apply ? "write" : "would write (dry run, add --apply)";
   say(`CaesarOS attach: ${target}, ${remove ? "removing" : apply ? "applying" : "dry run"}`);
-  if (target === "codex") {
+  if (target === "hermes") {
+    const file = join(hermesDir(), "config.yaml"); const cur = existsSync(file) ? readFileSync(file, "utf8") : "";
+    const next = remove ? hermesRemove(cur) : hermesAdd(cur);
+    say(`- ${verb}: ${file}, a marked ${NAME} block (the CaesarOS Brain and Board tool server)`);
+    if ((apply || remove) && next !== cur) { const b = backup(file, hermesDir()); mkdirSync(hermesDir(), { recursive: true }); writeFileSync(file, next); say(`- backup: ${b ?? "none (new file)"}`); }
+    else if (apply || remove) say("- nothing to change");
+  } else if (target === "codex") {
     const file = join(codexDir(), "config.toml"); const cur = existsSync(file) ? readFileSync(file, "utf8") : "";
     const next = remove ? codexRemove(cur) : codexAdd(cur);
-    say(`- ${verb}: ${file}, a marked ${NAME} block (the tool server, read-only Brain)`);
+    say(`- ${verb}: ${file}, a marked ${NAME} block (the CaesarOS Brain and Board tool server)`);
     say("- session-start brief: not supported for Codex yet (hook format not verified)");
     if (apply || remove) { if (next === cur) say("- nothing to change"); else { const b = backup(file, codexDir()); mkdirSync(codexDir(), { recursive: true }); writeFileSync(file, next); say(`- backup: ${b ?? "none (new file)"}`); } }
   } else {

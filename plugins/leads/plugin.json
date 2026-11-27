@@ -1,0 +1,13 @@
+{
+  "id": "leads",
+  "name": "Leads",
+  "version": "0.1.0",
+  "description": "A Scout and Analyst pipeline for leads: a score for each, an offer draft, and your yes before anything moves on. Nothing is ever sent from here.",
+  "group": "client",
+  "edition": "standard",
+  "defaultOff": true,
+  "tags": ["business", "optional", "never-sends"],
+  "nav": [],
+  "routes": [],
+  "permissions": []
+}

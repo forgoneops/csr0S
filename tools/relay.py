@@ -2,7 +2,7 @@
 """Relay: keeps crew work going when a worker hits a usage or rate limit.
 Queue file (JSON list) holds tasks with a fallback chain of crew profiles. Each tick:
   running task whose run has ended -> read its last answer; a limit marker or no answer -> start the next worker in the
-  chain with a 'continue from the branch state' note; a normal answer -> mark done (gates and review stay with Varro and Konrad).
+  chain with a 'continue from the branch state' note; a normal answer -> mark done (gates and review stay with Varro and the owner).
   pending task -> start when fewer than CAP runs are active.
 Never touches main, deploys or restarts. Usage: relay.py QUEUE.json [--dry]   |   relay.py --selftest"""
 import json, os, re, subprocess, sys, time

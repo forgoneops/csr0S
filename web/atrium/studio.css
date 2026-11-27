@@ -1,0 +1,23 @@
+/* Studio: Social desk, Reels, Offer Boards. Tokens only, cut corners, no round shapes. Root: .sdx */
+.sdx .sd-note{color:var(--gold);margin:6px 0 0}
+.sdx .sd-lint{margin:6px 0;padding-left:16px;color:var(--gold);font-size:12px}
+.sdx .sd-rail{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.sdx .sd-step{font:500 10px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;border:1px solid var(--line);color:var(--muted);--cut:6px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.sdx .sd-step.on{border-color:var(--p1);color:var(--ink);background:color-mix(in srgb,var(--p1) 16%,transparent)}
+.sdx .sd-step.done{color:var(--p2)}
+.sdx .sd-qc{border:1px solid var(--line);padding:10px;margin:8px 0;display:grid;gap:8px}
+.sdx .sd-checks{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13px}
+.sdx .sd-checks .ok b{color:var(--p2)}
+.sdx .sd-checks .bad b{color:var(--gold)}
+.sdx .sd-gate{font:12px var(--font-mono);color:var(--muted);margin:8px 0}
+.sdx .sd-ob{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:12px;align-items:start}
+.sdx .sd-edit{display:grid;gap:8px}
+.sdx .sd-edit textarea{width:100%}
+.sdx .sd-prev canvas{width:100%;height:auto;display:block;background:var(--bg);border:1px solid var(--line)}
+.sdx .sd-thumbs{display:grid;gap:4px}
+.sdx .sd-th{display:flex;gap:6px;align-items:center;font-size:12px}
+.sdx .sd-th i{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:normal}
+.sdx .sd-file{cursor:pointer;display:inline-flex;align-items:center}
+@media (max-width:760px){.sdx .sd-ob{grid-template-columns:1fr}}
+.sdx .og-act{flex-wrap:wrap;gap:6px}
+.sdx .og-act .og-row{flex-wrap:wrap}

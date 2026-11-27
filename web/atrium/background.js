@@ -9,7 +9,7 @@
       const dpr = Math.min(devicePixelRatio || 1, 1.5);
       w = innerWidth; h = innerHeight;
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); buildNet(); if (useGL) { glc.width = Math.round(w * dpr); glc.height = Math.round(h * dpr); uploadStatic(); } draw(); renderGL(false);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); buildNet(); ascii?.resize(w, h, net); if (useGL) { glc.width = Math.round(w * dpr); glc.height = Math.round(h * dpr); uploadStatic(); } draw(); renderGL(false);
     };
     // Circuit traces with travelling pulses: right angles and 45 degree bends only, pulses are small diamonds (no round shapes).
     // The pointer (mouse or finger) wakes the nodes near it. It only reads the position, nothing is clickable here.
@@ -47,6 +47,10 @@
     };
     // WebGL layer: traces, nodes and pulses as shader glow (diamond-shaped halos, no round shapes); the 2D canvas keeps the static stone layer.
     const glc = document.createElement("canvas"); glc.className = "bg-gl"; glc.setAttribute("aria-hidden", "true"); canvas.after(glc);
+    // Code-glyph layer (ascii.js) sits under the lines and is lit by them.
+    let ac = document.createElement("canvas"); ac.className = "bg-gl bg-ascii"; ac.setAttribute("aria-hidden", "true"); canvas.after(ac);
+    let ascii = window.caesarosAscii?.(ac) || null; // null when WebGL2 is missing: a 2D glyph layer is swapped in below
+    const paintAscii = (animating) => { if (!ascii) return; const cs = getComputedStyle(document.documentElement); ascii.render({ net, phase, pointAt, animating, rich: document.documentElement.dataset.bg !== "subtle", on: document.documentElement.dataset.theme === "caesaros" && document.documentElement.dataset.bg !== "off", accent: cs.getPropertyValue("--p1") || cs.getPropertyValue("--accent") || "#ff8a3d", signal: cs.getPropertyValue("--p2") || cs.getPropertyValue("--signal") || "#33e8ff" }); };
     const gl = glc.getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: false });
     let useGL = !!gl, segProg, nodeProg, segBuf, nodeBuf, pulseBuf, cornerBuf, nodeCount = 0, segCount = 0, pulseCount = 0, glTrouble = false;
     const hex3 = (c) => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(c.trim()); return m ? [1, 2, 3].map((i) => parseInt(m[i], 16) / 255) : [.8, .44, .26]; };
@@ -70,6 +74,14 @@
         segBuf = gl.createBuffer(); nodeBuf = gl.createBuffer(); pulseBuf = gl.createBuffer();
       } catch (e) { console.warn("CaesarOS background: WebGL unavailable, using 2D", e); useGL = false; glc.remove(); }
     } else glc.remove();
+    // No WebGL (blocked, software-less, or the context was lost): the 2D canvas carries the lines at a visible strength, and the glyphs get a 2D layer.
+    const swapAscii2d = () => { if (!window.caesarosAscii) return; const n = document.createElement("canvas"); n.className = ac.className; n.setAttribute("aria-hidden", "true"); ac.replaceWith(n); ac = n; ascii = window.caesarosAscii(n, { force2d: true }); if (ascii) ascii.resize(w, h, net); else n.remove(); };
+    const to2d = () => { useGL = false; glc.remove(); canvas.classList.add("bg-2d"); swapAscii2d(); };
+    if (!ascii) swapAscii2d();
+    if (!useGL) canvas.classList.add("bg-2d");
+    // shortcut: no restore after a lost context, the 2D layers stay until reload
+    glc.addEventListener("webglcontextlost", (e) => { e.preventDefault(); to2d(); draw(); });
+    ac.addEventListener("webglcontextlost", (e) => { e.preventDefault(); swapAscii2d(); });
     const attrib = (pr, name, buf, size, stride, offset, divisor) => {
       const loc = gl.getAttribLocation(pr, name); if (loc < 0) return; gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, size, gl.FLOAT, false, stride, offset); gl.vertexAttribDivisor(loc, divisor);
@@ -87,9 +99,10 @@
       gl.bindBuffer(gl.ARRAY_BUFFER, pulseBuf); gl.bufferData(gl.ARRAY_BUFFER, 4 * 5 * (net.length * 10 + 4), gl.DYNAMIC_DRAW);
     };
     const renderGL = (animating) => {
+      paintAscii(animating);
       if (!useGL) return;
       if (document.documentElement.dataset.theme !== "caesaros") { gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); return; }
-      const cs = getComputedStyle(document.documentElement), accent = hex3(cs.getPropertyValue("--accent") || "#c97143"), signal = hex3(cs.getPropertyValue("--signal") || "#79c1c1");
+      const cs = getComputedStyle(document.documentElement), accent = hex3(cs.getPropertyValue("--p1") || cs.getPropertyValue("--accent") || "#ff8a3d"), signal = hex3(cs.getPropertyValue("--p2") || cs.getPropertyValue("--signal") || "#33e8ff");
       const dpr = glc.width / Math.max(1, w); gl.viewport(0, 0, glc.width, glc.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
       if (animating) wake *= .95; else wake = 0;
@@ -116,8 +129,8 @@
     };
     const draw = () => {
       if (document.documentElement.dataset.theme !== "caesaros") { ctx.clearRect(0, 0, w, h); return; }
-      const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#c97143";
-      const signal = getComputedStyle(document.documentElement).getPropertyValue("--signal").trim() || "#79c1c1";
+      const accent = getComputedStyle(document.documentElement).getPropertyValue("--p1").trim() || "#ff8a3d";
+      const signal = getComputedStyle(document.documentElement).getPropertyValue("--p2").trim() || "#33e8ff";
       ctx.clearRect(0, 0, w, h);
       const compact = w < 720, margin = compact ? 18 : 42, horizon = h * .78;
       ctx.save();
@@ -148,10 +161,20 @@
         ctx.fillText(glyphs[i % glyphs.length], margin, y);
         if (!compact) ctx.fillText(glyphs[(i + 2) % glyphs.length], w - margin, y);
       }
+      // Sparse transparent ASCII telemetry is anchored to selected network nodes, not tiled over the UI.
+      // It gives the living node graph a little Caesar Evolved machine language without competing with content.
+      ctx.font = `${compact ? 7 : 8}px "CaesarOS Mono", monospace`;
+      net.forEach((p, i) => {
+        if (i % (compact ? 5 : 3) !== 0 || p.pts.length < 2) return;
+        const [x, y] = p.pts[0];
+        ctx.globalAlpha = .075;
+        ctx.fillStyle = p.live ? signal : accent;
+        ctx.fillText(`NODE_${String(i + 1).padStart(2, "0")} // 0x${(0xCA00 + i * 17).toString(16).toUpperCase()}`, x + 7, y - 7);
+      });
       // Traces are always faint; the pulses only run when the Living background switch is on and motion is allowed.
-      if (!useGL) { ctx.lineWidth = 1; ctx.strokeStyle = accent; ctx.globalAlpha = .07;
-      for (const p of net) { ctx.beginPath(); p.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); }
-      ctx.fillStyle = accent; ctx.globalAlpha = .16;
+      if (!useGL) { // a soft wide stroke under a sharp one stands in for the shader glow
+      for (const [lw, al] of [[6, .07], [1.4, .4]]) { ctx.lineWidth = lw; ctx.globalAlpha = al; for (const p of net) { ctx.strokeStyle = p.live ? signal : accent; ctx.beginPath(); p.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); } }
+      ctx.fillStyle = accent; ctx.globalAlpha = .5;
       for (const p of net) for (const [x, y] of [p.pts[0], p.pts[p.pts.length - 1]]) ctx.fillRect(x - 2, y - 2, 4, 4); }
       // Nodes light up as the pointer passes (diamonds, brighter and a little larger the closer it is).
       if (!useGL && !reduce.matches && opts.animate() && wake > .02) {
@@ -168,7 +191,7 @@
           const head = (p.at + phase * p.speed) % (p.total + 90), col = p.live ? signal : accent;
           for (let s = 0; s < 10; s++) {
             const d = head - s * 6; if (d < 0 || d > p.total) continue;
-            const [x, y] = pointAt(p, d); ctx.globalAlpha = (1 - s / 10) * (p.live ? .5 : .38); ctx.fillStyle = col;
+            const [x, y] = pointAt(p, d); ctx.globalAlpha = (1 - s / 10) * (p.live ? .95 : .8); ctx.fillStyle = col;
             if (s === 0) { ctx.beginPath(); ctx.moveTo(x, y - 3); ctx.lineTo(x + 3, y); ctx.lineTo(x, y + 3); ctx.lineTo(x - 3, y); ctx.closePath(); ctx.fill(); }
             else ctx.fillRect(x - 1, y - 1, 2, 2);
           }
@@ -177,12 +200,12 @@
       ctx.restore();
     };
     const frame = (now) => {
-      if (opts.animate() && !reduce.matches && !document.hidden && now - last > 33) { phase += Math.min((now - last) / 1000, .1); last = now; if (useGL) renderGL(true); else draw(); }
+      if (opts.animate() && document.documentElement.dataset.bg !== "off" && !reduce.matches && !document.hidden && now - last > 33) { phase += Math.min((now - last) / 1000, .1); last = now; if (useGL) renderGL(true); else { draw(); paintAscii(true); } }
       requestAnimationFrame(frame);
     };
     addEventListener("resize", resize);
     reduce.addEventListener?.("change", () => { draw(); renderGL(false); });
-    new MutationObserver(() => { draw(); renderGL(false); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-accent", "data-pal", "data-mode", "data-anim-background", "data-theme"] });
+    new MutationObserver(() => { draw(); renderGL(false); }).observe(document.documentElement, { attributes: true, attributeFilter: ["style", "data-skin", "data-accent", "data-pal", "data-mode", "data-anim-background", "data-theme", "data-bg"] });
     resize(); requestAnimationFrame(frame);
   };
 })();

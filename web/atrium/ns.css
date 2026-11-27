@@ -138,8 +138,10 @@ html .ns-it{height:44px}html .ns-gh{height:36px}
 .ns-it.on:before{background:var(--cx-mag)}
 @media(max-width:900px){
  html .nx-body,html.ns-pinned .nx-body{grid-template-columns:minmax(0,1fr)!important}
- .ns-wrap{position:fixed;z-index:70;top:var(--nx-top,64px);bottom:0;left:0;width:min(300px,86vw);transform:translateX(-100%);transition:transform .22s}
+ .ns-wrap{position:fixed;z-index:70;top:var(--nx-top,64px);bottom:calc(45px + env(safe-area-inset-bottom));left:0;width:min(300px,86vw);transform:translateX(-100%);transition:transform .22s}
  .ns-wrap.open{transform:none}.ns-wrap .ns-side{width:100%}.ns-wrap .ns-lab{opacity:1;pointer-events:auto}
+ /* .shell's own stacking context (real.css) would trap the drawer (70) under the body-level scrim (69); drop it while open */
+ html body .shell:has(.ns-wrap.open){z-index:auto;isolation:auto}
 }
 
 /* ---- surfaces: deep glass instead of one brown texture. Calm, one soft glow per panel, tint varies by slot ---- */
@@ -203,3 +205,4 @@ html[data-motion=off] .og-mode .pop,html[data-motion=reduced] .og-mode .pop{tran
 html.nx-simple .ns-side small.ns-lab{display:none}
 .pop-return{position:fixed;top:8px;right:8px;z-index:60;height:28px;padding:0 12px}
 body.popped .nx-rail{display:none}
+.nx-tabs .nx-tab{flex:none}   /* many tabs scroll the strip; a tab never squeezes its label */

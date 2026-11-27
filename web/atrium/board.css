@@ -6,7 +6,7 @@
 .bd .bd-undo{border:1px solid var(--line);background:color-mix(in srgb,var(--signal,#79c1c1) 8%,transparent);
   clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
   display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:8px 12px}
-.bd .bd-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 12px}
+.bd .bd-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 12px}
 .bd .bd-tabs .btn{min-height:44px;justify-content:center}
 .bd .bd-tabs .btn.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .bd .bd-lanes{display:grid;grid-template-columns:repeat(var(--bd-cols,3),minmax(0,1fr));gap:12px;align-items:start}
@@ -14,10 +14,26 @@
 .bd .bd-lane-h{margin:0;padding:2px 2px 6px;font:500 .72rem/1 var(--font-mono,monospace);letter-spacing:.18em;
   text-transform:uppercase;color:var(--accent);border-bottom:1px solid var(--line)}
 .bd .bd-lane-empty{margin:0;padding:10px 2px;color:var(--muted);font-size:.85rem}
-.bd .bd-card{border:1px solid var(--line);background:color-mix(in srgb,var(--accent) 4%,transparent);
+/* A card is a sticky note: its own stable colour band on top, a pin, paper tint and a hair of rotation, as the old board had.
+   The colour is decoration only; every fact on it still comes from the record. */
+.bd .bd-card{position:relative;border:1px solid color-mix(in srgb,var(--nc,var(--accent)) 58%,#000);
+  background:repeating-linear-gradient(180deg,transparent 0 21px,color-mix(in srgb,var(--nc,var(--accent)) 6%,transparent) 21px 22px),
+    linear-gradient(176deg,color-mix(in srgb,var(--nc,var(--accent)) 42%,#14100c),color-mix(in srgb,var(--nc,var(--accent)) 22%,#0d0a07));
+  -webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);
   clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
-  display:grid;gap:8px;padding:12px;min-width:0}
-.bd .bd-card:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+  box-shadow:0 16px 30px -22px #000,inset 0 0 0 1px #ffffff12;
+  display:grid;gap:8px;padding:18px 13px 12px;min-width:0;max-width:440px}
+.bd .bd-card .bd-band{position:absolute;left:0;right:0;top:0;height:8px;background:var(--nc,var(--accent));box-shadow:0 2px 7px -3px #000c}
+.bd .bd-card .bd-pin{position:absolute;top:15px;right:14px;width:14px;height:14px;
+  background:radial-gradient(circle at 35% 30%,#fff,var(--nc,var(--accent)) 55%,#0009);box-shadow:0 3px 5px #000a;
+  clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.bd .bd-card::after{content:"";position:absolute;right:0;bottom:0;width:18px;height:18px;pointer-events:none;
+  background:linear-gradient(135deg,transparent 50%,color-mix(in srgb,var(--nc,var(--accent)) 62%,#000) 50%)}
+.bd .bd-lane .bd-card:nth-child(3n+1){transform:rotate(-.45deg)}
+.bd .bd-lane .bd-card:nth-child(3n+2){transform:rotate(.35deg)}
+@media (max-width:900px){.bd .bd-card{max-width:none}}
+@media (prefers-reduced-motion:reduce){.bd .bd-lane .bd-card{transform:none}}
+.bd .bd-card:hover{border-color:color-mix(in srgb,var(--nc,var(--accent)) 80%,#000)}
 .bd .bd-title{margin:0;font-size:1rem;line-height:1.35;font-weight:600;overflow-wrap:anywhere}
 .bd .bd-note{margin:0;color:var(--muted);font-size:.85rem;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
 .bd .bd-acts{display:flex;flex-wrap:wrap;gap:6px}
@@ -37,3 +53,27 @@
 .bd .bd-sum li{overflow-wrap:anywhere;padding-left:12px;position:relative}
 .bd .bd-sum li::before{content:"";position:absolute;left:0;top:.55em;width:5px;height:5px;background:var(--accent)}
 .bd .bd-rawb{min-height:44px;justify-self:start}
+/* Priority chips, reminders and the free whiteboard. Colours come from tokens through --c. */
+.bd .bd-chip{display:inline-block;margin:0 6px 0 0;padding:3px 7px;font:500 .66rem/1 var(--font-mono,monospace);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--c,var(--ink,#eee));border:1px solid color-mix(in srgb,var(--c,var(--accent)) 60%,transparent);background:color-mix(in srgb,var(--c,var(--accent)) 14%,transparent);
+  clip-path:polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))}
+.bd .bd-chip.rem{--c:var(--p2,#33e8ff)}.bd .bd-chip.rem.due{--c:var(--tint-magenta,#ff38b8)}
+.bd .bd-pr{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.bd .bd-pr .btn{min-height:44px;--c:var(--accent)}
+.bd .bd-pr .btn.on{border-color:var(--c);color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.bd .bd-due{margin:0 0 12px;padding:8px 12px;border:1px solid var(--tint-magenta,#ff38b8);background:color-mix(in srgb,var(--tint-magenta,#ff38b8) 10%,transparent);overflow-wrap:anywhere}
+.bd .bd-wallbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px}
+.bd .bd-wallbar .btn{min-height:44px;min-width:44px;justify-content:center}
+.bd .bd-hint{color:var(--muted);font-size:.8rem}
+.bd .bd-wall{position:relative;height:min(68vh,640px);overflow:hidden;touch-action:none;cursor:grab;user-select:none;border:1px solid var(--line);
+  background:radial-gradient(circle,color-mix(in srgb,var(--accent) 22%,transparent) 1px,transparent 1.5px) 0 0/24px 24px,color-mix(in srgb,var(--bg,#0b0a08) 92%,var(--accent));
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.bd .bd-wall:active{cursor:grabbing}
+.bd .bd-plane{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0}
+.bd .bd-sticky{position:absolute;width:212px;box-sizing:border-box;padding:16px 12px 10px;display:grid;gap:8px;cursor:move;
+  border:1px solid color-mix(in srgb,var(--nc) 58%,#000);background:linear-gradient(176deg,color-mix(in srgb,var(--nc) 42%,#14100c),color-mix(in srgb,var(--nc) 22%,#0d0a07));
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.bd .bd-sticky .bd-band{position:absolute;left:0;right:0;top:0;height:7px;background:var(--nc)}
+.bd .bd-sticky .bd-title{margin:0;font-size:.95rem}
+.bd .bd-sticky .btn{min-height:44px;justify-self:start}
+.bd .bd-sticky.lift{z-index:2;filter:brightness(1.15)}

@@ -2,3 +2,20 @@
    Everything here lives under the module's own root class, .hf3. */
 .hf3{position:absolute;inset:0;display:block;width:100%;height:100%;pointer-events:none}
 .hf3[hidden]{display:none}
+/* the row of ten keepers is wider than the frame: previous/next buttons (cut corners) beside the drag and the wheel */
+.hf3-nav{position:absolute;top:10px;z-index:3;width:44px;height:44px;display:grid;place-items:center;padding:0;border:1px solid rgba(var(--p1r),.5);background:rgba(5,6,13,.62);color:var(--gold);cursor:pointer;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.hf3-prev{left:8px}
+.hf3-next{right:8px}
+.hf3-next svg{transform:scaleX(-1)}
+.hf3-nav svg{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:butt;stroke-linejoin:miter}
+.hf3-nav:hover,.hf3-nav:focus-visible{border-color:var(--p1);color:var(--ink);outline:0}
+.hf3-still .hf3-nav{display:none}
+.hf3-still .hof-spot span{opacity:1}
+/* While the scene runs, each link's own label is the nameplate: crisp text on the plinth that rises with the lit keeper.
+   The frame behind it (kit.css) would draw a second, flat hover over the sculpted one, so it steps aside. */
+.hf3-live .hof-spot:hover,.hf3-live .hof-spot:focus-visible{background:none;box-shadow:none}
+.hf3-live .hof-spot span{opacity:.86;bottom:6px;max-width:96%;overflow:hidden;text-overflow:ellipsis;padding:5px 10px 4px;font:600 11px var(--mono,monospace);letter-spacing:.1em;color:var(--ink);background:color-mix(in srgb,var(--bg) 84%,transparent);border:1px solid color-mix(in srgb,var(--gold) 55%,transparent);clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);transition:transform .26s cubic-bezier(.2,.8,.2,1),opacity .2s,border-color .2s}
+.hf3-live .hof-spot.hf-hot span{opacity:1;transform:translateX(-50%) translateY(-16px) scale(1.2);border-color:var(--p1);background:linear-gradient(180deg,color-mix(in srgb,var(--p1) 30%,var(--bg)),var(--bg))}
+.hf3-live .hof-spot:focus-visible span{outline:2px solid var(--p1);outline-offset:-4px}
+@media (max-width:699px){.hf3-live .hof-spot span{font-size:10px;letter-spacing:.03em;padding:4px 6px}}
+@media (prefers-reduced-motion:reduce){.hf3-live .hof-spot span{transition:none}}

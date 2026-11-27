@@ -8,9 +8,9 @@ const SHELL = [
   "/",
   "/manifest.webmanifest",
   "/index.html",
-  "/background.js", "/og.js", "/registry.js", "/pages.js", "/ns.js", "/bridge.js", "/setup.js", "/real.js", "/a11y.js", "/i18n.js", "/board.js", "/dock.js", "/pop.js", "/limits.js", "/mail.js", "/tour.js", "/mascot.js", "/voice.js", "/hud.js", "/hof3d.js",
+  "/ascii.js", "/art.js", "/datepick.js", "/skills.js", "/skills.css", "/qr.js", "/gateway.js", "/library.css", "/library.js", "/media.js", "/media.css", "/business.js", "/graph.js", "/live.js", "/live.css", "/lair.css", "/lair.js", "/ideas.js", "/getstarted.js", "/getstarted.css", "/chatx.js", "/storage.js", "/search-palette.js", "/pg-market.js", "/pg-market.css", "/pg-terminal.js", "/pg.css", "/pg-sys.js", "/pg-sys.css", "/pg-schedule.js", "/shortcuts.js", "/conversations.js", "/permissions.js", "/egress.js", "/model-caps.js", "/notify.js", "/brief.js", "/notes-autosave.js", "/chat-meter.js", "/gaps.css", "/toolgraph.css", "/finance.css", "/toolgraph.js", "/finance.js", "/background.js", "/og.js", "/registry.js", "/pages.js", "/ns.js", "/bridge.js", "/setup.js", "/viz.js", "/real.js", "/studio.js", "/studio-logic.js", "/studio.css", "/a11y.js", "/i18n.js", "/board.js", "/dock.js", "/pop.js", "/limits.js", "/mail.js", "/tour.js", "/mascot.js", "/voice.js", "/hud.js", "/hof3d.js", "/hofrelief.js",
   "/real.css", "/kit.css", "/board.css", "/ns.css", "/neo.css", "/og.css", "/dock.css", "/hof3d.css",
-  "/vendor/xterm.js", "/vendor/addon-fit.js", "/vendor/xterm.css",
+  "/vendor/xterm.js", "/vendor/addon-fit.js", "/vendor/xterm.css", "/vendor/three.min.js",
   "/icons/legio.svg", "/icons/icon-192.png", "/icons/icon-512.png",
   "/icons/icon-maskable-512.png", "/icons/apple-touch-icon.png",
   "/caesar/portrait-neo.png",
@@ -19,7 +19,18 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // The page names its own files (with this build's ?v=), so those are cached too; one missing file never blocks the install.
+  e.waitUntil((async () => {
+    const c = await caches.open(CACHE);
+    let urls = SHELL;
+    try {
+      const r = await fetch("/", { cache: "reload" }); const html = await r.clone().text();
+      if (r.ok) await c.put("/", r);
+      urls = [...new Set([...SHELL, ...[...html.matchAll(/(?:src|href)="([^":#]+\.(?:js|css|webmanifest)\?v=[^"]+)"/g)].map((m) => "/" + m[1])])];
+    } catch { /* offline install: the static list only */ }
+    await Promise.all(urls.map((u) => c.add(u).catch(() => {})));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", (e) => {
@@ -29,18 +40,29 @@ self.addEventListener("activate", (e) => {
   );
 });
 
+// a notice shown through the worker brings the app forward when pressed
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: "window" }).then((all) => (all[0] ? all[0].focus() : self.clients.openWindow("/"))));
+});
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/api/") || url.pathname === "/sw.js") return; // the worker itself is never cached
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/v1/") || url.pathname === "/sw.js") return; // the worker itself is never cached
   if (req.mode === "navigate") {
-    e.respondWith(fetch(req).then((r) => { const copy = r.clone(); caches.open(CACHE).then((c) => c.put("/", copy)); return r; }).catch(() => caches.match("/")));
+    // Only a good copy of the app itself becomes the saved shell. A 401 means this device's access is gone: drop what was saved.
+    e.respondWith(fetch(req).then(async (r) => {
+      if (r.status === 401) await Promise.all((await caches.keys()).filter((k) => k.startsWith("caesaros-atrium-")).map((k) => caches.delete(k)));
+      else if (r.ok && url.pathname === "/") { const copy = r.clone(); caches.open(CACHE).then((c) => c.put("/", copy)); }
+      return r;
+    }, () => caches.match("/")));
     return;
   }
   // shell files are precached: cache first, then network; anything else fills the cache on first use.
-  e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((r) => {
+  e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((r) => {
     if (r.ok) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
     return r;
   })));

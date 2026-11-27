@@ -8,9 +8,9 @@ import { join } from "node:path";
 import { DATA } from "./db";
 
 const SIZES = [256, 384, 512] as const;
-const DIR = () => process.env.CAESAROS_IMAGE_DIR ?? join(homedir(), ".local", "share", "caesaros-image");
+export const imageDir = () => process.env.CAESAROS_IMAGE_DIR ?? join(homedir(), ".local", "share", "caesaros-image");
 const OUT = () => join(DATA, "images");
-export const imageReady = () => existsSync(join(DIR(), ".venv", "bin", "python")) && existsSync(join(DIR(), "generate.py"));
+export const imageReady = () => existsSync(join(imageDir(), ".venv", "bin", "python")) && existsSync(join(imageDir(), "generate.py"));
 
 export type Pic = { id: string; prompt: string; size: number; at: number };
 type Job = { id: string; prompt: string; size: number; status: "running" | "error"; at: number };
@@ -31,7 +31,7 @@ export function start(prompt: string, size: number): { id: string } | { error: s
   const id = crypto.randomUUID(), png = join(OUT(), `${id}.png`);
   mkdirSync(OUT(), { recursive: true });
   job = { id, prompt, size, status: "running", at: Date.now() };
-  const p = Bun.spawn([join(DIR(), ".venv", "bin", "python"), join(DIR(), "generate.py"), png, String(size), prompt], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
+  const p = Bun.spawn([join(imageDir(), ".venv", "bin", "python"), join(imageDir(), "generate.py"), png, String(size), prompt], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
   const kill = setTimeout(() => p.kill(), 15 * 60_000);
   void p.exited.then((code) => {
     clearTimeout(kill);

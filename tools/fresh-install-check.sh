@@ -69,7 +69,7 @@ else
 fi
 
 HOME_HTML=$(curl -fsS "$BASE/" 2>/dev/null || true)
-if printf '%s' "$HOME_HTML" | grep -q 'href="real.css"' && printf '%s' "$HOME_HTML" | grep -q 'src="og.js"'; then
+if printf '%s' "$HOME_HTML" | grep -q 'href="real.css' && printf '%s' "$HOME_HTML" | grep -q 'src="og.js'; then
   echo "PASS  / returns the Atrium"
 else
   echo "FAIL  / returns the Atrium"

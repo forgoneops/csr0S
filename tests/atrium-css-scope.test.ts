@@ -37,8 +37,22 @@ const MODULES: Record<string, string> = {
   "neo.css": "html[data-skin=neo]",
   "theme-neutral.css": "html[data-skin=neo][data-theme=neutral]",
   "board.css": ".bd",
+  "media.css": ".md",
   "dock.css": ".cdk",
+  "live.css": ".lv",
+  "goals.css": ".goals-view",
+  "toolgraph.css": ".toolgraph-view",
+  "finance.css": ".finance-view",
   "hof3d.css": ".hf3",
+  "skills.css": ".sk",
+  "pg-market.css": ".pgm",
+  "pg.css": ".pg",
+  "library.css": ".lx-",
+  "pg-sys.css": ".ps",
+  "studio.css": ".sdx",
+  "getstarted.css": ".gsx",
+  "lair.css": ".lr",
+  "gaps.css": ".gx",
 };
 
 // names a module stylesheet takes once its rules leave kit.css

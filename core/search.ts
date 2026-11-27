@@ -16,8 +16,11 @@ export function searchAll(q: string, limit = 8): Hit[] {
   const out: Hit[] = [
     ...safe(() => notes.search(t).slice(0, limit).map((n): Hit => ({ kind: "note", title: n.id, text: clip(n.snippet), ref: n.id }))),
     ...safe(() => searchKnowledge(t, limit).map((h): Hit => ({ kind: "library", title: h.name, text: clip(h.passage), ref: h.docId }))),
-    ...safe(() => db.query<{ id: string; title: string; content: string; session_id: string }, [string, number]>(
-      "SELECT m.id, s.title, m.content, m.session_id FROM chat_messages m JOIN chat_sessions s ON s.id = m.session_id WHERE m.content LIKE ? ESCAPE '\\' ORDER BY m.created_at DESC LIMIT ?").all(L, limit)
+    // uploaded files match by name only; their text search renders pages and is too slow for a keystroke
+    ...safe(() => db.query<{ id: string; name: string; ext: string }, [string, number]>("SELECT id, name, ext FROM lib_files WHERE trashed = 0 AND name LIKE ? ESCAPE '\\' ORDER BY added DESC LIMIT ?").all(L, limit)
+      .map((r): Hit => ({ kind: "library", title: r.name, text: `${r.ext.toUpperCase()} file`, ref: `file:${r.id}` }))),
+    ...safe(() => db.query<{ id: string; title: string; content: string; session_id: string }, [string, string, number]>(
+      "SELECT s.id, s.title, COALESCE(m.content, '') AS content, s.id AS session_id FROM chat_sessions s LEFT JOIN chat_messages m ON m.session_id = s.id AND m.content LIKE ? ESCAPE '\\' WHERE m.id IS NOT NULL OR s.title LIKE ? ESCAPE '\\' GROUP BY s.id ORDER BY s.updated_at DESC LIMIT ?").all(L, L, limit)
       .map((r): Hit => ({ kind: "chat", title: r.title || "Conversation", text: clip(r.content), ref: r.session_id }))),
     ...safe(() => db.query<{ id: string; title: string; note: string; status: string }, [string, string, number]>(
       "SELECT id, title, note, status FROM board_tasks WHERE title LIKE ? ESCAPE '\\' OR note LIKE ? ESCAPE '\\' LIMIT ?").all(L, L, limit).map((r): Hit => ({ kind: "board", title: r.title, text: clip(r.note || r.status), ref: r.id }))),

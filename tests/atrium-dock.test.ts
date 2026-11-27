@@ -37,4 +37,15 @@ describe("chat dock", () => {
     expect(css).toContain(".cdk .cdk-win");
     expect(css).not.toMatch(/\n\s*(html|body|button|input|textarea|section|header|div)\b/);
   });
+
+  test("phone, palette, move and tour", () => {
+    expect(css).not.toMatch(/@media \(max-width:760px\) \{ \.cdk \{ display:none/);
+    expect(css).toContain("calc(70px + env(safe-area-inset-bottom))");
+    expect(dock).not.toContain("innerWidth <= 760) return;");
+    expect(css).toContain("var(--p1");   // palette tokens, no hardcoded ember or cyan
+    expect(css).not.toMatch(/#e8a94a|#7fd9ff|232,169,74|127,217,255/i);
+    expect(dock).toContain("dragMove(");
+    expect(dock).toContain("r: D.r, b: D.b");
+    expect(readFileSync(join(ATRIUM, "tour.js"), "utf8")).toContain("['.cdk-launch', 'Talk to Caesar'");
+  });
 });

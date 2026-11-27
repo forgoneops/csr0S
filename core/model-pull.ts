@@ -1,15 +1,21 @@
-// Safe model download, the Ollama way: Ollama owns the queue, the partial files and the
-// verify step; we start one pull, read its progress and show it. Only models from our own catalog can be
-// asked for, one at a time, and the person has to press the button (the write guard in server.ts applies).
+// Safe model download, the Ollama way: Ollama owns the partial files, resuming and the checksum step;
+// we run one pull at a time, line up the rest in a short queue, read the progress and show it. Only models from
+// our own catalog can be asked for, and the person has to press the button (the write guard in server.ts applies).
+// A failed download stays listed so it can be tried again. shortcut: the queue is kept in memory, a restart forgets it.
 import type { Hono } from "hono";
 import { CATALOG } from "./hardware";
 import { normalizeBase } from "./engines/ollama";
 
 export type PullState = { model: string; status: string; completed: number; total: number; done: boolean; error: string | null } | null;
 
+export const QUEUE_MAX = 5;
+export type PullView = (NonNullable<PullState> & { queue: string[]; failed: { model: string; error: string }[] }) | null;
+
 export function createPuller(opts: { baseUrl?: () => string; fetchImpl?: typeof fetch } = {}) {
   let state: PullState = null;
   let abort: AbortController | null = null;
+  let queue: string[] = [];
+  let failed: { model: string; error: string }[] = [];
   const base = opts.baseUrl ?? (() => normalizeBase(process.env.CAESAROS_OLLAMA_URL ?? process.env.OLLAMA_HOST));
   const doFetch = opts.fetchImpl ?? fetch;
 
@@ -35,20 +41,37 @@ export function createPuller(opts: { baseUrl?: () => string; fetchImpl?: typeof 
     } catch (e) {
       if (signal.aborted) state = { model, status: "cancelled", completed: 0, total: 0, done: true, error: null };
       else state = { model, status: "failed", completed: state?.completed ?? 0, total: state?.total ?? 0, done: true, error: e instanceof Error ? e.message.slice(0, 200) : "download failed" };
-    } finally { abort = null; }
+    } finally {
+      abort = null;
+      if (state?.model === model && state.error) failed.push({ model, error: state.error });
+      const next = queue.shift();
+      if (next) launch(next);
+    }
+  }
+
+  function launch(model: string) {
+    failed = failed.filter((f) => f.model !== model);
+    abort = new AbortController();
+    state = { model, status: "starting", completed: 0, total: 0, done: false, error: null };
+    void run(model, abort.signal);
   }
 
   return {
-    get: () => state,
-    start(model: string): { ok: true } | { ok: false; error: "not_in_catalog" | "busy" } {
+    get: (): PullView => (state ? { ...state, queue: [...queue], failed: [...failed] } : null),
+    start(model: string): { ok: true; queued: boolean } | { ok: false; error: "not_in_catalog" | "busy" | "queue_full" } {
       if (!CATALOG.some((c) => c.model === model)) return { ok: false, error: "not_in_catalog" };
-      if (abort) return { ok: false, error: "busy" };
-      abort = new AbortController();
-      state = { model, status: "starting", completed: 0, total: 0, done: false, error: null };
-      void run(model, abort.signal);
-      return { ok: true };
+      if (!abort) { launch(model); return { ok: true, queued: false }; }
+      if (state?.model === model || queue.includes(model)) return { ok: false, error: "busy" };
+      if (queue.length >= QUEUE_MAX) return { ok: false, error: "queue_full" };
+      queue.push(model);
+      failed = failed.filter((f) => f.model !== model);    // asked again: no longer a failure while it waits
+      return { ok: true, queued: true };
     },
-    cancel() { abort?.abort(); },
+    /** With a name: takes that one out of the line, or stops it if it is the one running. Without: stops the running one; the next starts. */
+    cancel(model?: string) {
+      if (model && queue.includes(model)) queue = queue.filter((m) => m !== model);
+      else if (!model || state?.model === model) abort?.abort();
+    },
   };
 }
 
@@ -79,7 +102,7 @@ export function modelPullApi(app: Hono, puller = createPuller()) {
   app.post("/api/models/pull", async (c) => {
     const body = await c.req.json().catch(() => ({})) as { model?: unknown };
     const r = puller.start(typeof body.model === "string" ? body.model : "");
-    return r.ok ? c.json({ ok: true }, 202) : c.json({ error: r.error }, r.error === "busy" ? 409 : 400);
+    return r.ok ? c.json({ ok: true, queued: r.queued }, 202) : c.json({ error: r.error }, r.error === "not_in_catalog" ? 400 : 409);
   });
-  app.delete("/api/models/pull", (c) => { puller.cancel(); return c.json({ ok: true }); });
+  app.delete("/api/models/pull", (c) => { puller.cancel(c.req.query("model")); return c.json({ ok: true }); });
 }

@@ -1,0 +1,13 @@
+/* Terminal page (Command is lair.js). Tokens only; cut corners and squares, no round shapes. */
+.pgt{display:grid;gap:12px;margin-top:12px}
+.pgt-px{display:inline-block;width:8px;height:8px;background:var(--line);flex:none}
+.pgt-px.gold{background:var(--gold,var(--accent))}
+.pgt-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.pgt-col{display:grid;gap:12px;align-content:start}.pgt-col .og-sec,.pgt-col .og-note{margin:0}
+.pgt-tabs{display:flex;flex-wrap:wrap;gap:8px}
+.pgt-s{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--line);background:var(--surface);font-size:12px;--c:8px;clip-path:polygon(0 0,calc(100% - var(--c)) 0,100% var(--c),100% 100%,0 100%)}
+.pgt-s.on{border-color:var(--signal)}.pgt-s.on .pgt-px{background:var(--signal)}.pgt-s small{color:var(--muted);font-size:10px}
+.pgt .og-row .btn{min-height:40px}
+.pgt-pane.nx-term.tabmode{height:calc(100dvh - 560px);min-height:300px}
+@media(max-width:900px){.pgt-row{grid-template-columns:minmax(0,1fr)}.pgt-pane.nx-term.tabmode{height:60dvh}}
+@media(max-width:640px){.pgt .vz-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.pgt .vz-tile{padding:9px 8px}.pgt .vz-tile b{font-size:16px}.pgt-pane .th>span[style*=muted],.pgt-pane .th>.rt-host{display:none}.pgt-pane .th{justify-content:space-between}}

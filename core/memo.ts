@@ -9,3 +9,15 @@ export function memoFor<T>(ms: number, fn: () => Promise<T>): () => Promise<T> {
     return hit;
   };
 }
+
+/** Stale-while-revalidate: the first call waits, later calls answer at once with the last value and refresh it in the
+ *  background once `ms` has passed. `warm()` fills it ahead of the first request so nobody waits on a slow probe. */
+export function swrFor<T>(ms: number, fn: () => Promise<T>): (() => Promise<T>) & { warm: () => void } {
+  let at = 0, val: T | undefined, has = false, busy: Promise<T> | null = null;
+  const refresh = () => (busy ??= fn().then((v) => { val = v; has = true; at = Date.now(); return v; }).finally(() => { busy = null; }));
+  const get = () => {
+    if (has && Date.now() - at > ms) void refresh().catch(() => {});
+    return has ? Promise.resolve(val as T) : refresh();
+  };
+  return Object.assign(get, { warm: () => void refresh().catch(() => {}) });
+}

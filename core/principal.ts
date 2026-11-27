@@ -27,7 +27,17 @@ export function knownHost(h: string | undefined, extra = process.env.CAESAROS_HO
   const host = h.trim().toLowerCase().replace(/:\d+$/, "").replace(/^\[(.*)\]$/, "$1");
   return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":") || host === "localhost" || !host.includes(".") || host.endsWith(".local") || extra.split(",").some((x) => x.trim().toLowerCase() === host);
 }
-const browserLike = (c: Context) => ["same-origin", "same-site", "none"].includes(c.req.header("sec-fetch-site") ?? "") && knownHost(c.req.header("host"));
+/** Requests whose gateway cookie the web gate has just checked (core/webgate.ts). */
+export const gatewayProven = new WeakSet<Request>();
+// Browsers send Sec-Fetch-Site only to https and loopback. On the plain-http gateway the proof is the checked cookie
+// instead; a write must also name this server as its Origin, which every browser sends on a write.
+const provenByGateway = (c: Context): boolean => {
+  if (!gatewayProven.has(c.req.raw) || c.req.header("sec-fetch-site") !== undefined) return false;
+  const origin = c.req.header("origin"), safe = c.req.method === "GET" || c.req.method === "HEAD";
+  if (origin === undefined) return safe;
+  try { return new URL(origin).host === c.req.header("host"); } catch { return false; }
+};
+const browserLike = (c: Context) => (["same-origin", "same-site", "none"].includes(c.req.header("sec-fetch-site") ?? "") || provenByGateway(c)) && knownHost(c.req.header("host"));
 
 export function createAccess(deps: AccessDeps) {
   const tokens = () => deps.tokens.get<Record<string, TokenRecord>>("tokens", {});

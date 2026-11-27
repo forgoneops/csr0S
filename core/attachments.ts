@@ -1,7 +1,7 @@
 // Attachments on a chat turn: images and plain-text files, with limits, checked before anything is written.
 // An image is passed to the engine for that turn only (its bytes are not stored; the message keeps the name and size).
-// A text file is stored with the message, so later turns still see it. PDF and Office files are refused in plain words
-// until they can be read properly.
+// A text file is stored with the message, so later turns still see it. PDF and Office files are turned into text
+// first (core/doc-text.ts); one that arrives here unread is refused.
 export type Attachment = { name: string; kind: "image" | "text"; mime: string; size: number; data: string };
 export type AttachmentMeta = { name: string; kind: "image" | "text"; mime: string; size: number; text?: string };
 

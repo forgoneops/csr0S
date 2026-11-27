@@ -1,0 +1,13 @@
+/* System and misc pages (Updates, Mirror, Meetings, News, Image Studio). Root .ps; colours from tokens only. */
+.ps{display:grid;gap:12px;margin-bottom:14px}
+.ps .og-row{display:flex;flex-wrap:wrap;gap:8px}
+.ps .ps-act p{margin:4px 0 8px;color:var(--muted);font-size:12.5px}
+.ps-sk{display:grid;gap:12px}
+.ps-skt{display:grid;gap:8px;padding:14px;border:1px solid var(--line);background:var(--surface);min-height:68px}
+.ps-skt i{display:block;height:8px;background:var(--line);width:40%}.ps-skt i+i{height:20px;width:70%}
+.ps-skb{height:84px;border:1px solid var(--line);background:repeating-linear-gradient(135deg,transparent 0 6px,color-mix(in srgb,var(--line) 45%,transparent) 6px 7px)}
+@media(prefers-reduced-motion:no-preference){.ps-skt i,.ps-skb,.ps-slot.run{animation:psp 1.6s ease-in-out infinite}}
+@keyframes psp{50%{opacity:.45}}
+.ps-slots{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+.ps-slot{aspect-ratio:1;border:1px dashed var(--accent);background:repeating-linear-gradient(135deg,transparent 0 6px,color-mix(in srgb,var(--accent) 22%,transparent) 6px 7px)}
+.ps-slots>.vz-empty{grid-column:1/-1}

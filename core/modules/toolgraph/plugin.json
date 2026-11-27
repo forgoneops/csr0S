@@ -1,0 +1,13 @@
+{
+  "id": "toolgraph",
+  "name": "Tool graph",
+  "version": "0.1.0",
+  "description": "Inspect tool calls, latency, errors per tool, and the hottest run path.",
+  "group": "system",
+  "tags": ["tools", "usage", "telemetry"],
+  "nav": [{ "id": "toolgraph", "label": "Tool graph", "icon": "graph", "path": "/toolgraph", "category": "system", "order": 46 }],
+  "routes": ["/toolgraph"],
+  "edition": "standard",
+  "defaultOff": true,
+  "permissions": []
+}
