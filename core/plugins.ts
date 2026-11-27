@@ -4,7 +4,7 @@
 // does not exist is skipped, so deleting `owner/` leaves the core untouched (R45).
 import { Hono } from "hono";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import { PluginManifest, visibleContributions, type ModuleInfo } from "./schema";
 import { kv, DATA, type KV } from "./db";
 import { listen, publish } from "./events";
@@ -72,7 +72,7 @@ export async function loadPlugins(app: Hono, disabled: string[] = [], enabledIds
           interval: (fn, ms) => life.interval(fn, ms), onStop: (fn) => life.onStop(fn),
           log: (...args) => console.log(`[${id}]`, ...args),
         };
-        try { await (await import(server)).default(ctx); return true; }
+        try { const emb = (globalThis as { __CAESAROS_EMBEDDED?: Record<string, () => Promise<{ default: (ctx: never) => unknown }>> }).__CAESAROS_EMBEDDED?.[relative(ROOT, dir)]; await (await (emb ? emb() : import(server))).default(ctx as never); return true; }
         catch (e) { console.error(`module ${id} failed to start and was skipped:`, e instanceof Error ? e.message : e); return false; }
       };
       if (!isOn(id, manifest.defaultOff) || leftOutOfEdition(manifest.edition)) {

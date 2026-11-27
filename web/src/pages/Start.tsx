@@ -35,7 +35,7 @@ export function DetectedTools({ d }: { d: Detect | null }) {
   );
 }
 
-type Hw = { machine: { ramGb: number; cores: number; freeDiskGb: number; gpu: string; os: string }; advice: { tier: "quick" | "balanced" | "max"; model: string; sizeGb: number; why: string }[] };
+type Hw = { machine: { ramGb: number; cores: number; freeDiskGb: number; gpu: string; os: string } | null; advice: { tier: "quick" | "balanced" | "max"; model: string; sizeGb: number; why: string }[] };
 
 /** Machine profile and the three-tier model advice. Read-only: the command is shown, nothing is downloaded. */
 export function MachineCard() {
@@ -56,6 +56,7 @@ export function MachineCard() {
   const download = async (model: string) => { await fetch("/api/models/pull", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ model }) }); setPull({ model, status: "starting", completed: 0, total: 0, done: false, error: null }); };
   if (!h) return <p className="hint">{t("devices.checking")}</p>;
   const m = h.machine;
+  if (!m) return <p className="hint">{t("hw.hidden")}</p>;
   return (
     <>
       <p className="mono small meta" role="status">{t("hw.line", { ram: m.ramGb, cores: m.cores, disk: m.freeDiskGb, gpu: m.gpu })}</p>

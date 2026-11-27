@@ -5,6 +5,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, w
 import { tmpdir } from "node:os";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { hermesAllowed, hermesHome } from "./host";
 import type { Context, Hono } from "hono";
 import { ENGINES, detectEngines } from "./detect";
 import type { EngineAdapter, EngineEvent } from "./engines/types";
@@ -13,7 +14,7 @@ import { memoFor } from "./memo";
 import { hermesScope, scopeOf } from "./scope";
 import { change, cleanLine, ID_RE, readRoster, writeRoster } from "./roster";
 
-const PROFILES = () => join(process.env.HERMES_HOME ?? join(homedir(), ".hermes"), "profiles");
+const PROFILES = () => join(hermesHome(), "profiles");
 
 /** What each known crew member is for. A profile not listed here is still a crew member, with a plain role. */
 const KNOWN: Record<string, { name: string; role: string; does: string; img: string }> = {
@@ -174,7 +175,7 @@ export async function chatTargets(localOnly = false): Promise<Target[]> {
 /** Run `hermes profile create` for a new member; the error is a short word, never the profile's contents. */
 async function hermesCreate(id: string): Promise<"ok" | "hermes_missing" | "failed"> {
   const bin = Bun.which("hermes") ?? join(homedir(), ".local", "bin", "hermes");
-  if (!existsSync(bin)) return "hermes_missing";
+  if (!hermesAllowed() || !existsSync(bin)) return "hermes_missing";
   try {
     const p = Bun.spawn([bin, "profile", "create", "--no-alias", id], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
     const t = setTimeout(() => p.kill(), 60_000); const code = await p.exited; clearTimeout(t);

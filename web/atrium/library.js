@@ -64,8 +64,8 @@ const SIGILS = [
     const h = hash(b.name), minutes = b.chars / 1100, hue = TOK[h % 3], shade = 20 + ((h >>> 16) % 14);
     const th = Math.max(4, Math.min(22, 4 + Math.round(minutes * .52))), ht = Math.max(190, Math.min(280, 190 + Math.round(b.chars / 900)));
     const recent = Date.now() - b.added < 14 * 864e5;
-    return `<button type="button" class="lx-codex lx-v${(i + h) % 4}${recent ? ' is-recent' : ''}" data-no-i18n data-lx="book:${E(b.id)}" data-i18n-own="${E(b.name)}" aria-label="Read ${E(b.name)}" style="--c:${hue};--s:${shade}%;--th:${th};--ht:${ht}px">
-      <span class="lx-spine"><span class="lx-band"></span>${sigil(h, 'lx-cs')}<span class="lx-ttl">${E(b.name)}</span><span class="lx-seal">${Math.max(1, Math.round(minutes))}m</span><span class="lx-band"></span><span class="lx-circuit"></span></span></button>`;
+    return `<button type="button" class="lx-codex lx-v${(i + h) % 4}${recent ? ' is-recent' : ''}" data-lx="book:${E(b.id)}" data-i18n-own="${E(b.name)}" aria-label="Read ${E(b.name)}" style="--c:${hue};--s:${shade}%;--th:${th};--ht:${ht}px">
+      <span class="lx-spine" data-no-i18n><span class="lx-band"></span>${sigil(h, 'lx-cs')}<span class="lx-ttl">${E(b.name)}</span><span class="lx-seal">${Math.max(1, Math.round(minutes))}m</span><span class="lx-band"></span><span class="lx-circuit"></span></span></button>`;
   }
   function booksHall(RD) {
     const books = (RD.kb || []).filter(x => !RD.kfilter || x.folder === RD.kfilter);

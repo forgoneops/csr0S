@@ -32,7 +32,7 @@
   function viewer() {
     const l = live(), i = l.find(x => x.id === A.open); if (!i) return '';
     const n = l.indexOf(i);
-    return `<div class="md-viewer" role="dialog" aria-modal="true" data-i18n-own="${E(i.name)}" aria-label="${E(i.name)}"><div class="md-vbar"><span data-no-i18n>${E(i.name)} (${n + 1} of ${l.length})</span>
+    return `<div class="md-viewer" role="dialog" aria-modal="true" data-i18n-own="${E(i.name)}" aria-label="${E(i.name)}"><div class="md-vbar"><span data-no-i18n>${E(i.name)} (${n + 1} / ${l.length})</span>
       <button class="btn ghost" type="button" data-md="zoom" data-v="1.25" aria-label="Zoom in">${I('plus', 16)}</button><button class="btn ghost" type="button" data-md="zoom" data-v="0.8" aria-label="Zoom out">${I('minus', 16)}</button><button class="btn ghost" type="button" data-md="fit">Fit</button>
       <button class="btn ghost" type="button" data-md="trash" data-id="${i.id}" aria-label="Move to trash">${I('trash', 16)}<span>Trash</span></button><button class="btn" type="button" data-md="close" aria-label="Close viewer">${I('close', 16)}</button></div>
       <div class="md-stage" data-md-stage>${i.type === 'video' ? `<video class="md-media" src="${url(i)}" controls playsinline style="transform:translate(${A.x}px,${A.y}px) scale(${A.z})"></video>` : `<img class="md-media" src="${url(i)}" alt="${E(i.name)}" draggable="false" style="transform:translate(${A.x}px,${A.y}px) scale(${A.z})">`}</div>

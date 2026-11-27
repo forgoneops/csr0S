@@ -3,11 +3,12 @@
 // Nothing leaves the machine. It is installed once with `uv venv` + `uv pip install faster-whisper` (see docs/STATE.md).
 import type { Context, Hono } from "hono";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { userHome } from "./host";
 
 export const MAX_AUDIO = 40 * 1024 * 1024;
-export const speechDir = () => process.env.CAESAROS_SPEECH_DIR ?? join(homedir(), ".local", "share", "caesaros-speech");
+export const speechDir = () => process.env.CAESAROS_SPEECH_DIR ?? join(userHome(), ".local", "share", "caesaros-speech");
 const python = () => join(speechDir(), ".venv", "bin", "python");
 export const speechReady = () => existsSync(python()) && existsSync(join(speechDir(), "transcribe.py"));
 

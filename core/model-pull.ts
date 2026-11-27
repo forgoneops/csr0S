@@ -4,7 +4,7 @@
 // A failed download stays listed so it can be tried again. shortcut: the queue is kept in memory, a restart forgets it.
 import type { Hono } from "hono";
 import { CATALOG } from "./hardware";
-import { normalizeBase } from "./engines/ollama";
+import { envBase } from "./engines/ollama";
 
 export type PullState = { model: string; status: string; completed: number; total: number; done: boolean; error: string | null } | null;
 
@@ -16,7 +16,7 @@ export function createPuller(opts: { baseUrl?: () => string; fetchImpl?: typeof 
   let abort: AbortController | null = null;
   let queue: string[] = [];
   let failed: { model: string; error: string }[] = [];
-  const base = opts.baseUrl ?? (() => normalizeBase(process.env.CAESAROS_OLLAMA_URL ?? process.env.OLLAMA_HOST));
+  const base = opts.baseUrl ?? envBase;
   const doFetch = opts.fetchImpl ?? fetch;
 
   async function run(model: string, signal: AbortSignal) {
@@ -79,7 +79,7 @@ type Installed = { name: string; sizeGb: number };
 
 /** Installed models from Ollama's own list; an unreachable Ollama is an empty list, not an error. */
 export async function listInstalled(opts: { baseUrl?: () => string; fetchImpl?: typeof fetch } = {}): Promise<Installed[]> {
-  const base = opts.baseUrl ?? (() => normalizeBase(process.env.CAESAROS_OLLAMA_URL ?? process.env.OLLAMA_HOST));
+  const base = opts.baseUrl ?? envBase;
   try {
     const r = await (opts.fetchImpl ?? fetch)(`${base()}/api/tags`, { signal: AbortSignal.timeout(1500) });
     if (!r.ok) return [];
@@ -95,7 +95,7 @@ export function modelPullApi(app: Hono, puller = createPuller()) {
     const body = await c.req.json().catch(() => ({})) as { name?: unknown };
     const name = typeof body.name === "string" ? body.name : "";
     if (!(await listInstalled()).some((m) => m.name === name)) return c.json({ error: "not_installed" }, 404);
-    const r = await fetch(`${normalizeBase(process.env.CAESAROS_OLLAMA_URL ?? process.env.OLLAMA_HOST)}/api/delete`, { method: "DELETE", body: JSON.stringify({ model: name }) }).catch(() => null);
+    const r = await fetch(`${envBase()}/api/delete`, { method: "DELETE", body: JSON.stringify({ model: name }) }).catch(() => null);
     return r?.ok ? c.json({ ok: true }) : c.json({ error: "delete_failed" }, 502);
   });
   app.get("/api/models/pull", (c) => c.json(puller.get()));

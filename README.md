@@ -126,9 +126,31 @@ Environment variables, all optional:
 |---|---|---|
 | `CAESAROS_PORT` | the port the core listens on | `4410` |
 | `CAESAROS_HOST` | the interface to bind: `0.0.0.0` for `tools/run-instance.sh` (the same workspace from any device on the tailnet/VPS/phone), `127.0.0.1` for the local desktop and bare `bun core/server.ts` | `127.0.0.1` |
-| `CAESAROS_DATA` | where settings, chats, notes and tasks live | `data/` in this folder |
+| `CAESAROS_DATA` | where settings, chats, notes and tasks live; inside the system temp folder it also makes a throwaway copy (below) | `data/` in this folder |
+| `CAESAROS_ISOLATED` | `1`: a throwaway copy that reads nothing about this computer; `0`: always discover | decided by `CAESAROS_DATA` |
 | `CAESAROS_OLLAMA_URL` | the local model server address | `http://127.0.0.1:11434` |
-| `HERMES_HOME` | where the Hermes profiles are read from | `~/.hermes` |
+| `HERMES_HOME` | where the Hermes profiles and skills are read from | `~/.hermes` |
+| `CAESAROS_SKILLS_DIR` | skill folders to list, separated by `:` | the Hermes skills folder |
+
+### Discovery and throwaway copies
+
+A normal install finds your own agents: their skills (Hermes, Claude Code, Codex), your Hermes
+profiles, the tools' usage records, local models, speech and picture engines, and facts about the
+computer (memory, disks, graphics, device name, network addresses).
+
+A throwaway copy, for tests, demos and screenshots, finds none of that. A copy is throwaway when
+`CAESAROS_DATA` is inside the system temp area (`/tmp`, `/var/tmp`, `/dev/shm` or `TMPDIR`), or when
+`CAESAROS_ISOLATED=1`. An empty folder anywhere else counts as a real first run, because every
+launcher sets `CAESAROS_DATA`. Data under `~/.local/share` is never taken for throwaway.
+`CAESAROS_ISOLATED=0` turns discovery back on.
+
+A variable you set yourself still works in a throwaway copy: `HERMES_HOME` (which also allows the
+`hermes` command), `CAESAROS_SKILLS_DIR`, `CLAUDE_CONFIG_DIR` and `CODEX_HOME` (inside your home
+folder), `CAESAROS_OLLAMA_URL`, `CAESAROS_SPEECH_DIR`, `CAESAROS_TTS_*`, `CAESAROS_IMAGE_DIR`,
+`CAESAROS_AGENT_USAGE_DIR` and `CAESAROS_DEVICE_NAME`.
+
+Not covered: the check for which tools are on your `PATH` (and their versions), and the terminal,
+which is a shell on this computer. A throwaway copy is not a sandbox.
 
 ## How it fits together
 

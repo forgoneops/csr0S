@@ -7,6 +7,7 @@
 import type { Hono } from "hono";
 import { kv } from "./db";
 import { hostname } from "node:os";
+import { isolated } from "./host";
 
 type Device = { id: string; name: string; at: number; lastSeen: number | null; role: "paired-with-me" | "i-joined"; url?: string; tokenName?: string; token?: string; syncKey?: string };
 type State = { visible: boolean; discover: boolean; devices: Device[] };
@@ -17,7 +18,7 @@ const write = (s: State) => store.set("state", s);
 let current: { code: string; expires: number; fails: number } | null = null;
 export const CODE_TTL_MS = 5 * 60_000;
 const makeCode = () => String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0]! % 900000));
-const thisName = () => (process.env.CAESAROS_DEVICE_NAME ?? hostname()).slice(0, 60);
+const thisName = () => (process.env.CAESAROS_DEVICE_NAME ?? (isolated() ? "CaesarOS" : hostname())).slice(0, 60);
 
 export function newCode(now = Date.now()): { code: string; expiresAt: number } | { error: "not_visible" } {
   if (!read().visible) return { error: "not_visible" };

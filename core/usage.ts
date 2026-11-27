@@ -3,8 +3,8 @@
 import type { Hono } from "hono";
 import { db } from "./db";
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { userHome } from "./host";
 
 export type Usage = { engine: string; today: number; week: number; errors: number };
 
@@ -79,7 +79,7 @@ const STALE_MS = 30 * 60_000;
 
 /** One record per tool: "none" when there is no file, no window or the file cannot be read; "stale" when it is old or the tool says so. */
 export function toolLimits(opts: { dir?: string; now?: number } = {}): ToolLimit[] {
-  const dir = opts.dir ?? process.env.CAESAROS_AGENT_USAGE_DIR ?? join(homedir(), ".local", "state", "omarchy", "agents", "usage"), now = opts.now ?? Date.now();
+  const dir = opts.dir ?? process.env.CAESAROS_AGENT_USAGE_DIR ?? join(userHome(), ".local", "state", "omarchy", "agents", "usage"), now = opts.now ?? Date.now();
   return TOOLS.map(([id, name]): ToolLimit => {
     let rec: { limits?: { label?: unknown; percent?: unknown; resetsAt?: unknown }[]; updatedAt?: unknown; limitsFetchedAt?: unknown; limitsStale?: unknown } | null = null;
     try { const f = join(dir, `${id}.json`); rec = existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null; } catch { rec = null; }

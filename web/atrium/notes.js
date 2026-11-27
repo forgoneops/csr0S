@@ -4,7 +4,7 @@
   const NEW = '\u0000new';
   const graphSaved = (() => { try { return JSON.parse(localStorage.getItem('caesaros-brain-graph-view') || '{}') || {}; } catch { return {}; } })();
   const SCROLL_KEY = 'caesaros-brain-view-scroll'; let restoreScrollPending = true;
-  const NT = { map: (() => { try { return localStorage.getItem('caesaros-brain-map-open') === '1'; } catch { return false; } })(), focus: false, recall: false, demo: false, gq: '', rq: '', hits: null, mapView: 'net', cut: 1, graph: null, zoom: 1, notes: [], tags: [], q: '', tag: '', cur: null, content: '', rev: '', updatedAt: 0, dirty: false, saved: false, preview: false, loading: false, loaded: false, mobile: (() => { try { return localStorage.getItem('caesaros-brain-map-open') === '1'; } catch { return false; } })(), delAsk: false, pending: null, conflict: null, err: '', back: [], out: [], saving: false, pinned: (() => { try { return new Set(JSON.parse(localStorage.getItem('caesaros-brain-pinned') || '[]')); } catch { return new Set(); } })() };
+  const NT = { map: (() => { try { return localStorage.getItem('caesaros-brain-map-open') === '1'; } catch { return false; } })(), focus: false, recall: false, demo: false, sampleInfo: false, gq: '', rq: '', hits: null, mapView: 'net', cut: 1, graph: null, zoom: 1, notes: [], tags: [], q: '', tag: '', cur: null, content: '', rev: '', updatedAt: 0, dirty: false, saved: false, preview: false, loading: false, loaded: false, mobile: (() => { try { return localStorage.getItem('caesaros-brain-map-open') === '1'; } catch { return false; } })(), delAsk: false, pending: null, conflict: null, err: '', back: [], out: [], saving: false, pinned: (() => { try { return new Set(JSON.parse(localStorage.getItem('caesaros-brain-pinned') || '[]')); } catch { return new Set(); } })() };
   const enc = encodeURIComponent;
   const rememberSelection = id => { try { const s = JSON.parse(localStorage.getItem('caesaros-brain-graph-view') || '{}'); localStorage.setItem('caesaros-brain-graph-view', JSON.stringify({ ...s, selected: id })); } catch { /* private window */ } };
   const stashScroll = () => { try { const pick = s => document.querySelector(s)?.scrollTop || 0; localStorage.setItem(SCROLL_KEY, JSON.stringify({ wrap: pick('.nt-wrap'), list: pick('.nt-list'), panel: pick('.nt-ed'), view: pick('.nx-view.nt') })); } catch { /* private window */ } };
@@ -138,7 +138,7 @@
   function mapHtml() {
     let g = NT.graph; const sample = NT.demo && g && g.nodes && !g.nodes.length, tree = NT.mapView === 'tree' && !sample;
     if (sample) { const d = window.ntDemoGraph(); g = { nodes: d.nodes, edges: d.edges, total: d.nodes.length, truncated: false, tree: null }; }
-    const bar = `<div class="nt-bar"><h3 class="nt-name">${tree ? 'Tree' : 'Map'}</h3><span class="label">${g && g.nodes ? `${g.total} notes${g.truncated ? ' (the 600 best linked are drawn)' : ''}${tree ? '' : `, ${g.edges.length} links`}` : ''}</span><div class="nt-acts"><button class="nt-b" data-nt="${tree ? 'mvnet' : 'mvtree'}" aria-pressed="${tree}"><span>${tree ? 'Network' : 'Tree'}</span></button><button class="nt-b" data-nt="zout" aria-label="Zoom out"><span>\u2212</span></button><button class="nt-b" data-nt="zin" aria-label="Zoom in"><span>+</span></button><button class="nt-b" data-nt="fit"><span>Fit</span></button><button class="nt-b" data-nt="focus" aria-pressed="${NT.focus}"><span>${NT.focus ? 'Exit focus' : 'Focus'}</span></button><button class="nt-b" data-nt="mapclose"><span>Close map</span></button></div></div>`;
+    const bar = `<div class="nt-bar"><h3 class="nt-name">${uiText(tree ? 'Tree' : 'Map')}</h3>${sample ? `<button class="nt-b nt-sample" data-nt="sample-info" aria-expanded="${NT.sampleInfo}"><span>Sample, not your notes</span></button>` : `<span class="label">${g && g.nodes ? `${g.total} notes${g.truncated ? ' (the 600 best linked are drawn)' : ''}${tree ? '' : `, ${g.edges.length} links`}` : ''}</span>`}<div class="nt-acts"><button class="nt-b" data-nt="${tree ? 'mvnet' : 'mvtree'}" aria-pressed="${tree}"><span>${tree ? 'Network' : 'Tree'}</span></button><button class="nt-b" data-nt="zout" aria-label="Zoom out"><span>\u2212</span></button><button class="nt-b" data-nt="zin" aria-label="Zoom in"><span>+</span></button><button class="nt-b" data-nt="fit"><span>Fit</span></button><button class="nt-b" data-nt="focus" aria-pressed="${NT.focus}"><span>${NT.focus ? 'Exit focus' : 'Focus'}</span></button><button class="nt-b" data-nt="mapclose"><span>Close map</span></button></div></div>`;
     if (!g) { void loadGraph(); return `<section class="nt-ed panel">${bar}<p class="nt-empty">Reading the notes\u2026</p></section>`; }
     if (!g.nodes) return `<section class="nt-ed panel">${bar}<div class="nt-statecard"><span class="nt-state-mark" aria-hidden="true">!</span><h4>Map unavailable</h4><p class="nt-empty">The notes graph could not be reached. Your notes are unchanged.</p><button class="nt-b" data-nt="retry-map"><span>Try again</span></button></div></section>`;
     if (!g.nodes.length && !NT.demo) return `<section class="nt-ed panel">${bar}<p class="nt-empty">No notes yet. Link notes with [[Name]] and they connect here.</p><button class="nt-b" data-nt="demo"><span>Show a sample map</span></button></section>`;
@@ -153,16 +153,15 @@
       return `<g class="nt-node${heat}${n.id === NT.cur ? ' on' : ''}" data-nt-note="${esc(n.id)}" tabindex="0" role="button" aria-label="${esc(n.id)}, ${n.degree} links"><title>${esc(n.id)}</title><path d="${diamond(x, y, r)}" style="fill:var(${pal})"/><text x="${x}" y="${y + r + 12}" text-anchor="middle">${esc(n.title.slice(0, 22))}</text></g>`; }).join('');
     const day = new Date(at0).toLocaleDateString(uiLocale(undefined), { day: 'numeric', month: 'short', year: 'numeric' });
     const slider = `<div class="nt-cutrow"><label class="label" for="nt-cut">The notes as they were on</label><input id="nt-cut" class="nt-cut" type="range" min="0" max="100" value="${Math.round(NT.cut * 100)}"><span class="nt-day" data-no-i18n>${NT.cut >= 0.999 ? 'today' : esc(day)}</span></div>`;
-    return `<section class="nt-ed panel">${bar}${slider}${tree ? `<div class="nt-map"><svg data-no-i18n viewBox="0 0 1000 640" style="width:${Math.round(100 * NT.zoom)}%" role="group" aria-label="Notes tree"><g class="nt-edges">${lines}</g>${dots}</svg></div>` : netHtml(g, shown, sample)}
+    return `<section class="nt-ed panel">${bar}${sample && NT.sampleInfo ? '<p class="nt-msg">Sample map, not your notes. Write notes with [[links]] and your own map appears here.</p>' : ''}${tree ? `${slider}<div class="nt-map"><svg data-no-i18n viewBox="0 0 1000 640" style="width:${Math.round(100 * NT.zoom)}%" role="group" aria-label="Notes tree"><g class="nt-edges">${lines}</g>${dots}</svg></div>` : netHtml(g, shown, sample, slider)}
       <div class="nt-recent"><span class="label">Recently changed</span>${recent.map(n => `<button class="nt-tag" data-nt-note="${esc(n.id)}" data-no-i18n>${esc(n.title)}</button>`).join('')}</div></section>`;
   }
 
   /** The network: a canvas drawn by graph.js. Search lights the matches; the Recently changed buttons below are the keyboard and screen-reader route. */
-  function netHtml(g, shown, sample) {
+  function netHtml(g, shown, sample, slider) {
     const nodes = g.nodes.filter(shown), ids = new Set(nodes.map(n => n.id));
     window.ntGraphData = { nodes, edges: g.edges.filter(e => ids.has(e.from) && ids.has(e.to)), cur: NT.cur, q: NT.gq, demo: sample, open: id => { NT.map = false; try { localStorage.setItem('caesaros-brain-map-open', '0'); } catch {} void go(id); } };
-    return `${sample ? '<p class="nt-msg">Sample map, not your notes. Write notes with [[links]] and your own map appears here.</p>' : ''}
-      <div class="nt-cutrow"><label class="label" for="nt-gq">Find in the map</label><input id="nt-gq" class="og-input" type="search" placeholder="Note name" value="${esc(NT.gq)}" autocomplete="off"></div>
+    return `<div class="nt-tools">${slider}<div class="nt-cutrow"><label class="label" for="nt-gq">Find in the map</label><input id="nt-gq" class="og-input" type="search" placeholder="Note name" value="${esc(NT.gq)}" autocomplete="off"></div></div>
       <div class="nt-clusters"><span class="label">Clusters</span>${[...new Set(nodes.map(n => n.folder || 'Unfiled'))].sort().map((f, i) => `<span class="nt-cluster" style="--cluster:var(${['--p2','--p1','--gold','--tint-magenta'][i % 4]})"><i></i>${f === 'Unfiled' ? f : `<span data-no-i18n>${esc(f)}</span>`}</span>`).join('')}</div>
       <div class="nt-map nt-gcwrap"><canvas class="nt-gc" tabindex="0" data-no-i18n role="img" aria-label="Notes map: drag to move, pinch or scroll to zoom, tap a note to open it"></canvas></div>`;
   }
@@ -185,14 +184,14 @@
     const pinRow = n => `<div class="nt-pinrow"><button class="nt-tag" data-nt-note="${esc(n.id)}">${esc(n.title || n.id)}</button><button class="nt-b nt-unpin" data-i18n-own data-nt-unpin="${esc(n.id)}" data-i18n-own="${esc(n.title || n.id)}" aria-label="Unpin ${esc(n.title || n.id)}">Unpin</button></div>`;
     return (pinned.length ? `<div class="nt-recent"><span class="label">Pinned for recall</span>${pinned.map(pinRow).join('')}</div>` : '') + list('Recently changed', byTime.slice(0, 8)) + list('Most connected', byLinks.slice(0, 8)) + list('Not linked yet', g.nodes.filter(n => !n.degree).slice(0, 12));
   }
-  const recallHtml = () => `<section class="nt-ed panel"><div class="nt-bar"><h3 class="nt-name">Recall</h3><span class="label">Search only, nothing here changes your notes</span></div>
+  const recallHtml = () => `<section class="nt-ed panel"><div class="nt-bar"><h3 class="nt-name">${uiText('Recall')}</h3><span class="label">Search only, nothing here changes your notes</span></div>
     <div class="nt-cutrow"><label class="label" for="nt-rq">Ask the notes</label><input id="nt-rq" class="og-input" type="search" placeholder="What do you want to remember?" value="${esc(NT.rq)}" autocomplete="off"></div>
     <div class="nt-lb" id="nt-rc">${recallBody()}</div></section>`;
 
   function notesView() {
     if (!NT.loaded && !NT.loading) { NT.loading = true; void refresh().then(() => { NT.loading = false; NT.loaded = true; if (onScreen()) { render(); if (!NT.map && graphSaved.selected) void open(graphSaved.selected); } }); }
     if (restoreScrollPending) requestAnimationFrame(restoreScroll);
-    return `<div class="nx-view enter nt">${nsHead('Notes', 'Your notes are markdown files on this machine.', 'Tabularium')}
+    return `<div class="nx-view enter nt${NT.map && !NT.recall ? ' nt-mapmode' : ''}">${nsHead('Notes', 'Your notes are markdown files on this machine.', 'Tabularium')}
       <div class="nt-wrap${NT.mobile ? ' nt-open' : ''}${NT.focus ? ' nt-focus' : ''}">
         <aside class="nt-list panel">
           <input class="og-input" id="nt-q" type="search" placeholder="Search notes" aria-label="Search notes" value="${esc(NT.q)}" autocomplete="off">
@@ -220,6 +219,7 @@
     if (a === 'map') { NT.map = !NT.map; try { localStorage.setItem('caesaros-brain-map-open', NT.map ? '1' : '0'); } catch {} NT.recall = false; NT.graph = null; NT.mobile = NT.map; render(); }
     else if (a === 'recall') { NT.recall = !NT.recall; NT.map = false; NT.graph = null; NT.hits = null; NT.mobile = NT.recall; render(); }
     else if (a === 'demo') { NT.demo = true; render(); }
+    else if (a === 'sample-info') { NT.sampleInfo = !NT.sampleInfo; render(); }
     else if (a === 'retry-map') { NT.graph = null; render(); }
     else if (a === 'fit') { const c = $('.nt-gc'); if (c && c.ntg) c.ntg.fit(); }
     else if (a === 'mvtree' || a === 'mvnet') { NT.mapView = a === 'mvtree' ? 'tree' : 'net'; render(); }

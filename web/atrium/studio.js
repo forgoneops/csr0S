@@ -40,7 +40,7 @@
   const card = c => {
     const f = c.lane === 'Drafts' ? L.lint(c.text, S.social.rules) : [], i = L.LANES.indexOf(c.lane), edit = c.lane === 'Briefs' || c.lane === 'Drafts';
     return `<div class="og-card"><h4 style="font-size:13px"${c.src ? ' data-no-i18n' : ''}>${E(c.src || c.lane)}</h4>${edit ? `<textarea class="og-input" id="sd-t-${c.id}" rows="4" maxlength="2000" style="width:100%" aria-label="Text">${E(c.text)}</textarea>` : `<p data-no-i18n>${E(c.text)}</p>`}
-      ${f.length ? `<ul class="sd-lint">${f.map(x => `<li${x.startsWith('Uses a banned') ? ' data-no-i18n' : ''}>${E(x)}</li>`).join('')}</ul>` : c.lane === 'Drafts' && c.text.trim() ? '<span class="og-tag sig">Passes the rules</span>' : ''}
+      ${f.length ? `<ul class="sd-lint">${f.map(x => x.startsWith('Uses a banned') ? `<li data-no-i18n>${E(uiText('Uses a banned phrase:') + x.slice(x.indexOf(':') + 1))}</li>` : `<li>${E(x)}</li>`).join('')}</ul>` : c.lane === 'Drafts' && c.text.trim() ? '<span class="og-tag sig">Passes the rules</span>' : ''}
       <div class="og-act">${i > 0 ? btn('smv:' + c.id + '|-1', 'Back', 'ghost') : '<span></span>'}<span class="og-row">${edit ? btn('ssave:' + c.id, 'Save text', 'ghost') : ''}${c.lane === 'Approved' ? btn('scopy:' + c.id, 'Copy text') : i < 3 ? btn('smv:' + c.id + '|1', i === 2 ? 'Approve' : 'To ' + L.LANES[i + 1].toLowerCase().replace(/s$/, '')) : ''}${M.sure === c.id ? btn('sdelgo:' + c.id, 'Delete for good') : btn('sdel:' + c.id, 'Delete', 'ghost')}</span></div></div>`;
   };
 

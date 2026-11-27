@@ -90,7 +90,7 @@
   const watchPull = () => { if (pullTimer) return; pullTimer = setInterval(async () => { const was = RD.pull; RD.pull = await g('/api/models/pull', null); const over = !RD.pull || RD.pull.done; if (!over && shapeOf(was) === shapeOf(RD.pull) && moveBar(RD.pull)) return; if (over || !was || RD.pull.model !== was.model) RD.inst = await g('/api/models/installed', []); if (over) { clearInterval(pullTimer); pullTimer = null; } again(); }, 1200); };
   V.Models = () => {
     if (!RD.hw) { void loadModels(); return `<div class="nx-view enter">${head('Models', 'Models for this machine, picked from what it can hold.', 'Armamentarium')}<div class="og-wrap">${loadingCard()}</div></div>`; }
-    const m = RD.hw.machine || {}, p = RD.pull;
+    const m = RD.hw.machine || {}, hidden = !!RD.hw.hidden, p = RD.pull;
     const tier = { quick: 'Quick start', balanced: 'Balanced', max: 'Best quality' };
     const rows = RD.hw.advice.map(a => {
       const mine = p && p.model === a.model, waits = !!(p && p.queue && p.queue.includes(a.model)), fail = p && (p.failed || []).find(x => x.model === a.model);
@@ -99,18 +99,19 @@
         (RD.inst || []).some(x => x.name === a.model) || (mine && p.done && !p.error && p.status !== 'cancelled') ? '<span class="og-tag sig">Downloaded</span>' :
         RD.ollama ? btn('pull:' + E(a.model), fail ? 'Try again' : (p && !p.done ? 'Add to the line' : 'Download') + ' (' + a.sizeGb + ' GB)') : '<span class="og-tag mut">Start Ollama to download</span>';
       return `<div class="og-card"><div class="og-row"><h4>${tier[a.tier]}</h4><span class="og-tag">${E(a.model)} · ${a.sizeGb} GB</span></div><p>${E(a.why)}.</p><div class="og-act">${act}</div>${fail ? `<p role="alert">The download failed: ${E(fail.error)}. Trying again picks up what was already fetched.</p>` : ''}</div>`;
-    }).join('') || '<div class="og-card"><p>This machine does not have enough memory for a local model. Use a tool you are signed in to, or a server.</p></div>';
+    }).join('') || (hidden ? '' : '<div class="og-card"><p>This machine does not have enough memory for a local model. Use a tool you are signed in to, or a server.</p></div>');
     const inst = (RD.inst || []).length ? RD.inst.map(x => `<div>${I('engine', 16)}<span>${E(x.name)} <small>${x.sizeGb} GB</small>${window.xCaps ? xCaps(x.name) : ''}</span><span class="og-row">${RD.sure === x.name ? btn('rmgo:' + E(x.name), 'Delete for good') : btn('rm:' + E(x.name), 'Delete')}</span></div>`).join('') : '<div style=\"display:block\"><span>No local model is installed yet.</span></div>';
     if (p && !p.done) watchPull();
     return `<div class="nx-view enter">${head('Models', 'Models for this machine, picked from what it can hold.', 'Armamentarium')}
-    <div class="og-wrap"><div class="og-card"><div class="og-row"><h4>This machine</h4></div><p><span>Memory: ${m.ramGb} GB</span> · <span>CPU cores: ${m.cores}</span> · <span>Free disk: ${m.freeDiskGb} GB</span> · <span>Graphics:</span> <span${m.gpu ? ' data-no-i18n' : ''}>${E(m.gpu || 'unknown')}</span></p></div>
-    ${sec('Recommended')}${RD.err.pull ? `<p role="alert">${E(RD.err.pull)}</p>` : ''}<div class="og-grid">${rows}</div>
-    ${sec('Installed')}<div class="og-list">${inst}</div>
+    <div class="og-wrap">${hidden ? vzEmpty('Machine details are hidden', 'This copy runs on a throwaway data folder, so it does not read this computer.') : `<div class="og-card"><div class="og-row"><h4>This machine</h4></div><p><span>Memory: ${m.ramGb} GB</span> · <span>CPU cores: ${m.cores}</span> · <span>Free disk: ${m.freeDiskGb} GB</span> · <span>Graphics:</span> <span${m.gpu ? ' data-no-i18n' : ''}>${E(m.gpu || 'unknown')}</span></p></div>`}
+    ${hidden ? '' : sec('Recommended')}${RD.err.pull ? `<p role="alert">${E(RD.err.pull)}</p>` : ''}<div class="og-grid">${rows}</div>
+    ${hidden && !(RD.inst || []).length ? '' : `${sec('Installed')}<div class="og-list">${inst}</div>`}
     <p class="og-note">Sizes are approximate. Nothing downloads until you press the button; Ollama does the work.</p></div></div>`;
   };
 
   /* ---------- Gateway (keys) ---------- */
-  async function loadKeys() { RD.keys = await g('/api/tokens', []); again(); }
+  // the shell's own short-lived scoped tokens (the board layer) are not keys the person made
+  async function loadKeys() { RD.keys = (await g('/api/tokens', [])).filter(k => !k.scopes); again(); }
   V.Gateway = () => {
     if (!RD.keys) { void loadKeys(); return `<div class="nx-view enter">${head('Gateway', 'Other apps on this computer can use your engines.', 'Porta')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     const base = location.origin.replace(/\/\/[^/]+/, '//127.0.0.1:' + (location.port || 4410)) + '/v1';
@@ -447,7 +448,7 @@
     const tool = x => `<div>${I('system', 16)}<span>${E(x.label)} <small>${x.found ? (x.probe.ok ? 'answers · ' + E(x.probe.version || '') : 'installed, not answering' + (x.signIn ? ' · sign in with: ' + E(x.signIn) : '')) : 'not installed'}</small></span><span class="og-tag ${x.probe.ok ? 'sig' : 'mut'}">${x.probe.ok ? 'OK' : x.found ? 'Check' : 'Absent'}</span></div>`;
     const en = e => `<div>${I('engine', 16)}<span>${E(e.label)} <small>${e.health.ok ? (e.models.length + ' models') : E(e.health.detail || 'not answering')}</small></span><span class="og-tag ${e.health.ok ? 'sig' : 'mut'}">${e.health.ok ? 'Answering' : 'Down'}</span></div>`;
     return `<div class="nx-view enter">${head('Health', 'The machine under CaesarOS, read live. Nothing here leaves the computer.', 'Vitals')}<div class="og-wrap">
-      ${vzTiles([vzTile('Memory', m.ramGb + ' GB', 'installed', 'a'), vzTile('Processor', m.cores + ' cores', '', 's'), vzTile('Free disk', m.freeDiskGb + ' GB', 'on this machine', 'g'), vzTile('Graphics', m.gpu || 'unknown', '', 'm'), vzTile('Running now', run.count, run.count === 1 ? 'turn' : 'turns', run.count ? 'a' : 's'), vzTile('CaesarOS', ver.version || '?', '#' + (ver.build || '?'), 'g')])}
+      ${hw && hw.hidden ? vzEmpty('Machine details are hidden', 'This copy runs on a throwaway data folder, so it does not read this computer.') : ''}${vzTiles([...(hw && hw.hidden ? [] : [vzTile('Memory', m.ramGb + ' GB', 'installed', 'a'), vzTile('Processor', m.cores + ' cores', '', 's'), vzTile('Free disk', m.freeDiskGb + ' GB', 'on this machine', 'g'), vzTile('Graphics', m.gpu || 'unknown', '', 'm')]), vzTile('Running now', run.count, run.count === 1 ? 'turn' : 'turns', run.count ? 'a' : 's'), vzTile('CaesarOS', ver.version || '?', '#' + (ver.build || '?'), 'g')])}
       ${sec('Is everything answering')}${W(eng && det, 2, () => vzBars([['Chat engines', eng.engines.length ? eng.engines.filter(e => e.health.ok).length / eng.engines.length * 100 : 0, eng.engines.filter(e => e.health.ok).length + ' of ' + eng.engines.length, 's'], ['Tools found', det.engines.length ? det.engines.filter(x => x.probe.ok).length / det.engines.length * 100 : 0, det.engines.filter(x => x.probe.ok).length + ' of ' + det.engines.length, 'a']]))}
       ${sec('Tools found on this machine')}${W(det, 3, () => `<div class="og-list">${det.engines.map(tool).join('')}</div>`)}
       ${sec('Chat engines')}${W(eng, 3, () => `<div class="og-list">${eng.engines.length ? eng.engines.map(en).join('') : '<div style="display:block"><span>No engine.</span></div>'}</div>`)}
@@ -613,7 +614,7 @@
   const took = ms => ms == null ? '' : ms < 60000 ? Math.max(1, Math.round(ms / 1000)) + ' s' : ms < 3600000 ? Math.round(ms / 60000) + ' min' : Math.round(ms / 3600000) + ' h';
   const chip = st => { const [word, cls] = STATE[st] || STATE.idle; return `<span class="nx-st ${cls}">${word}</span>`; };
   const stateOf = (orch, id) => ((orch && orch.members || []).find(m => m.id === id) || {}).state || '';
-  const needsRow = m => `<button class="nx-need" data-rd="orchgo:${E(m.sessionId || '')}"><i></i><span><b>${E(m.name)}</b> <span data-no-i18n>${E(m.doing) || 'waits for your answer'}</span></span><em>${took(m.ms)}</em></button>`;
+  const needsRow = m => `<button class="nx-need" data-rd="orchgo:${E(m.sessionId || '')}"><i></i><span><b>${E(m.name)}</b> <span data-no-i18n>${E(m.doing || uiText('waits for your answer'))}</span></span><em>${took(m.ms)}</em></button>`;
   const needsStrip = d => {
     const waiting = d.members.filter(m => m.state === 'needs-you'), running = d.members.filter(m => m.state === 'running').length;
     if (!d.needsYou) return `<div class="nx-needs quiet"><span class="label">NEEDS YOU</span><span>Nothing needs you.${running ? ' ' + running + ' working.' : ''}</span></div>`;

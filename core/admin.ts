@@ -1,6 +1,7 @@
 // The Praetorium's admin tab: the disks and the machine, read only. Sizes, load and uptime; no file names, no users.
 import type { Context, Hono } from "hono";
 import { cpus, freemem, loadavg, platform, totalmem, uptime } from "node:os";
+import { isolated } from "./host";
 
 export type Disk = { mount: string; fs: string; totalGb: number; usedGb: number; pct: number };
 const REAL_FS = /^(ext[234]|xfs|btrfs|f2fs|zfs|ntfs|vfat|exfat|apfs|hfs|overlay)$/;
@@ -28,6 +29,7 @@ async function disks(): Promise<Disk[]> {
 }
 
 export async function adminState() {
+  if (isolated()) return { disks: [], machine: null, hidden: true };
   const GB = 1024 ** 3, [l1, l5, l15] = loadavg();
   return { disks: await disks(), machine: { os: platform(), cores: cpus().length, ramGb: Math.round(totalmem() / GB * 10) / 10, freeRamGb: Math.round(freemem() / GB * 10) / 10, load: [l1, l5, l15].map((x) => Math.round(x * 100) / 100), uptimeH: Math.round(uptime() / 360) / 10 } };
 }
