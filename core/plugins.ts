@@ -25,13 +25,13 @@ export type PluginContext = {
 
 /** The folders a module can come from. `CAESAROS_MODULE_DIRS` overrides the list. Missing folders are fine. */
 export const moduleRoots = (env = process.env.CAESAROS_MODULE_DIRS): string[] =>
-  (env ?? "plugins,owner").split(",").map((s) => s.trim()).filter(Boolean).map((d) => (isAbsolute(d) ? d : join(ROOT, d)));   // an absolute path is a private owner layer kept outside this repo
+  (env ?? "plugins,core/modules,owner").split(",").map((s) => s.trim()).filter(Boolean).map((d) => (isAbsolute(d) ? d : join(ROOT, d)));   // an absolute path is a private owner layer kept outside this repo
 
-type Entry = { manifest: PluginManifest; life: Life | null; running: boolean; root: string };
+type Entry = { manifest: PluginManifest; life: Life | null; running: boolean; root: string; start?: () => Promise<boolean>; live?: Hono };
 export type Plugins = {
   active(): PluginManifest[];        // what the app may show: enabled and running
   all(): ModuleInfo[];               // everything found, for Settings
-  setEnabled(id: string, enabled: boolean): "now" | "restart" | "unknown" | "unavailable";
+  setEnabled(id: string, enabled: boolean): Promise<"now" | "restart" | "unknown" | "unavailable">;
 };
 
 /** A consumer build (CAESAROS_EDITION=standard) never starts a module whose manifest edition is "owner".
@@ -58,11 +58,12 @@ export async function loadPlugins(app: Hono, disabled: string[] = [], enabledIds
       const parsed = PluginManifest.safeParse(raw);
       if (!parsed.success || parsed.data.id !== id) { console.error(`module ${id}: invalid plugin.json`, parsed.error?.issues ?? "id mismatch"); continue; }
       const manifest = parsed.data;
-      if (!isOn(id, manifest.defaultOff) || leftOutOfEdition(manifest.edition)) { entries.set(id, { manifest, life: null, running: false, root }); console.log(`module ${id} is switched off`); continue; }
-      const routes = new Hono(), life = new Life(listen), entry: Entry = { manifest, life, running: true, root };
-      routes.use("*", async (c, next) => (entry.running ? next() : c.json({ error: `${manifest.name} is switched off` }, 404)));
       const server = join(dir, "server.ts");
-      if (existsSync(server)) {
+      // Starts the module: its routes, timers and listeners. Failing to start is logged and the module is skipped.
+      const boot = async (entry: Entry, routes: Hono): Promise<boolean> => {
+        const life = new Life(listen); entry.life = life;
+        routes.use("*", async (c, next) => (entry.running ? next() : c.json({ error: `${manifest.name} is switched off` }, 404)));
+        if (!existsSync(server)) return true;
         const dataDir = join(DATA, "modules", id);
         mkdirSync(dataDir, { recursive: true });
         const ctx: PluginContext = {
@@ -71,10 +72,29 @@ export async function loadPlugins(app: Hono, disabled: string[] = [], enabledIds
           interval: (fn, ms) => life.interval(fn, ms), onStop: (fn) => life.onStop(fn),
           log: (...args) => console.log(`[${id}]`, ...args),
         };
-        // one module failing to start is logged and skipped; the app and the other modules keep running
-        try { await (await import(server)).default(ctx); }
-        catch (e) { console.error(`module ${id} failed to start and was skipped:`, e instanceof Error ? e.message : e); continue; }
+        try { await (await import(server)).default(ctx); return true; }
+        catch (e) { console.error(`module ${id} failed to start and was skipped:`, e instanceof Error ? e.message : e); return false; }
+      };
+      if (!isOn(id, manifest.defaultOff) || leftOutOfEdition(manifest.edition)) {
+        // Off at start: nothing initialised, every route answers 404. Switching it on later boots it into `live`, no restart.
+        const stub = new Hono(), entry: Entry = { manifest, life: null, running: false, root };
+        entry.start = async () => {
+          const live = new Hono(); entry.running = true;
+          if (!(await boot(entry, live))) { entry.running = false; entry.life = null; return false; }
+          entry.live = live; return true;
+        };
+        stub.all("*", (c) => {
+          if (!entry.live) return c.json({ error: `${manifest.name} is switched off` }, 404);
+          const u = new URL(c.req.url); u.pathname = u.pathname.slice(`/api/p/${id}`.length) || "/";
+          return entry.live.fetch(new Request(u, c.req.raw));
+        });
+        app.route(`/api/p/${id}`, stub);
+        entries.set(id, entry);
+        console.log(`module ${id} is switched off`);
+        continue;
       }
+      const routes = new Hono(), entry: Entry = { manifest, life: null, running: true, root };
+      if (!(await boot(entry, routes))) continue;
       app.route(`/api/p/${id}`, routes);
       entries.set(id, entry);
       console.log(`module ${id} ${manifest.version} loaded`);
@@ -90,14 +110,17 @@ export async function loadPlugins(app: Hono, disabled: string[] = [], enabledIds
       // Never a disabled or an edition-left-out module: the shell renders only what is allowed right now.
       contributions: visibleContributions(e.manifest, e.running),
     })),
-    setEnabled(id, enabled) {
+    async setEnabled(id, enabled) {
       const e = entries.get(id); if (!e) return "unknown";
       // A module this edition never starts cannot be switched on here; saying so beats a switch that does nothing.
       if (leftOutOfEdition(e.manifest.edition)) return "unavailable";
       const i = disabled.indexOf(id);
       if (enabled) { if (i >= 0) disabled.splice(i, 1); if (!enabledIds.includes(id)) enabledIds.push(id); }
       else { if (i < 0) disabled.push(id); const j = enabledIds.indexOf(id); if (j >= 0) enabledIds.splice(j, 1); }
-      if (!e.life) return enabled ? "restart" : "now";           // never started in this run
+      if (!e.life) {                                             // never started in this run: boot it now
+        if (!enabled) return "now";
+        return e.start && await e.start() ? "now" : "restart";
+      }
       if (enabled) { e.running = true; e.life.resume(); } else { e.running = false; e.life.pause(); }
       return "now";
     },

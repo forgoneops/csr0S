@@ -12,7 +12,7 @@ function ogMode() {
   return `<div class="og-mode" role="group" aria-label="Where CaesarOS runs" tabindex="0"><span class="cur">${cur[1]}<em>▾</em></span><div class="pop">${M.map(([k, n, r]) => `<button class="${OGS.mode === k ? 'on' : ''}" data-og="mode:${k}" title="${k === 'local' ? 'Everything on this device. Nothing leaves it.' : k === 'vps' ? 'Engine and Shared Brain on your VPS. Recommended.' : 'No network at all. Installed models and files only.'}">${n}${r ? `<i>${r}</i>` : ''}</button>`).join('')}</div></div>`;
 }
 
-const ogHead = (name, sub, la) => `${''&&scene(({ Integrations: 'hermes-marketplace', Models: 'forge', Gateway: 'herdr', Vault: 'library', Clipboard: 'folders', Devices: 'fleet' })[name] || 'atrium-hero', 100)}<div class="nx-phead"><h2>${OGE(name.toUpperCase())}</h2><span class="label">${OGE(la)}</span></div><p style="margin:6px 0 0;color:var(--muted);font-size:13px;max-width:760px">${OGE(sub)}</p>`;
+const ogHead = (name, sub, la) => `${typeof ARTHEAD === 'function' ? ARTHEAD(name) : ''}<div class="nx-phead"><h2>${OGE(name.toUpperCase())}</h2><span class="label">${OGE(la)}</span></div><p style="margin:6px 0 0;color:var(--muted);font-size:13px;max-width:760px">${OGE(sub)}</p>`;
 
 const ogModeBanner = () => OGS.mode === 'off'
   ? `<div class="og-banner"><b>Offline</b> No network. Only installed models, local tools and your files work. The Shared Brain waits to sync.</div>`
@@ -29,7 +29,7 @@ function ogIntegrations() {
   const conn = new Set(['Obsidian', 'GitHub']);
   const f = OGS.filt;
   const show = n => f === 'All' || (f === 'Connected' ? conn.has(n) : !conn.has(n));
-  const card = ([n, d, l]) => show(n) ? `<div class="og-card"><h4>${OGE(n)}</h4><p>${OGE(d)}</p><div class="og-act">${conn.has(n) ? '<span class="og-tag sig">Connected</span>' : '<span class="og-tag mut">Not connected</span>'}<button class="btn ghost" style="height:28px;padding:0 10px">${n === 'Obsidian' ? 'Choose vault' : conn.has(n) ? 'Manage' : 'Connect'}</button></div></div>` : '';
+  const card = ([n, d, l]) => show(n) ? `<div class="og-card"><h4>${typeof ARTLOGO === 'function' ? ARTLOGO(n) : ''}${OGE(n)}</h4><p>${OGE(d)}</p><div class="og-act">${conn.has(n) ? '<span class="og-tag sig">Connected</span>' : '<span class="og-tag mut">Not connected</span>'}<button class="btn ghost" style="height:28px;padding:0 10px">${n === 'Obsidian' ? 'Choose vault' : conn.has(n) ? 'Manage' : 'Connect'}</button></div></div>` : '';
   const grp = (t, a) => { const h = a.map(card).join(''); return h ? `<div class="og-sec">${t}</div><div class="og-grid">${h}</div>` : ''; };
   return `<div class="nx-view enter">${ogHead('Integrations', 'Our own tools first. Connect anything else you use. Actions run only after you approve them.', 'Connexio')}
   <div class="og-wrap">${ogModeBanner()}
@@ -132,15 +132,16 @@ function ogWGateway() {
 }
 
 /* ---------- start bare, add and add: modules, groups, setup ---------- */
-const OGCORE = new Set(['Chat', 'Crew', 'Board', 'Memory', 'Terminal', 'Integrations', 'Models', 'Gateway', 'Marketplace']);
+// open_() refuses anything not enabled, so every core page with its own button must be listed here
+const OGCORE = new Set(['Conversations', 'Start', 'Settings', 'Get started', 'Notifications', 'Mobile app', 'Chat', 'Crew', 'Board', 'Memory', 'Terminal', 'Integrations', 'Models', 'Gateway', 'Marketplace']);
 const OGCAT = {
   Talk: [['Grill me', 'Interview that sharpens a plan'], ['Social', 'Posts and replies, drafted for you']],
-  Day: [['Mail', 'Inbox with drafts you approve'], ['Schedule', 'Calendar and reminders'], ['Goals', 'What you want this quarter'], ['Daily review', 'A morning brief from your real day'], ['Watchers', 'Pages and feeds, checked by script first']],
+  Day: [['Mail', 'Inbox with drafts you approve'], ['Schedule', 'Calendar and reminders'], ['Scheduling', 'Hermes cron tasks grouped by planning workspace'], ['Goals', 'What you want this quarter'], ['Daily review', 'A morning brief from your real day'], ['Watchers', 'Pages and feeds, checked by script first']],
   Knowledge: [['Folders', 'Your files, organised'], ['Reading', 'A reading queue'], ['Library', 'Books and papers'], ['Media Gallery', 'Images and video'], ['Meetings', 'Record, transcribe, write up'], ['Editor', 'Write in plain markdown']],
-  Work: [['Business', 'Money, clients, goals'], ['Builds', 'The forge: builds and tests'], ['Missions', 'Plan, approve, run, deliver'], ['Evidence', 'Proof for every claim']],
+  Work: [['Ideas', 'Plan and group work in seven lanes'], ['Business', 'Money, clients, goals'], ['Builds', 'The forge: builds and tests'], ['Missions', 'Plan, approve, run, deliver'], ['Evidence', 'Proof for every claim']],
   Make: [['Reels', 'Short films from one sentence'], ['Web tools', 'Small sites and pages'], ['Leads', 'Find people worth writing to']],
   'Private Data': [['Vault', 'Passwords and files, locked'], ['Clipboard', 'Every copy, secrets skipped'], ['Devices', 'Pair devices, Shared Brain']],
-  System: [['Usage', 'What your models cost'], ['Health', 'Is everything running'], ['Skills', 'What the crew can do']]
+  System: [['Fleet', 'Servers you run for others, read only'], ['Usage', 'What your models cost'], ['Health', 'Is everything running'], ['Storage', 'Disk space and this device'], ['Skills', 'What the crew can do']]
 };
 OGS.mods = new Set(['Mail', 'Schedule', 'Daily review', 'Meetings', 'Editor', 'Vault', 'Devices', 'Usage', 'Health', 'Skills']);
 OGS.setup = { where: true, models: true, brain: true, tool: false, apps: false, device: false };
@@ -182,7 +183,7 @@ document.addEventListener('click', e => {
   const t = e.target.closest('[data-og]'); if (!t) return;
   const [k, v] = t.dataset.og.split(/:(.*)/s);
   if (k === 'src') { OGS.msrc = v; render(); }
-  else if (k === 'mod') { OGS.mods.has(v) ? OGS.mods.delete(v) : OGS.mods.add(v); OGS.setup.apps = OGS.mods.size > 0; render(); }
+  else if (k === 'mod') { const enable = !OGS.mods.has(v); OGS.mods.has(v) ? OGS.mods.delete(v) : OGS.mods.add(v); OGS.setup.apps = OGS.mods.size > 0; if (v === 'Scheduling') { fetch('/api/plugins/scheduling/enabled', {method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({enabled:enable})}).then(r=>r.json()).then(d=>{ if (d.error) throw Error(d.error); if (d.applied === 'restart') alert('Saved. Restart CaesarOS to load Scheduling.'); }).catch(()=>alert('Could not change Scheduling. Use Settings → Optional modules.')); } render(); }
   else if (k === 'fresh') { OGS.mods = new Set(); OGS.setup = { where: true, models: false, brain: false, tool: false, apps: false, device: false }; render(); }
 });
 

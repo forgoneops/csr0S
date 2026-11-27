@@ -160,15 +160,18 @@ const SettingsShape = z.object({
   iconPack: z.string().regex(/^[a-z][a-z0-9-]*$/).default("ds0"),       // an icon pack id
   fontPack: z.string().regex(/^[a-z][a-z0-9-]*$/).default("ds0"),       // a font pack id
   motion: z.enum(["full", "off"]).default("full"),
+  background: z.enum(["rich", "subtle", "off"]).default("rich"),         // the fixed background: lines plus code glyphs
   textScale: z.number().min(0.85).max(1.4).default(1),
   // Workspaces on the home screen (the Atrium): named boards of built-in widgets, chosen and ordered by the person.
   workspaces: z.array(z.object({
     id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/),
     name: z.string().min(1).max(40),
     widgets: z.array(z.string().regex(/^[a-z][a-z0-9-]*$/).max(40)).max(16).default([]),
+    modules: z.array(z.string().regex(/^[a-z][a-z0-9-]*$/).max(40)).max(40).default([]),
+    pinned: z.boolean().default(false),
     // Where each widget sits on the board (a 12-column grid) and how big it is; saved when the person moves or resizes it.
     layout: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), z.object({ x: z.number().int().min(0).max(11), y: z.number().int().min(0).max(200), w: z.number().int().min(2).max(12), h: z.number().int().min(2).max(8) })).default({}),
-  })).max(12).default([{ id: "main", name: "Main", widgets: ["engines", "notes", "knowledge", "backup"], layout: {} }]),
+  })).max(12).default([{ id: "main", name: "Main", widgets: ["engines", "notes", "knowledge", "backup"], modules: [], pinned: false, layout: {} }]),
   workspace: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/).default("main"),
   dock: z.array(z.string()).max(12).default([]),   // nav ids pinned as shortcuts (D2)
   hidden: z.array(z.string()).default([]),         // nav ids hidden from the rail flyouts

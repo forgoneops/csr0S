@@ -1,0 +1,13 @@
+{
+  "id": "scheduling",
+  "name": "Scheduling",
+  "version": "0.1.0",
+  "description": "Plan and operate Hermes cron tasks from the planning workspace.",
+  "group": "day",
+  "kind": "planning",
+  "edition": "standard",
+  "defaultOff": true,
+  "nav": [{ "id": "scheduling", "label": "Scheduling", "name": "Fasti", "icon": "calendar", "path": "/scheduling", "category": "day", "order": 35 }],
+  "routes": ["/scheduling"],
+  "permissions": []
+}

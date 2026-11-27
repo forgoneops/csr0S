@@ -102,6 +102,13 @@ impl CoreProc {
             // the core stops by itself if this shell dies without cleaning up (killed, crashed, logout)
             .env("CAESAROS_PARENT_PID", std::process::id().to_string())
             .stdin(Stdio::null());
+        // The core's data dir must be the person's own, never a path inside the bundle (a compiled core has no source tree).
+        if env::var_os("CAESAROS_DATA").is_none() {
+            let base = env::var_os("XDG_DATA_HOME").map(PathBuf::from)
+                .or_else(|| env::var_os("HOME").map(|h| PathBuf::from(h).join(".local").join("share")))
+                .unwrap_or_default();
+            cmd.env("CAESAROS_DATA", base.join("caesaros"));
+        }
         // an installed app carries its web, packs and skills in `resources` next to the executables
         if env::var_os("CAESAROS_ROOT").is_none() {
             if let Some(res) = env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("resources"))) {

@@ -1,10 +1,15 @@
 // One SQLite file for the whole core. Modules get a namespaced key-value store; a module that needs
 // tables creates its own. Nothing in here knows about any particular module.
 import { Database } from "bun:sqlite";
-import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 
-export const DATA = process.env.CAESAROS_DATA ?? join(import.meta.dir, "..", "data");
+// A compiled core has no source tree: there import.meta.dir is /$bunfs/root, so the default data dir must be
+// the person's own (~/.local/share/caesaros, the same place tools/run-desktop.sh uses), never a path in the bundle.
+const fromSource = existsSync(join(import.meta.dir, "..", "package.json"));
+export const DATA = process.env.CAESAROS_DATA
+  ?? (fromSource ? join(import.meta.dir, "..", "data") : join(homedir(), ".local", "share", "caesaros"));
 mkdirSync(DATA, { recursive: true });
 
 // A restore the person approved is applied here, before the database opens: the current file is kept in
@@ -12,7 +17,14 @@ mkdirSync(DATA, { recursive: true });
 const pending = join(DATA, "restore-pending.db");
 if (existsSync(pending)) {
   const live = join(DATA, "caesaros.db");
-  if (existsSync(live)) { mkdirSync(join(DATA, "backups"), { recursive: true }); copyFileSync(live, join(DATA, "backups", `caesaros-pre-restore-${Date.now()}.db`)); }
+  if (existsSync(live)) {
+    mkdirSync(join(DATA, "backups"), { recursive: true });
+    // A consistent pre-restore snapshot, not a raw copy: with WAL the live -wal may hold
+    // un-checkpointed writes, and copying only the main file would lose them from the undo backup.
+    const bak = join(DATA, "backups", `caesaros-pre-restore-${Date.now()}.db`);
+    const snap = new Database(live, { readonly: true });
+    try { snap.exec(`VACUUM INTO '${bak.replace(/'/g, "''")}'`); } finally { snap.close(); }
+  }
   for (const x of ["", "-wal", "-shm"]) rmSync(live + x, { force: true });
   renameSync(pending, live);
 }

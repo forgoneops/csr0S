@@ -17,6 +17,7 @@ import { access, knownHost, type Principal } from "./principal";
 import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DATA } from "./db";
+import { isLocal, onRevoke } from "./webgate";
 
 export const DEFAULT_IDLE_MS = 15 * 60_000;
 export const DEFAULT_MAX_SESSIONS = 4;
@@ -62,7 +63,7 @@ export type PtyHandle = {
 };
 
 type Socket = {
-  data: { id: string };
+  data: { id: string; remote?: boolean };
   send(data: string | Uint8Array): void;
   close(code?: number, reason?: string): void;
 };
@@ -284,6 +285,11 @@ export class TerminalSessions {
     return true;
   }
 
+  /** The web gate's key was rotated or revoked: remote viewers are cut off. The shells stay with this computer. */
+  dropRemote(): void {
+    for (const s of this.sessions.values()) if (s.socket?.data.remote) { try { s.socket.close(4003, "access revoked"); } catch { /* gone */ } s.socket = null; }
+  }
+
   detach(id: string, socket: Socket): void {
     const s = this.sessions.get(id);
     if (!s || s.socket !== socket) return;
@@ -332,6 +338,7 @@ function randomId(): string {
 type Peer = { address?: string | null } | undefined;
 
 function gate(c: Context, peer: Peer): GateResult {
+  if (overGateway(c)) return { ok: false, status: 403, error: NO_GATEWAY_TERMINAL };
   return terminalGate({
     edition: process.env.CAESAROS_EDITION,
     principal: access.principal(c).kind,
@@ -356,6 +363,7 @@ const sameOrigin = (origin: string | null | undefined, host: string | null | und
 };
 
 function socketGate(c: Context, peer: Peer): GateResult {
+  if (overGateway(c)) return { ok: false, status: 403, error: NO_GATEWAY_TERMINAL };
   const principal = access.principal(c);
   const kind = principal.kind !== "anonymous" || c.req.header("authorization")
     ? principal.kind
@@ -364,6 +372,10 @@ function socketGate(c: Context, peer: Peer): GateResult {
 }
 
 const refuse = (c: Context, g: Extract<GateResult, { ok: false }>) => c.json({ error: g.error }, g.status);
+
+/** The gateway's own plain-http listener has no terminal: it never carried the socket, so say so before a shell starts. */
+const overGateway = (c: Context): boolean => !!(c.env as { gw?: boolean } | undefined)?.gw;
+const NO_GATEWAY_TERMINAL = "the terminal works on the computer that runs CaesarOS, not over this gateway link";
 
 /** The HTTP surface: state, open, end, and the WebSocket upgrade. */
 export function terminalRoutes(app: Hono, sessions: TerminalSessions): void {
@@ -400,9 +412,9 @@ export function terminalRoutes(app: Hono, sessions: TerminalSessions): void {
     if (!g.ok) return refuse(c, g);
     const id = c.req.query("id") ?? "";
     if (!sessions.has(id)) return c.json({ error: "no such terminal session" }, 404);
-    const server = (c.env as { server?: { upgrade(req: Request, opts: { data: { id: string } }): boolean } } | undefined)?.server;
+    const server = (c.env as { server?: { upgrade(req: Request, opts: { data: { id: string; remote: boolean } }): boolean } } | undefined)?.server;
     if (!server) return c.json({ error: "this server is not answering WebSocket upgrades" }, 501);
-    if (!server.upgrade(c.req.raw, { data: { id } })) return c.json({ error: "the WebSocket upgrade was refused" }, 400);
+    if (!server.upgrade(c.req.raw, { data: { id, remote: !isLocal(c) } })) return c.json({ error: "the WebSocket upgrade was refused" }, 400);
     return new Response(null, { status: 200 });
   });
 }
@@ -414,7 +426,7 @@ export function terminalSocket(sessions: TerminalSessions) {
       if (!sessions.attach(ws.data.id, ws)) { try { ws.close(4004, "no such terminal session"); } catch { /* gone */ } }
     },
     message(ws: Socket, raw: string | Uint8Array) {
-      if (typeof raw !== "string") { sessions.input(ws.data.id, raw); return; }
+      if (typeof raw !== "string") { if (raw.length > MAX_MESSAGE) return; sessions.input(ws.data.id, raw); return; }
       if (raw.length > MAX_MESSAGE) return;
       let msg: { t?: string; d?: string; cols?: number; rows?: number };
       try { msg = JSON.parse(raw) as typeof msg; } catch { return; }
@@ -432,7 +444,8 @@ export const terminals = new TerminalSessions();
 
 export function useTerminal(app: Hono, sessions: TerminalSessions = terminals): () => void {
   terminalRoutes(app, sessions);
+  const unhook = onRevoke(() => sessions.dropRemote());
   const timer = setInterval(() => { sessions.tick(); try { sessions.saveHistory(); } catch (e) { console.warn("terminal history not saved:", (e as Error).message); } }, 30_000);
   (timer as unknown as { unref?: () => void }).unref?.();
-  return () => clearInterval(timer);
+  return () => { clearInterval(timer); unhook(); };
 }

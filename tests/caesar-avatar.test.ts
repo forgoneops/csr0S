@@ -1,4 +1,4 @@
-// Konrad, 2026-11-21: the flat ape mark is gone everywhere; Caesar's face is the portrait.
+// Owner, 2026-11-21: the flat ape mark is gone everywhere; Caesar's face is the portrait.
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { listCrew } from "../core/crew";

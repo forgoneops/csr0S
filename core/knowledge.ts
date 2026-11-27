@@ -80,6 +80,12 @@ export function knowledgeApi(app: Hono) {
     const r = addDoc(typeof b.name === "string" ? b.name : "", typeof b.text === "string" ? b.text : "");
     return "error" in r ? c.json(r, r.error === "too_large" ? 413 : 400) : c.json(r, 201);
   });
+  // the whole text of one document, for the reader: its passages in the order they were cut
+  app.get("/api/knowledge/:id/text", (c) => {
+    const d = db.query<{ name: string }, [string]>("SELECT name FROM kb_docs WHERE id = ?").get(c.req.param("id"));
+    if (!d) return c.json({ error: "not found" }, 404);
+    return c.json({ name: d.name, text: db.query<{ passage: string }, [string]>("SELECT passage FROM kb_fts WHERE doc_id = ? ORDER BY rowid").all(c.req.param("id")).map((p) => p.passage).join("\n\n") });
+  });
   app.get("/api/knowledge-folders", (c) => c.json(folders()));
   app.put("/api/knowledge/:id/folder", async (c) => { const b = await c.req.json().catch(() => ({})) as { folder?: unknown }; return setFolder(c.req.param("id"), b.folder) ? c.json({ ok: true }) : c.json({ error: "not found" }, 404); });
   app.delete("/api/knowledge/:id", (c) => (removeDoc(c.req.param("id")) ? c.json({ ok: true }) : c.json({ error: "not found" }, 404)));

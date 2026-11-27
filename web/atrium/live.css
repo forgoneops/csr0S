@@ -1,0 +1,51 @@
+/* Live strip: news ticker and notification panel. Every rule is rooted at .lv. Colours come from the palette tokens only. */
+.lv-tick{position:fixed;left:0;right:0;bottom:var(--nx-bot,42px);z-index:57;display:flex;align-items:center;height:26px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);border-top:1px solid color-mix(in srgb,var(--p1) 22%,var(--line));font-size:.78rem;color:var(--muted)}
+.lv-tick[hidden]{display:none}
+.lv-tick .lv-tag{flex:none;padding:0 10px;height:100%;display:grid;place-items:center;letter-spacing:.14em;font-size:.64rem;color:var(--ink,var(--text));background:color-mix(in srgb,var(--p1) 22%,transparent);clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+.lv-tick .lv-view{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
+.lv-tick .lv-track{display:inline-flex;animation:lv-slide var(--lv-s,60s) linear infinite;will-change:transform}
+.lv-tick.lv-paused .lv-track,.lv-tick:hover .lv-track,.lv-tick:focus-within .lv-track{animation-play-state:paused}
+.lv-tick .lv-set{display:inline-flex;align-items:center;flex:none}
+.lv-tick .lv-item{display:inline-block;padding:4px 14px;color:var(--text);text-decoration:none}
+.lv-tick .lv-item:hover,.lv-tick .lv-item:focus-visible{color:var(--p2);outline:1px solid color-mix(in srgb,var(--p2) 50%,transparent)}
+.lv-tick .lv-sep{width:5px;height:5px;flex:none;background:var(--gold,var(--p1))}
+@keyframes lv-slide{to{transform:translateX(-50%)}}
+@media (max-width:760px){.lv-tick{bottom:calc(58px + env(safe-area-inset-bottom))}}
+
+.lv-bell{position:relative}
+.lv-bell .lv-badge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 4px;display:grid;place-items:center;font:700 .62rem/1 var(--font-mono,monospace);font-style:normal;color:var(--accent-ink,#000);background:var(--p1);clip-path:polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))}
+.lv-bell[data-state=urgent] .lv-badge{background:var(--gold,var(--p2))}
+.lv-bell[data-state=unread] .lv-ico,.lv-bell[data-state=urgent] .lv-ico{color:var(--p1)}
+.lv-bell.ns-it .lv-badge{top:3px;right:auto;left:30px}
+.lv-bell-wide{display:flex;align-items:center;gap:8px;position:relative}
+
+.lv-wrap{position:fixed;inset:0;z-index:100;pointer-events:none;visibility:hidden;transition:visibility 0s .2s}
+.lv-wrap.open{visibility:visible;transition-delay:0s}
+.lv-wrap .lv-scrim{position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 55%,transparent);opacity:0;transition:opacity .2s}
+.lv-wrap .lv-panel{position:absolute;top:calc(var(--nx-top,64px) + 8px);left:64px;width:min(380px,calc(100vw - 16px));max-height:calc(100vh - var(--nx-top,64px) - 60px);display:flex;flex-direction:column;overflow:hidden;
+  background:color-mix(in srgb,var(--surface) 96%,transparent);border:1px solid color-mix(in srgb,var(--p1) 40%,var(--line));color:var(--text);
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));opacity:0;transform:translateX(-8px);transition:opacity .18s,transform .18s}
+.lv-wrap.open{pointer-events:auto}.lv-wrap.open .lv-scrim{opacity:1}.lv-wrap.open .lv-panel{opacity:1;transform:none}
+.lv-panel .lv-art{height:72px;flex:none;overflow:hidden;border-bottom:1px solid var(--line)}
+.lv-panel .lv-hd{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.lv-panel .lv-hd b{letter-spacing:.12em;text-transform:uppercase;font-size:.78rem}
+.lv-panel .lv-count{flex:1;font-size:.74rem;color:var(--muted)}
+.lv-panel .lv-btn{min-height:32px;padding:0 10px;cursor:pointer;font:inherit;font-size:.74rem;color:var(--text);background:transparent;border:1px solid var(--line);clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))}
+.lv-panel .lv-btn:hover:not([disabled]),.lv-panel .lv-btn:focus-visible{border-color:var(--p1);color:var(--p1)}
+.lv-panel .lv-btn[disabled]{opacity:.4;cursor:default}
+.lv-panel .lv-list{overflow:auto;display:grid;align-content:start}
+.lv-panel .lv-row{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:10px 1fr;gap:2px 10px;padding:10px 12px;border-bottom:1px solid var(--line);min-height:48px}
+.lv-panel .lv-row:hover,.lv-panel .lv-row:focus-visible{background:color-mix(in srgb,var(--p1) 10%,transparent)}
+.lv-panel .lv-sq{width:7px;height:7px;margin-top:5px;background:var(--line)}
+.lv-panel .lv-row.new .lv-sq{background:var(--p1)}
+.lv-panel .lv-k{grid-column:2;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--p2)}
+.lv-panel .lv-row b{grid-column:2;font-weight:600;font-size:.84rem;overflow-wrap:anywhere}
+.lv-panel .lv-row:not(.new) b{font-weight:400;color:var(--muted)}
+.lv-panel .lv-row small{grid-column:2;color:var(--muted);font-size:.72rem}
+.lv-panel .lv-note{margin:0;padding:18px 14px;color:var(--muted);font-size:.84rem}
+.lv-panel .lv-skel{height:48px;margin:8px 12px;background:linear-gradient(90deg,color-mix(in srgb,var(--p1) 6%,transparent),color-mix(in srgb,var(--p1) 14%,transparent),color-mix(in srgb,var(--p1) 6%,transparent));background-size:200% 100%;animation:lv-sk 1.8s ease-in-out infinite}
+@keyframes lv-sk{to{background-position:-200% 0}}
+@media (max-width:760px){.lv-wrap .lv-panel{left:8px;right:8px;width:auto;top:auto;bottom:calc(66px + env(safe-area-inset-bottom));max-height:70vh;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){.lv-tick{display:none!important}.lv-panel .lv-skel{animation:none}.lv-wrap .lv-panel,.lv-wrap .lv-scrim{transition:none}}
+.lv-bell.ns-it .lv-badge{top:5px;right:auto;left:31px}.lv-bell.ns-it .lv-ico{flex:none}

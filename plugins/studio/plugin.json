@@ -1,0 +1,13 @@
+{
+  "id": "studio",
+  "name": "Studio",
+  "version": "0.1.0",
+  "description": "Optional workspace: Social desk, Reels and Offer Boards. Code only, starts empty, nothing is ever posted. Each app has its own switch in the shell.",
+  "group": "media",
+  "edition": "standard",
+  "defaultOff": true,
+  "tags": ["studio", "social", "reels", "offer-boards"],
+  "nav": [],
+  "routes": [],
+  "permissions": []
+}

@@ -1,5 +1,7 @@
 /* One registry for the Atrium's views: a script registers the views it adds instead of assigning OG[...] itself.
    A duplicate module id, or a view another module has claimed in `owns`, throws at load, before the page draws. */
+/** The locale dates are written in: Polish when the page is Polish, else what the caller asked for. Dates are data-no-i18n. */
+globalThis.uiLocale = (en) => (globalThis.document?.documentElement?.lang === 'pl' ? 'pl-PL' : en);
 const OG_MODULES = new Map();   // module id -> its view names
 const OG_OWNERS = new Map();    // view name -> the module id that owns it
 

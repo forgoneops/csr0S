@@ -90,6 +90,7 @@ export function pairingApi(app: Hono, isOperator: (c: import("hono").Context) =>
 /** The one thing a paired device may do with its key: leave a task for this device. */
 export function deviceByTokenName(name: string | null | undefined): Device | undefined { return name ? read().devices.find((d) => d.tokenName === name) : undefined; }
 export const tokenOf = (id: string): { url: string; token: string } | null => { const d = read().devices.find((x) => x.id === id); return d && d.role === "i-joined" && d.url && d.token ? { url: d.url, token: d.token } : null; };
+export const pairedCount = () => read().devices.length;
 export const touch = (id: string) => { const s = read(); write({ ...s, devices: s.devices.map((d) => (d.id === id ? { ...d, lastSeen: Date.now() } : d)) }); };
 
 /** The conversation key shared with a paired device (base64), or null for a device paired before keys existed. */

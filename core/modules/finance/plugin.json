@@ -1,0 +1,13 @@
+{
+  "id": "finance",
+  "name": "Finance",
+  "version": "0.1.0",
+  "description": "Track cash snapshots, income, expenses and daily or monthly targets.",
+  "group": "client",
+  "tags": ["finance", "cash", "budget"],
+  "edition": "standard",
+  "defaultOff": true,
+  "nav": [{ "id": "finance", "label": "Finance", "icon": "chart", "path": "/finance", "category": "work", "order": 80 }],
+  "routes": ["/finance"],
+  "permissions": []
+}

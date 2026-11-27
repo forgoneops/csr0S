@@ -5,7 +5,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { listCrew } from "./crew";
-import { memoFor } from "./memo";
+import { swrFor } from "./memo";
 
 export type MirrorRow = { id: string; name: string; memoryBytes: number; memoryAt: number | null; userBytes: number; skills: number };
 const HOME = () => process.env.HERMES_HOME ?? join(homedir(), ".hermes");
@@ -42,9 +42,11 @@ export function parseCurator(text: string): { enabled: boolean; lines: string[] 
   const lines = text.split("\n").map((x) => x.trim()).filter((x) => x && !/\/home\/|last report/.test(x));
   return { enabled: /curator:\s*ENABLED/.test(text), lines };
 }
-const kanban = memoFor(10_000, async () => parseKanban(await hermes(["kanban", "list", "--json"])));
-const curator = memoFor(10_000, async () => parseCurator(await hermes(["curator", "status"])));
+const kanban = swrFor(30_000, async () => parseKanban(await hermes(["kanban", "list", "--json"])));
+const curator = swrFor(30_000, async () => parseCurator(await hermes(["curator", "status"])));
 
+// Warm both ahead of the first visit: the Hermes commands take seconds, the page must not wait for them.
+export const warmMirror = () => { kanban.warm(); curator.warm(); };
 export const mirrorApi = (app: Hono, isOperator: (c: Context) => boolean) => app.get("/api/mirror", (c) => (isOperator(c) ? c.json(mirror()) : c.json({ error: "operator_only" }, 403)));
 export const mirrorMoreApi = (app: Hono, isOperator: (c: Context) => boolean) => {
   app.get("/api/mirror/kanban", async (c) => (isOperator(c) ? c.json(await kanban()) : c.json({ error: "operator_only" }, 403)));

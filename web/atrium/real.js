@@ -2,7 +2,8 @@
    Same look (og-card, og-row, og-tag, btn), real data. Each page loads on first draw, keeps its state in RD, and calls
    the prototype's own render() when something changes. Writes go through the core's own guards (operator only). */
 (() => {
-  const RD = { dev: null, hw: null, inst: null, pull: null, ollama: false, keys: null, fresh: null, kb: null, kbq: '', kbhits: null, bk: null, err: {}, join: { url: '', code: '' }, code: null };
+  const RD = { marketItems: null, marketErr: '', marketBusy: false, dev: null, hw: null, inst: null, pull: null, ollama: false, keys: null, fresh: null, kb: null, kbq: '', kbhits: null, bk: null, err: {}, join: { url: '', code: '' }, code: null };
+  window.xRD = RD;   // the Library halls read the book list from here
   const J = { 'content-type': 'application/json' };
   const toLogin = r => { if (r && r.status === 401) location.href = '/login'; return r; };   // the owner password is on and the session ended
   const g = async (u, d) => { try { const r = toLogin(await fetch(u)); return r.ok ? await r.json() : d; } catch { return d; } };
@@ -13,7 +14,7 @@
   const btn = (k, label, extra = '') => `<button class="btn" data-rd="${k}" ${extra}>${E(label)}</button>`;
   const sec = t => `<div class="og-sec">${E(t)}</div>`;
   const head = (name, sub, la) => (typeof ogHead === 'function' ? ogHead(name, sub, la) : `<h2>${E(name)}</h2>`);
-  const loadingCard = () => '<div class="og-card"><p>Loading from this device…</p></div>';
+  const loadingCard = () => (typeof ARTSKEL === 'function' ? ARTSKEL(3, 'Loading from this device') : '<div class="og-card" role="status"><p>Loading from this device…</p></div>');
   const again = () => render();
   const V = {};   // the views this script provides; registered in one go at the end
 
@@ -60,7 +61,7 @@
        <div class="og-row">${RD.cpSure === 'use' + i ? btn('cpusego:' + i, 'Replace mine with this copy') : btn('cpuse:' + i, 'Use the copy')}${RD.cpSure === 'keep' + i ? btn('cpkeepgo:' + i, 'Discard the copy (to trash)') : btn('cpkeep:' + i, 'Keep mine')}</div></div>`).join('') : '<div style="display:block"><span>No note copies. Where another device changed something you also changed, its version would arrive here beside yours.</span></div>'}
      ${(RD.chatcop || []).map(s => `<div><span>${E(s.title)} <small>conversation from another device</small></span>${RD.cpSure === 'chat' + s.id ? btn('cpchatgo:' + s.id, 'Delete for good') : btn('cpchat:' + s.id, 'Delete')}</div>`).join('')}</div>
      ${sec('This device')}
-     <div class="og-card"><div class="og-row"><h4>${E(d.name)}</h4><span class="og-tag sig">This device</span></div>
+     <div class="og-card"><div class="og-row"><h4 data-no-i18n>${E(d.name)}</h4><span class="og-tag sig">This device</span></div>
       <div class="og-row"><span>${sw('visible', d.visible)} <span class="label">Visible to new devices</span></span><span>${sw('discover', d.discover)} <span class="label">Look for devices</span></span></div>
       <p>Pairing needs a code from this screen, valid five minutes and used once. Turn visibility off and nobody can pair.</p>
       <div class="og-row">${btn('code', 'Show a pairing code', d.visible ? '' : 'disabled')}</div>${RD.err.dev ? `<p role="alert">${E(RD.err.dev)}</p>` : ''}</div>
@@ -83,23 +84,27 @@
     again();
   }
   let pullTimer = null;
-  const watchPull = () => { if (pullTimer) return; pullTimer = setInterval(async () => { RD.pull = await g('/api/models/pull', null); again(); if (!RD.pull || RD.pull.done) { clearInterval(pullTimer); pullTimer = null; RD.inst = await g('/api/models/installed', []); again(); } }, 1200); };
+  const shapeOf = p => JSON.stringify(p && [p.model, p.done, p.queue, p.failed]);
+  // a progress tick moves the bar in place: redrawing the page would replace the line's buttons under the pointer
+  const moveBar = p => { const bar = document.querySelector('.og-act progress'); if (!bar || !p.total) return false; bar.max = p.total; bar.value = p.completed; if (bar.nextElementSibling) bar.nextElementSibling.textContent = Math.round(p.completed / p.total * 100) + '%'; return true; };
+  const watchPull = () => { if (pullTimer) return; pullTimer = setInterval(async () => { const was = RD.pull; RD.pull = await g('/api/models/pull', null); const over = !RD.pull || RD.pull.done; if (!over && shapeOf(was) === shapeOf(RD.pull) && moveBar(RD.pull)) return; if (over || !was || RD.pull.model !== was.model) RD.inst = await g('/api/models/installed', []); if (over) { clearInterval(pullTimer); pullTimer = null; } again(); }, 1200); };
   V.Models = () => {
     if (!RD.hw) { void loadModels(); return `<div class="nx-view enter">${head('Models', 'Models for this machine, picked from what it can hold.', 'Armamentarium')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     const m = RD.hw.machine || {}, p = RD.pull;
     const tier = { quick: 'Quick start', balanced: 'Balanced', max: 'Best quality' };
     const rows = RD.hw.advice.map(a => {
-      const mine = p && p.model === a.model;
+      const mine = p && p.model === a.model, waits = !!(p && p.queue && p.queue.includes(a.model)), fail = p && (p.failed || []).find(x => x.model === a.model);
       const act = mine && !p.done ? `<progress max="${p.total || ''}" ${p.total ? `value="${p.completed}"` : ''} style="width:100%"></progress><span class="og-tag sig">${p.total ? Math.round(p.completed / p.total * 100) + '%' : E(p.status)}</span>${btn('pullstop', 'Cancel')}` :
-        mine && p.done && !p.error && p.status !== 'cancelled' ? '<span class="og-tag sig">Downloaded</span>' :
-        RD.ollama ? btn('pull:' + E(a.model), 'Download (' + a.sizeGb + ' GB)', p && !p.done ? 'disabled' : '') : '<span class="og-tag mut">Start Ollama to download</span>';
-      return `<div class="og-card"><div class="og-row"><h4>${tier[a.tier]}</h4><span class="og-tag">${E(a.model)} · ${a.sizeGb} GB</span></div><p>${E(a.why)}.</p><div class="og-act">${act}</div>${mine && p.error ? `<p role="alert">${E(p.error)}</p>` : ''}</div>`;
+        waits ? `<span class="og-tag">In line, place ${p.queue.indexOf(a.model) + 1}</span>${btn('pulldrop:' + E(a.model), 'Remove from line')}` :
+        (RD.inst || []).some(x => x.name === a.model) || (mine && p.done && !p.error && p.status !== 'cancelled') ? '<span class="og-tag sig">Downloaded</span>' :
+        RD.ollama ? btn('pull:' + E(a.model), fail ? 'Try again' : (p && !p.done ? 'Add to the line' : 'Download') + ' (' + a.sizeGb + ' GB)') : '<span class="og-tag mut">Start Ollama to download</span>';
+      return `<div class="og-card"><div class="og-row"><h4>${tier[a.tier]}</h4><span class="og-tag">${E(a.model)} · ${a.sizeGb} GB</span></div><p>${E(a.why)}.</p><div class="og-act">${act}</div>${fail ? `<p role="alert">The download failed: ${E(fail.error)}. Trying again picks up what was already fetched.</p>` : ''}</div>`;
     }).join('') || '<div class="og-card"><p>This machine does not have enough memory for a local model. Use a tool you are signed in to, or a server.</p></div>';
-    const inst = (RD.inst || []).length ? RD.inst.map(x => `<div>${I('engine', 16)}<span>${E(x.name)} <small>${x.sizeGb} GB</small></span><span class="og-row">${RD.sure === x.name ? btn('rmgo:' + E(x.name), 'Delete for good') : btn('rm:' + E(x.name), 'Delete')}</span></div>`).join('') : '<div style=\"display:block\"><span>No local model is installed yet.</span></div>';
+    const inst = (RD.inst || []).length ? RD.inst.map(x => `<div>${I('engine', 16)}<span>${E(x.name)} <small>${x.sizeGb} GB</small>${window.xCaps ? xCaps(x.name) : ''}</span><span class="og-row">${RD.sure === x.name ? btn('rmgo:' + E(x.name), 'Delete for good') : btn('rm:' + E(x.name), 'Delete')}</span></div>`).join('') : '<div style=\"display:block\"><span>No local model is installed yet.</span></div>';
     if (p && !p.done) watchPull();
     return `<div class="nx-view enter">${head('Models', 'Models for this machine, picked from what it can hold.', 'Armamentarium')}
-    <div class="og-wrap"><div class="og-card"><div class="og-row"><h4>This machine</h4></div><p>${m.ramGb} GB memory · ${m.cores} cores · ${m.freeDiskGb} GB free disk · graphics: ${E(m.gpu || 'unknown')}</p></div>
-    ${sec('Recommended')}<div class="og-grid">${rows}</div>
+    <div class="og-wrap"><div class="og-card"><div class="og-row"><h4>This machine</h4></div><p><span>Memory: ${m.ramGb} GB</span> · <span>CPU cores: ${m.cores}</span> · <span>Free disk: ${m.freeDiskGb} GB</span> · <span>Graphics:</span> <span${m.gpu ? ' data-no-i18n' : ''}>${E(m.gpu || 'unknown')}</span></p></div>
+    ${sec('Recommended')}${RD.err.pull ? `<p role="alert">${E(RD.err.pull)}</p>` : ''}<div class="og-grid">${rows}</div>
     ${sec('Installed')}<div class="og-list">${inst}</div>
     <p class="og-note">Sizes are approximate. Nothing downloads until you press the button; Ollama does the work.</p></div></div>`;
   };
@@ -112,8 +117,9 @@
     const ex = `curl ${base}/chat/completions \\\n  -H "Authorization: Bearer ${RD.fresh || 'cae_...'}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"model":"claude/default","messages":[{"role":"user","content":"Hello"}]}'`;
     return `<div class="nx-view enter">${head('Gateway', 'Other apps on this computer can use your engines (Ollama, Claude Code, Codex) through one address.', 'Porta')}
     <div class="og-wrap"><div class="og-card"><div class="og-row"><h4>Local gateway</h4><span class="og-tag sig">This computer only</span></div><p>Address <code>${E(base)}</code>. Every app needs its own key; the gateway answers nothing else.</p></div>
-    ${sec('Keys')}<div class="og-list">${RD.keys.length ? RD.keys.map(k => `<div>${I('lock', 16)}<span>${E(k.name)}</span><span class="og-row">${btn('keyrm:' + E(k.name), 'Revoke')}</span></div>`).join('') : '<div style=\"display:block\"><span>No key yet.</span></div>'}</div>
-    <div class="og-card"><div class="og-row"><input class="og-input" id="rd-key" placeholder="Name, e.g. my-editor"> ${btn('keymk', 'Make a key')}</div>${RD.err.key ? `<p role="alert">${E(RD.err.key)}</p>` : ''}${RD.fresh ? `<p>Shown once, copy it now: <code>${E(RD.fresh)}</code></p>` : ''}</div>
+    ${sec('Keys')}<div class="og-list">${RD.keys.length ? RD.keys.map(k => `<div>${I('lock', 16)}<span data-no-i18n>${E(k.name)}</span><span class="og-row">${btn('keyrm:' + E(k.name), 'Revoke')}</span></div>`).join('') : '<div style=\"display:block\"><span>No key yet.</span></div>'}</div>
+    <div class="og-card"><div class="og-row"><input class="og-input" id="rd-key" aria-label="Key name" placeholder="Name, e.g. my-editor"> ${btn('keymk', 'Make a key')}</div>${RD.err.key ? `<p role="alert">${E(RD.err.key)}</p>` : ''}${RD.fresh ? `<p>Shown once, copy it now: <code>${E(RD.fresh)}</code></p>` : ''}</div>
+    ${window.GW ? GW.view() : ''}
     ${sec('Example')}<pre class="og-code">${E(ex)}</pre>
     <p class="og-note">Anyone with a key can use your signed-in tools, so keep keys private and revoke what you do not use.</p></div></div>`;
   };
@@ -122,12 +128,15 @@
   async function loadKb() { RD.kb = await g('/api/knowledge', []); again(); }
   V.Library = () => {
     if (!RD.kb) { void loadKb(); return `<div class="nx-view enter">${head('Library', 'Documents you add stay on this computer.', 'Bibliotheca')}<div class="og-wrap">${loadingCard()}</div></div>`; }
-    const hits = RD.kbhits ? (RD.kbhits.length ? RD.kbhits.map(h => `<div>${I('library', 16)}<span>${E(h.name)} <small>${E(h.passage)}</small></span></div>`).join('') : '<div style=\"display:block\"><span>Nothing found.</span></div>') : '';
+    const hits = RD.kbhits ? (RD.kbhits.length ? RD.kbhits.map(h => `<div>${I('library', 16)}<span data-no-i18n>${E(h.name)} <small>${E(h.passage)}</small></span></div>`).join('') : '<div style=\"display:block\"><span>Nothing found.</span></div>') : '';
+    const folders = [...new Set(RD.kb.map(x => x.folder || ''))];
+    // the old library's format tabs, made from the folders the person actually uses
+    const cols = RD.kb.length > 1 && folders.length > 1 ? `<div class="lib-cols" role="tablist" aria-label="Collections">${[['', 'All'], ...folders.map(f => [f, f || 'Unshelved'])].map(([id, label]) => `<button type="button" class="btn ghost${(RD.kfilter || '') === id ? ' on' : ''}" data-rd="kcol:${encodeURIComponent(id)}" role="tab" aria-selected="${(RD.kfilter || '') === id}"><span${id ? ' data-no-i18n' : ''}>${E(label)}</span> <span class="bd-n">${id ? RD.kb.filter(x => (x.folder || '') === id).length : RD.kb.length}</span></button>`).join('')}</div>` : '';
     return `<div class="nx-view enter">${head('Library', 'Documents you add stay on this computer. Search finds passages in all of them.', 'Bibliotheca')}
-    <div class="og-wrap"><div class="og-card"><div class="og-row"><input class="og-input" id="rd-kq" placeholder="Search your documents" value="${E(RD.kbq)}" style="flex:1">${btn('kbsearch', 'Search')}</div>${hits ? `<div class="og-list">${hits}</div>` : ''}</div>
+    <div class="og-wrap">${cols}${window.xLib ? window.xLib.hall(RD) : ''}<div class="og-card"><div class="og-row"><input class="og-input" id="rd-kq" aria-label="Search your documents" placeholder="Search your documents" value="${E(RD.kbq)}" style="flex:1">${btn('kbsearch', 'Search')}</div>${hits ? `<div class="og-list">${hits}</div>` : ''}</div>
     ${sec('Add a document')}
-    <div class="og-card"><div class="og-row"><input class="og-input" id="rd-kname" placeholder="Name"></div><textarea class="og-input" id="rd-ktext" rows="6" placeholder="Paste text or Markdown" style="width:100%;box-sizing:border-box"></textarea><div class="og-row"><label class="btn" style="cursor:pointer">Choose a text or Markdown file<input type="file" id="rd-kfile" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden></label>${btn('kbadd', 'Add to library')}</div>${RD.err.kb ? `<p role="alert">${E(RD.err.kb)}</p>` : ''}</div>
-    ${sec('Your documents' + (RD.kfilter ? ' · folder ' + RD.kfilter : ''))}${RD.kfilter ? `<div class="og-row">${btn('kfall', 'All documents')}</div>` : ''}<div class="og-list">${RD.kb.filter(x => !RD.kfilter || x.folder === RD.kfilter).length ? RD.kb.filter(x => !RD.kfilter || x.folder === RD.kfilter).map(x => `<div>${I('library', 16)}<span>${E(x.name)} <small>${x.chars < 1000 ? x.chars + ' characters' : Math.round(x.chars / 1000) + ' k characters'}</small></span><span class="og-row"><input class="og-input" id="rd-kf-${E(x.id)}" placeholder="Folder" value="${E(x.folder || '')}" style="min-width:110px;max-width:150px" aria-label="Folder of ${E(x.name)}">${btn('kfsave:' + E(x.id), 'Move')}${RD.ksure === x.id ? btn('kbrmgo:' + E(x.id), 'Delete for good') : btn('kbrm:' + E(x.id), 'Delete')}</span></div>`).join('') : '<div style=\"display:block\"><span>No documents yet.</span></div>'}</div></div></div>`;
+    <div class="og-card"><div class="og-row"><input class="og-input" id="rd-kname" aria-label="Document name" placeholder="Name"></div><textarea class="og-input" id="rd-ktext" aria-label="Text to add" rows="6" placeholder="Paste text or Markdown" style="width:100%;box-sizing:border-box"></textarea><div class="og-row"><label class="btn" style="cursor:pointer">Choose a text or Markdown file<input type="file" id="rd-kfile" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden></label>${btn('kbadd', 'Add to library')}</div>${RD.err.kb ? `<p role="alert">${E(RD.err.kb)}</p>` : ''}</div>
+    ${RD.kfilter ? `<div class="og-sec">Your documents · folder <span data-no-i18n>${E(RD.kfilter)}</span></div>` : sec('Your documents')}${RD.kfilter ? `<div class="og-row">${btn('kfall', 'All documents')}</div>` : ''}<div class="og-list">${RD.kb.filter(x => !RD.kfilter || x.folder === RD.kfilter).length ? RD.kb.filter(x => !RD.kfilter || x.folder === RD.kfilter).map(x => `<div>${I('library', 16)}<span><span data-no-i18n>${E(x.name)}</span> <small>${x.chars < 1000 ? x.chars + ' characters' : Math.round(x.chars / 1000) + ' k characters'}</small></span><span class="og-row"><input class="og-input" id="rd-kf-${E(x.id)}" placeholder="Folder" value="${E(x.folder || '')}" style="min-width:110px;max-width:150px" data-i18n-own data-i18n-own="${E(x.name)}" aria-label="Folder of ${E(x.name)}">${btn('kfsave:' + E(x.id), 'Move')}${RD.ksure === x.id ? btn('kbrmgo:' + E(x.id), 'Delete for good') : btn('kbrm:' + E(x.id), 'Delete')}</span></div>`).join('') : '<div style=\"display:block\"><span>No documents yet.</span></div>'}</div></div></div>`;
   };
 
 
@@ -141,12 +150,14 @@
   const prevSettings = OG.Settings;
   V.Settings = () => {
     const base = prevSettings ? prevSettings() : '';
+    // Credits is a focused Hall of Fame: never append unrelated system settings beneath the statues.
+    if (/data-st="open:credits"\s+aria-expanded="true"/.test(base)) return base;
     if (!RD.bk || !RD.set) { void loadSet(); return base; }
     const rows = [{ to: '127.0.0.1:11434', why: 'Ollama on this machine, for local models. Never leaves the computer.' }]
-      .concat(RD.ms.map(x => ({ to: x.url, why: 'Model server "' + x.name + '", added by you.' })), RD.gw.map(x => ({ to: x.url, why: 'Gateway "' + x.name + '", added by you.' })),
+      .concat(RD.ms.map(x => ({ to: x.url, kind: 'Model server', name: x.name })), RD.gw.map(x => ({ to: x.url, kind: 'Gateway', name: x.name })),
         (RD.set.brain && RD.set.brain.location === 'remote' && RD.set.brain.url) ? [{ to: RD.set.brain.url, why: 'The remote Brain you chose.' }] : []);
-    const bk = RD.bk.length ? RD.bk.map(b => `<div>${I('memory', 16)}<span>${new Date(b.at).toLocaleString()} <small>${b.sizeMb} MB</small></span><span class="og-row"><a class="btn" href="/api/backup/${E(b.name)}" download>Download</a>${RD.bsure === b.name ? btn('bkrmgo:' + E(b.name), 'Delete for good') : btn('bkrm:' + E(b.name), 'Delete')}</span></div>`).join('') : '<div style="display:block"><span>No backup yet.</span></div>';
-    const aud = RD.audit.length ? RD.audit.slice(0, 12).map(a => `<div>${I('lock', 16)}<span>${E(a.actor)} · ${E(a.subjectKind)} <small>${new Date(a.at).toLocaleString()} · ${E(a.claim)}</small></span></div>`).join('') : '<div style="display:block"><span>No tool has read private data yet.</span></div>';
+    const bk = RD.bk.length ? RD.bk.map(b => `<div>${I('memory', 16)}<span>${new Date(b.at).toLocaleString(uiLocale())} <small>${b.sizeMb} MB</small></span><span class="og-row"><a class="btn" href="/api/backup/${E(b.name)}" download>Download</a>${RD.bsure === b.name ? btn('bkrmgo:' + E(b.name), 'Delete for good') : btn('bkrm:' + E(b.name), 'Delete')}</span></div>`).join('') : '<div style="display:block"><span>No backup yet.</span></div>';
+    const aud = RD.audit.length ? RD.audit.slice(0, 12).map(a => `<div>${I('lock', 16)}<span>${E(a.actor)} · ${E(a.subjectKind)} <small>${new Date(a.at).toLocaleString(uiLocale())} · ${E(a.claim)}</small></span></div>`).join('') : '<div style="display:block"><span>No tool has read private data yet.</span></div>';
     // the extra sections go INSIDE the view the prototype drew (before its closing tag); a second sibling made the grid give the cards 108 px
     const extra = `<div class="og-wrap" style="margin-top:18px">
      ${sec('Password')}
@@ -157,10 +168,10 @@
      ${sec('Restore from a backup')}
      <div class="og-card"><p>Pick a backup file made here. It is checked first and applied the next time CaesarOS starts; your current data is saved first as a backup named pre-restore.</p><div class="og-row"><label class="btn" style="cursor:pointer">Restore from a file<input type="file" id="rd-bkfile" accept=".db,application/octet-stream" hidden></label></div>${RD.pend ? `<p role="status">The backup is checked and waiting. Close and open CaesarOS to apply it. ${btn('bkcancel', 'Cancel')}</p>` : ''}${RD.err.bk ? `<p role="alert">${E(RD.err.bk)}</p>` : ''}</div>
      ${sec('Where this app can connect')}
-     <div class="og-list">${rows.map(r => `<div>${I('globe', 16)}<span>${E(r.to)} <small>${E(r.why)}</small></span></div>`).join('')}</div>
+     <div class="og-list">${rows.map(r => `<div>${I('globe', 16)}<span><span data-no-i18n>${E(r.to)}</span> <small>${r.name ? `<span>${r.kind}</span> <span data-no-i18n>"${E(r.name)}"</span> <span>added by you.</span>` : E(r.why)}</small></span></div>`).join('')}</div>
      <p class="og-note">This is the complete list. Claude Code, Codex and Gemini CLI use their own connection and sign-in. No telemetry, no analytics, no update check runs by itself.</p>
      ${sec('Report a problem')}
-     <div class="og-card"><p>Build a short report of this install, read all of it, then send it yourself if you want to. Nothing is sent from here.</p><textarea class="og-input" id="rd-rnote" rows="3" placeholder="What went wrong?" style="width:100%;box-sizing:border-box"></textarea><div class="og-row">${btn('rbuild', 'Build the report')}</div>${RD.report ? `<textarea class="og-input" id="rd-report" rows="10" style="width:100%;box-sizing:border-box;text-transform:none">${E(RD.report)}</textarea><div class="og-row">${btn('rcopy', 'Copy')}${btn('rsave', 'Save as a file')}</div><p class="og-note">It holds the version, your browser, settings names and what was found on this machine. No chats, notes or keys.</p>` : ''}</div>
+     <div class="og-card"><p>Build a short report of this install, read all of it, then send it yourself if you want to. Nothing is sent from here.</p><textarea class="og-input" id="rd-rnote" rows="3" placeholder="What went wrong?" style="width:100%;box-sizing:border-box"></textarea><div class="og-row">${btn('rbuild', 'Build the report')}</div>${RD.report ? `<textarea class="og-input" id="rd-report" aria-label="Report text" rows="10" style="width:100%;box-sizing:border-box;text-transform:none">${E(RD.report)}</textarea><div class="og-row">${btn('rcopy', 'Copy')}${btn('rsave', 'Save as a file')}</div><p class="og-note">It holds the version, your browser, settings names and what was found on this machine. No chats, notes or keys.</p>` : ''}</div>
     </div>`;
     return /<\/div>\s*$/.test(base) ? base.replace(/<\/div>\s*$/, () => extra + '</div>') : base + extra;
   };
@@ -193,7 +204,7 @@
   /* ---------- Board: its own module, web/atrium/board.js, on /api/board ---------- */
 
 
-  /* ---------- Schedule (calendar): a month, a day, its events; every control is a button ---------- */
+  /* ---------- Schedule (calendar): shared loader for adding and deleting events ---------- */
   const pad = n => String(n).padStart(2, '0');
   const iso = (y, m, d) => y + '-' + pad(m + 1) + '-' + pad(d);
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -204,21 +215,7 @@
     if (!c.sel) { const t = new Date(); c.sel = (t.getFullYear() === c.y && t.getMonth() === c.m) ? iso(c.y, c.m, t.getDate()) : iso(c.y, c.m, 1); }
     again();
   }
-  V.Schedule = () => {
-    const c = RD.cal;
-    if (!c || !c.ev) { void loadCal(); return `<div class="nx-view enter">${head('Schedule', 'Your days, kept on this device.', 'Fasti')}<div class="og-wrap">${loadingCard()}</div></div>`; }
-    const first = (new Date(c.y, c.m, 1).getDay() + 6) % 7, days = new Date(c.y, c.m + 1, 0).getDate(), today = iso(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-    const count = {}; c.ev.forEach(e => { count[e.date] = (count[e.date] || 0) + 1; });
-    let cells = ''; for (let i = 0; i < first; i++) cells += '<span></span>';
-    for (let d = 1; d <= days; d++) { const k = iso(c.y, c.m, d); cells += `<button class="btn" data-rd="cday:${k}" aria-pressed="${k === c.sel}" aria-label="${d} ${MONTHS[c.m]}${count[k] ? ', ' + count[k] + ' events' : ''}" style="min-height:44px;${k === c.sel ? 'border-color:var(--accent);' : ''}${k === today ? 'text-decoration:underline;' : ''}">${d}${count[k] ? ' <span class="og-tag sig">' + count[k] + '</span>' : ''}</button>`; }
-    const dayEv = c.ev.filter(e => e.date === c.sel);
-    return `<div class="nx-view enter">${head('Schedule', 'Your days, kept on this device.', 'Fasti')}
-    <div class="og-wrap"><div class="og-card"><div class="og-row">${btn('cprev', '←')}<h4 style="flex:1;text-align:center">${MONTHS[c.m]} ${c.y}</h4>${btn('cnext', '→')}${btn('ctoday', 'Today')}</div>
-     <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:8px"><span class="og-tag mut">Mon</span><span class="og-tag mut">Tue</span><span class="og-tag mut">Wed</span><span class="og-tag mut">Thu</span><span class="og-tag mut">Fri</span><span class="og-tag mut">Sat</span><span class="og-tag mut">Sun</span>${cells}</div></div>
-     ${sec(c.sel)}
-     <div class="og-list">${dayEv.length ? dayEv.map(e => `<div>${I('calendar', 16)}<span>${e.time ? E(e.time) + ' · ' : ''}${E(e.title)}${e.note ? ' <small>' + E(e.note) + '</small>' : ''}</span><span class="og-row">${RD.cdel === e.id ? btn('cdelgo:' + E(e.id), 'Delete for good') : btn('cdel:' + E(e.id), 'Delete')}</span></div>`).join('') : '<div style="display:block"><span>Nothing planned for this day.</span></div>'}</div>
-     <div class="og-card"><div class="og-row"><input class="og-input" id="rd-ctitle" placeholder="What happens" style="flex:1"><input class="og-input" id="rd-ctime" placeholder="09:30" maxlength="5" style="min-width:90px;max-width:110px">${btn('cadd', 'Add')}</div>${RD.err.cal ? `<p role="alert">${E(RD.err.cal)}</p>` : ''}</div></div></div>`;
-  };
+  // the Schedule view itself is in pg-schedule.js
 
 
   /* ---------- Home widgets on real data: Calendar, Board and Memory (the prototype's demo bodies are replaced) ---------- */
@@ -237,12 +234,12 @@
       const has = new Set(W.cal.map(e => e.date)); let cells = ''; for (let i = 0; i < first; i++) cells += '<span></span>';
       for (let i = 1; i <= dim; i++) { const k = iso(y, m, i); cells += `<button class="t-day ${k === today ? 'today' : ''}" data-open-app="Schedule" aria-label="${i}${has.has(k) ? ', has events' : ''}"><span class="n">${i}</span>${has.has(k) ? '<span class="t-ev">•</span>' : ''}</button>`; }
       const up = W.cal.filter(e => e.date >= today).slice(0, 4);
-      return `<div class="t-body t-framed t-cal"><div class="t-tools"><span class="t-month">${MONTHS[m]} ${y}</span><div><button class="t-mini go" data-open-app="Schedule">Open schedule</button></div></div><div><div class="t-dow">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(x => `<span>${x}</span>`).join('')}</div><div class="t-days">${cells}</div></div>${up.length ? `<ul class="nx-list">${up.map(e => `<li><span class="nx-dot ok"></span><span>${E(e.date.slice(5))} ${e.time ? E(e.time) + ' · ' : ''}${E(e.title)}</span></li>`).join('')}</ul>` : '<ul class="nx-list"><li><span>Nothing planned this month.</span></li></ul>'}</div>`;
+      return `<div class="t-body t-framed t-cal"><div class="t-tools"><span class="t-month" data-no-i18n>${new Date(y, m, 1).toLocaleDateString(uiLocale('en-GB'), { month: 'long', year: 'numeric' })}</span><div><button class="t-mini go" data-open-app="Schedule">Open schedule</button></div></div><div><div class="t-dow">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(x => `<span>${x}</span>`).join('')}</div><div class="t-days">${cells}</div></div>${up.length ? `<ul class="nx-list" data-no-i18n>${up.map(e => `<li><span class="nx-dot ok"></span><span>${E(e.date.slice(5))} ${e.time ? E(e.time) + ' · ' : ''}${E(e.title)}</span></li>`).join('')}</ul>` : '<ul class="nx-list"><li><span>Nothing planned this month.</span></li></ul>'}</div>`;
     };
     BODY.board = () => {
       void loadW();
       const n = s => W.board.filter(t => t.status === s).length, doing = W.board.filter(t => t.status === 'doing').slice(0, 4);
-      return `<div class="t-body t-framed"><div class="t-tools"><span class="t-month">${n('todo')} todo · ${n('doing')} doing · ${n('done')} done</span><button class="t-mini" data-open-app="Board">Open board</button></div><form class="bn-quick" onsubmit="return false"><input class="bn-input" id="rd-wb" maxlength="200" placeholder="Add a task…"><button type="button" class="t-mini go" data-rd="wbadd" aria-label="Add">${I('send', 13)}</button></form>${doing.length ? `<ul class="nx-list">${doing.map(t => `<li><span class="nx-dot work"></span><span>${E(t.title)}</span></li>`).join('')}</ul>` : '<ul class="nx-list"><li><span>Nothing in progress.</span></li></ul>'}</div>`;
+      return `<div class="t-body t-framed"><div class="t-tools"><span class="t-month">${n('todo')} todo · ${n('doing')} doing · ${n('done')} done</span><button class="t-mini" data-open-app="Board">Open board</button></div><form class="bn-quick" onsubmit="return false"><input class="bn-input" id="rd-wb" maxlength="200" placeholder="Add a task…"><button type="button" class="t-mini go" data-rd="wbadd" aria-label="Add">${I('send', 13)}</button></form>${doing.length ? `<ul class="nx-list" data-no-i18n>${doing.map(t => `<li><span class="nx-dot work"></span><span>${E(t.title)}</span></li>`).join('')}</ul>` : '<ul class="nx-list"><li><span>Nothing in progress.</span></li></ul>'}</div>`;
     };
     BODY.memory = () => {
       void loadW(); const q = (typeof S !== 'undefined' && S.noteQ || '').toLowerCase();
@@ -274,23 +271,43 @@
   /* ---------- Usage: what this install did (answers per engine), on the Home widget and on its own page ---------- */
   const useRows = (rows) => { const max = Math.max(1, ...rows.map(u => u.week)); return rows.map(u => `<div class="r"><b style="color:var(--text)">${E(u.engine.replace('hermes:', ''))}</b><span>today ${u.today} · week ${u.week}${u.errors ? ' · ' + u.errors + ' failed' : ''}</span></div><div class="nx-meter"><i style="width:${Math.round(u.week / max * 100)}%"></i></div>`).join(''); };
   if (typeof BODY === 'object') BODY.usage = () => { void loadW(); return `<div class="t-body t-framed nx-bars">${W.use.length ? useRows(W.use.slice(0, 5)) : '<div class="r"><span>No answers yet.</span></div>'}<div class="r"><span>Counted from the chats on this device. Your providers show their own limits.</span></div></div>`; };
+  const useViz = rows => { const max = Math.max(1, ...rows.map(u => u.week)), t = k => rows.reduce((n, u) => n + (u[k] || 0), 0), tn = ['a', 's', 'g', 'm'];
+    return vzTiles([vzTile('Today', t('today'), 'answers', 'a'), vzTile('This week', t('week'), 'answers', 's'), vzTile('Failed', t('errors'), t('errors') ? 'look at the engine' : 'none', t('errors') ? 'd' : 'g'), vzTile('Engines', rows.length, 'used this week', 'm')]) + `<div class="og-sec">Per engine, this week</div>` + vzBars(rows.map((u, i) => [u.engine.replace('hermes:', ''), u.week / max * 100, u.week + ' · today ' + u.today + (u.errors ? ' · ' + u.errors + ' failed' : ''), u.errors ? 'd' : tn[i % 4]])); };
   V.Usage = () => {
     if (!RD.use) { void (async () => { RD.use = await g('/api/usage', []); again(); })(); return `<div class="nx-view enter">${head('Usage', 'What this install did.', 'Rationes')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     setTimeout(async () => { RD.use = null; }, 15000);
-    return `<div class="nx-view enter">${head('Usage', 'Answers per engine, from the chats kept on this device.', 'Rationes')}<div class="og-wrap"><div class="og-card nx-bars">${RD.use.length ? useRows(RD.use) : '<p>No answers yet. Start a conversation and the counts appear here.</p>'}</div><p class="og-note">This is what this install did. It says nothing about a provider\\'s own limits; those are theirs to show.</p></div></div>`;
+    return `<div class="nx-view enter">${head('Usage', 'Answers per engine, from the chats kept on this device.', 'Rationes')}<div class="og-wrap">${RD.use.length ? useViz(RD.use) : vzEmpty('No answers yet', 'Start a conversation and the counts appear here.')}<p class="og-note">This is what this install did. It says nothing about a provider's own limits; those are theirs to show.</p></div></div>`;
   };
 
 
-  /* ---------- Marketplace: the skills on this computer, scanned, read only ---------- */
+  /* ---------- Marketplace: local skills and hash-bound quarantine/approval ---------- */
+  async function loadMarketplace() {
+    const [skills, data] = await Promise.all([g('/api/skills', null), g('/api/install-gate', null)]);
+    RD.mkFail = !skills || !data; RD.skills = skills || []; RD.marketItems = (data && data.items) || []; again();
+  }
+  const utf8Base64 = text => { const bytes = new TextEncoder().encode(text); let binary = ''; for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(binary); };
   V.Marketplace = () => {
-    if (!RD.skills) { void (async () => { RD.skills = await g('/api/skills', []); again(); })(); return `<div class="nx-view enter">${head('Marketplace', 'Skills found on this computer.', 'Mercatus')}<div class="og-wrap">${loadingCard()}</div></div>`; }
+    if (!RD.skills || !RD.marketItems) { void loadMarketplace(); return window.xPG ? xPG.loading('Marketplace', 'Skills on this computer and reviewed packages.', 'Mercatus', true) : `<div class="nx-view enter">${head('Marketplace', 'Skills on this computer and reviewed packages.', 'Mercatus')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     const q = (RD.skq || '').toLowerCase(), list = RD.skills.filter(s => !q || (s.name + ' ' + s.description + ' ' + s.category).toLowerCase().includes(q));
-    const cats = [...new Set(list.map(s => s.category))];
-    const flagged = RD.skills.filter(s => s.flags.length).length;
-    return `<div class="nx-view enter">${head('Marketplace', 'Hermes skills found on this computer, scanned first. Nothing is installed or run from here.', 'Mercatus')}
-    <div class="og-wrap"><div class="og-card"><div class="og-row"><input class="og-input" id="rd-skq" placeholder="Search skills" value="${E(RD.skq || '')}" style="flex:1">${btn('skgo', 'Search')}</div><p>${RD.skills.length} skills found · ${flagged} with something worth a second look. The scan lists what a file asks an agent to do (administrator rights, deleting files, downloading code, secrets); it is not a verdict.</p></div>
-    ${cats.map(c => `${sec(c)}<div class="og-list">${list.filter(s => s.category === c).map(s => `<div>${I('plugin', 16)}<span>${E(s.name)} <small>${E(s.description)}</small>${s.flags.length ? `<small style="display:block;color:var(--accent)">Look at: ${s.flags.map(E).join('; ')}</small>` : ''}</span><span class="og-tag ${s.flags.length ? '' : 'sig'}">${s.flags.length ? 'Review' : 'Clean'}</span></div>`).join('')}</div>`).join('') || '<div class="og-card"><p>No skills found. Put skill folders (each with a SKILL.md) in the skills folder, or set CAESAROS_SKILLS_DIR.</p></div>'}
-    <p class="og-note">Adding skills from the community is not done from here yet; this page only shows what you already have.</p></div></div>`;
+    const cats = [...new Set(list.map(s => s.category))], flagged = RD.skills.filter(s => s.flags.length).length;
+    const targets = [['hermes', 'Hermes'], ['claude-code', 'Claude Code'], ['codex', 'Codex']];
+    const items = RD.marketItems.map(item => {
+      const existing = item.targets || [];
+      const choices = targets.filter(([id]) => !existing.includes(id)).map(([id, label]) => `<label class="og-check" style="display:flex;align-items:center;gap:8px;min-height:44px"><input type="checkbox" data-agent-target="${E(id)}"> ${E(label)}</label>`).join('');
+      const installedTargets = existing.length ? existing.map(id => E(targets.find(([key]) => key === id)?.[1] || id)).join(', ') : 'CaesarOS registry only';
+      const action = item.scan.verdict === 'red'
+        ? '<p role="alert">Blocked: red findings cannot be approved.</p>'
+        : `${item.scan.verdict === 'yellow' ? '<p>Yellow findings require an extra confirmation.</p>' : ''}<div class="og-row" style="flex-wrap:wrap">${choices || '<span>No additional agent targets are available.</span>'}</div>${btn('mgapprove:' + E(item.id), item.status === 'installed' ? 'Add to selected agents' : 'Approve selected targets')}`;
+      return `<div class="og-card"><div class="og-row"><h4>${E(item.name)} · ${E(item.version)}</h4><span class="og-tag ${item.scan.verdict === 'green' ? 'sig' : ''}">${E(item.scan.verdict)} · ${E(item.status)}</span></div><p>Declared source: ${E(item.source)} · Licence: ${E(item.license)}</p><p>Declared permissions: ${item.needs.map(E).join(', ') || 'none'} · Dependencies (not fetched): ${item.dependencies.map(d => E(d.name + '@' + d.version + ' (' + d.source + ')')).join(', ') || 'none declared'}</p><code style="overflow-wrap:anywhere">SHA-256 ${E(item.scan.sha256 || 'unavailable')}</code>${item.scan.findings.length ? `<div class="og-list">${item.scan.findings.map(f => `<div><span class="og-tag">${E(f.severity)}</span><span>${E(f.file)}:${f.line} · ${E(f.rule)}<small>${E(f.excerpt)}</small></span></div>`).join('')}</div>` : '<p>No scanner findings.</p>'}<p>Installed targets: ${installedTargets}</p>${action}${item.status === 'installed' ? btn('mgremove:' + E(item.id), 'Remove from CaesarOS and selected agents') : ''}</div>`;
+    }).join('');
+    const review = `<div class="og-card"><h4>Review a skill package</h4><p>Select a JSON package. CaesarOS does not download, extract or run it. The package stays in quarantine until you approve the exact scan hash.</p>${ARTFOLD('Package format', '<pre>{"name":"Skill name","version":"1.0.0","source":"https://…","license":"MIT","needs":[],"dependencies":[],"files":[{"path":"SKILL.md","content":"# Skill\nInstructions…"}]}</pre>')}<label class="btn" for="rd-skill-bundle">Choose skill JSON</label><input id="rd-skill-bundle" type="file" accept="application/json,.json" style="display:none">${RD.marketBusy ? '<p role="status">Scanning in quarantine…</p>' : ''}</div>
+    ${RD.marketItems.length ? `${sec('Review and registry')}${items}` : ''}`;
+    if (window.xPG) return xPG.market({ skills: RD.skills, q: RD.skq, cat: RD.mkcat, failed: RD.mkFail, itemCount: RD.marketItems.length, review });
+    return `<div class="nx-view enter">${head('Marketplace', 'Review a local skill package before it enters CaesarOS.', 'Mercatus')}
+    <div class="og-wrap">${review}
+    <div class="og-card"><div class="og-row"><input class="og-input" id="rd-skq" placeholder="Search skills already on this computer" value="${E(RD.skq || '')}" style="flex:1">${btn('skgo', 'Search')}</div><p>${RD.skills.length} skills found · ${flagged} with something worth a second look. Existing skills remain read only.</p></div>
+    ${cats.map(c => `${sec(c)}<div class="og-list">${list.filter(s => s.category === c).map(s => `<div>${I('plugin', 16)}<span>${E(s.name)} <small>${E(s.description)}</small>${s.flags.length ? `<small style="display:block;color:var(--accent)">Look at: ${s.flags.map(E).join('; ')}</small>` : ''}</span><span class="og-tag ${s.flags.length ? '' : 'sig'}">${s.flags.length ? 'Review' : 'Clean'}</span></div>`).join('')}</div>`).join('') || '<div class="og-card"><p>No skills found on this computer yet.</p></div>'}
+    </div></div>`;
   };
 
 
@@ -315,14 +332,14 @@
     const r = await w('/api/notes/' + encodeURIComponent(NT.open.id), 'PUT', { content: NT.text, rev: NT.open.rev });
     if (r.ok) { NT.open = await r.json(); NT.status = 'saved'; } else if (r.status === 409) { NT.status = 'conflict'; const j = await r.json().catch(() => ({})); NT.theirs = j.current || null; } else NT.status = 'error';
   }
-  const MY_NOTES = !document.querySelector('script[src="notes.js"]');
+  const MY_NOTES = !document.querySelector('script[src^="notes.js"]');
   const memoryPage = () => {
     if (!NT.list) { void loadNotes(); return `<div class="nx-view enter">${head('Memory', 'Your notes, plain Markdown files on this device.', 'Tabularium')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     const stat = { saved: 'Saved', dirty: 'Unsaved changes', saving: 'Saving…', conflict: 'Changed elsewhere', error: 'Could not save' }[NT.status];
     const list = NT.list.length ? NT.list.map(n => `<div>${I('memory', 16)}<span>${E(n.id)} <small>${E(n.snippet || '')}</small></span><span class="og-row">${btn('nopen:' + E(n.id), NT.open && NT.open.id === n.id ? 'Open ✓' : 'Open')}</span></div>`).join('') : '<div style="display:block"><span>No notes yet. Make the first one.</span></div>';
     const tags = NT.tags.length ? `<div class="og-row">${NT.tag ? btn('ntag:', 'All notes') : ''}${NT.tags.slice(0, 20).map(t => `<button class="btn" data-rd="ntag:${E(t.tag)}" aria-pressed="${NT.tag === t.tag}">#${E(t.tag)} ${t.count}</button>`).join('')}</div>` : '';
     const ed = NT.open ? `<div class="og-card"><div class="og-row"><h4>${E(NT.open.id)}</h4><span class="og-tag ${NT.status === 'saved' ? 'sig' : 'mut'}" role="status">${stat}</span></div>
-      <textarea class="og-input" id="rd-note" rows="14" style="width:100%;box-sizing:border-box;text-transform:none">${E(NT.text)}</textarea>
+      <textarea class="og-input" id="rd-note" aria-label="Note text" rows="14" style="width:100%;box-sizing:border-box;text-transform:none">${E(NT.text)}</textarea>
       <div class="og-row">${btn('nsave', 'Save now')}${NT.delsure ? btn('ndelgo', 'Move to trash') : btn('ndel', 'Delete')}${btn('nclose', 'Close')}</div>
       ${NT.status === 'conflict' ? `<p role="alert">This note changed somewhere else. ${btn('ntheirs', 'Load their version')} ${btn('nmine', 'Keep mine')}</p>` : ''}
       ${NT.back.length ? `<div class="og-row"><span class="label">Linked from</span>${NT.back.map(b => btn('nopen:' + E(b), b)).join('')}</div>` : ''}${NT.err ? `<p role="alert">${E(NT.err)}</p>` : ''}</div>` : '<div class="og-card"><p>Pick a note on the left, or make a new one. Notes are plain Markdown files; use #tags and [[links]] and they connect.</p></div>';
@@ -342,7 +359,7 @@
   const SK = { q: '', hits: null };
   const kindApp = { note: 'Memory', library: 'Library', chat: 'Chat', board: 'Board', calendar: 'Schedule' };
   const kindName = { note: 'Note', library: 'Library', chat: 'Chat', board: 'Board', calendar: 'Event' };
-  V.Search = () => `<div class="nx-view enter">${head('Search', 'One search over your notes, library, chats, tasks and events.', 'Quaero')}
+  V.Search = () => window.xPG ? xPG.search(SK, kindName) : `<div class="nx-view enter">${head('Search', 'One search over your notes, library, chats, tasks and events.', 'Quaero')}
     <div class="og-wrap"><div class="og-card"><div class="og-row"><input class="og-input" id="rd-sq" placeholder="Search everything" value="${E(SK.q)}" style="flex:1">${btn('sgo', 'Search')}</div></div>
     ${SK.hits === null ? '<p class="og-note">Type at least two letters.</p>' : SK.hits.length ? `<div class="og-list">${SK.hits.map((h, i) => `<div>${I('search', 16)}<span>${E(h.title)} <small>${kindName[h.kind]} · ${E(h.text)}</small></span><span class="og-row">${btn('sopen:' + i, 'Open')}</span></div>`).join('')}</div>` : '<div class="og-card"><p>Nothing found.</p></div>'}</div></div>`;
   document.addEventListener('input', e => { if (e.target && e.target.id === 'rd-sq') SK.q = e.target.value; });
@@ -353,24 +370,11 @@
     else open_({ k: 'app', id: kindApp[h.kind] });
     render();
   }
-  /* the Find anything palette (Ctrl K) gets the same results under its own list of apps, threads and actions */
-  if (typeof pr === 'function') {
-    const prevPr = pr; let seq = 0;
-    pr = function (q) {
-      prevPr(q); const my = ++seq; if (String(q).trim().length < 2) return;
-      g('/api/search?q=' + encodeURIComponent(q), []).then(hits => {
-        if (my !== seq || !hits.length) return; const box = document.getElementById('nxres'); if (!box) return;
-        const first = pi.length; pi.push(...hits.map(h => ({ l: h.title + ' — ' + h.text.slice(0, 60), k: kindName[h.kind].toUpperCase(), run: () => { void openHit(h); } })));
-        if (!first) box.innerHTML = '';
-        box.insertAdjacentHTML('beforeend', hits.map((h, i) => `<button class="it ${!first && i === 0 ? 'sel' : ''}" data-x="${first + i}">${E(h.title + ' — ' + h.text.slice(0, 60))}<span>${kindName[h.kind].toUpperCase()}</span></button>`).join(''));
-        box.querySelectorAll('.it[data-x]').forEach(b => { b.onclick = () => { pi[b.dataset.x].run(); pal(false); }; });
-      });
-    };
-  }
-  async function runSearch() { SK.q = val('rd-sq') || SK.q; SK.hits = SK.q.trim().length >= 2 ? await g('/api/search?q=' + encodeURIComponent(SK.q), []) : null; again(); const i = document.getElementById('rd-sq'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
+  window.xOpenHit = openHit; /* the palette's result groups (search-palette.js) open items through this */
+  async function runSearch() { SK.q = val('rd-sq') || SK.q; if (SK.q.trim().length >= 2) { SK.busy = true; again(); } const got = SK.q.trim().length >= 2 ? await g('/api/search?q=' + encodeURIComponent(SK.q), false) : null; SK.failed = got === false; SK.hits = got === false ? [] : got; SK.busy = false; again(); const i = document.getElementById('rd-sq'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
 
 
-  /* ---------- Goals, Ideas and Reading: plain checkable lists on this device ---------- */
+  /* ---------- Reading: a plain checkable list on this device (Goals and Ideas are modules: goals.js, ideas.js) ---------- */
   const LS = {};
   const listPage = (key, name, sub, la, ph, extra) => {
     V[name] = () => {
@@ -378,12 +382,11 @@
       if (!st.items) { void (async () => { st.items = await g('/api/lists/' + key, []); again(); })(); return `<div class="nx-view enter">${head(name, sub, la)}<div class="og-wrap">${loadingCard()}</div></div>`; }
       const open = st.items.filter(i => !i.done).length;
       return `<div class="nx-view enter">${head(name, sub, la)}<div class="og-wrap"><div class="og-card"><div class="og-row"><input class="og-input" id="rd-l-${key}" placeholder="${E(ph)}" style="flex:1" maxlength="300">${btn('ladd:' + key, 'Add')}</div></div>
+      ${st.items.length ? vzBars([['Done', (st.items.length - open) / st.items.length * 100, (st.items.length - open) + ' of ' + st.items.length, 's']]) : ''}
       ${sec(open + ' open · ' + (st.items.length - open) + ' done')}
-      <div class="og-list">${st.items.length ? st.items.map(i => `<div>${I(i.done ? 'check' : 'sparkle', 16)}<span style="${i.done ? 'text-decoration:line-through;opacity:.6' : ''}">${E(i.text)}</span><span class="og-row">${btn('ldone:' + key + '|' + i.id + '|' + (i.done ? '0' : '1'), i.done ? 'Reopen' : 'Done')}${extra ? btn('lboard:' + key + '|' + i.id, 'To Board') : ''}${st.sure === i.id ? btn('ldelgo:' + key + '|' + i.id, 'Delete for good') : btn('ldel:' + key + '|' + i.id, 'Delete')}</span></div>`).join('') : '<div style="display:block"><span>Nothing here yet.</span></div>'}</div></div></div>`;
+      <div class="og-list">${st.items.length ? st.items.map(i => `<div>${I(i.done ? 'check' : 'sparkle', 16)}<span data-no-i18n style="${i.done ? 'text-decoration:line-through;opacity:.6' : ''}">${E(i.text)}</span><span class="og-row">${btn('ldone:' + key + '|' + i.id + '|' + (i.done ? '0' : '1'), i.done ? 'Reopen' : 'Done')}${extra ? btn('lboard:' + key + '|' + i.id, 'To Board') : ''}${st.sure === i.id ? btn('ldelgo:' + key + '|' + i.id, 'Delete for good') : btn('ldel:' + key + '|' + i.id, 'Delete')}</span></div>`).join('') : vzEmpty('Nothing here yet', 'Add the first one above.')}</div></div></div>`;
     };
   };
-  listPage('goals', 'Goals', 'What you want done, checked off as you go.', 'Proposita', 'A goal', false);
-  listPage('ideas', 'Ideas', 'Ideas kept until you decide. Send one to the Board when it is real.', 'Cogitata', 'An idea', true);
   listPage('reading', 'Reading', 'Things to read later.', 'Lectio', 'Something to read', false);
 
 
@@ -403,7 +406,7 @@
   async function unseal(pass, item) { const k = await keyFor(pass, unb64(item.salt)); return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(item.iv) }, k, unb64(item.data))); }
   V.Vault = () => {
     if (!VT.items) { void (async () => { VT.items = await g('/api/vault', []); again(); })(); return `<div class="nx-view enter">${head('Vault', 'Notes only you can read.', 'Arca')}<div class="og-wrap">${loadingCard()}</div></div>`; }
-    const ed = VT.open ? `<div class="og-card"><div class="og-row"><h4>${E(VT.open.name)}</h4><span class="og-tag sig">Unlocked</span></div><textarea class="og-input" id="rd-vtext" rows="10" style="width:100%;box-sizing:border-box">${E(VT.text)}</textarea><div class="og-row">${btn('vsave', 'Encrypt and save')}${btn('vclose', 'Lock')}${VT.sure ? btn('vdelgo', 'Delete for good') : btn('vdel', 'Delete')}</div></div>` : `<div class="og-card"><h4>New secret note</h4><div class="og-row"><input class="og-input" id="rd-vname" placeholder="Name" style="flex:1"></div><textarea class="og-input" id="rd-vnew" rows="5" placeholder="What to keep secret" style="width:100%;box-sizing:border-box"></textarea><div class="og-row"><input class="og-input" id="rd-vpass" type="password" placeholder="Passphrase" autocomplete="new-password" style="flex:1">${btn('vmake', 'Encrypt and save')}</div></div>`;
+    const ed = VT.open ? `<div class="og-card"><div class="og-row"><h4 data-no-i18n>${E(VT.open.name)}</h4><span class="og-tag sig">Unlocked</span></div><textarea class="og-input" id="rd-vtext" aria-label="Secret note text" rows="10" style="width:100%;box-sizing:border-box">${E(VT.text)}</textarea><div class="og-row">${btn('vsave', 'Encrypt and save')}${btn('vclose', 'Lock')}${VT.sure ? btn('vdelgo', 'Delete for good') : btn('vdel', 'Delete')}</div></div>` : `<div class="og-card"><h4>New secret note</h4><div class="og-row"><input class="og-input" id="rd-vname" placeholder="Name" style="flex:1"></div><textarea class="og-input" id="rd-vnew" rows="5" placeholder="What to keep secret" style="width:100%;box-sizing:border-box"></textarea><div class="og-row"><input class="og-input" id="rd-vpass" type="password" placeholder="Passphrase" autocomplete="new-password" style="flex:1">${btn('vmake', 'Encrypt and save')}</div></div>`;
     return `<div class="nx-view enter">${head('Vault', 'Notes only you can read. They are encrypted in this browser; the passphrase never leaves it.', 'Arca')}<div class="og-wrap">${ed}${VT.err ? `<p role="alert">${E(VT.err)}</p>` : ''}
     ${sec('Locked notes')}<div class="og-list">${VT.items.length ? VT.items.map(i => `<div>${I('lock', 16)}<span>${E(i.name)} <small>${ago(i.updated)}</small></span><span class="og-row"><input class="og-input" id="rd-vp-${E(i.id)}" type="password" placeholder="Passphrase" autocomplete="off" style="min-width:140px">${btn('vopen:' + E(i.id), 'Unlock')}</span></div>`).join('') : '<div style="display:block"><span>No secret notes yet.</span></div>'}</div>
     <p class="og-note">If you forget the passphrase the note cannot be recovered. That is the point: a copy of this device's data holds nothing readable.</p></div></div>`;
@@ -414,16 +417,19 @@
   const DR = { d: null };
   async function loadDaily() {
     const t = new Date(), today = iso(t.getFullYear(), t.getMonth(), t.getDate()), start = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
-    const [cal, board, notes, use, lists] = await Promise.all([g('/api/calendar?from=' + today + '&to=' + today, []), g('/api/board', []), g('/api/notes', []), g('/api/usage', []), g('/api/lists/goals', [])]);
-    DR.d = { today, cal, board, notes: notes.filter(n => n.updatedAt >= start), use, goals: lists.filter(x => !x.done) };
+    const [cal, board, notes, use, lists] = await Promise.all([g('/api/calendar?from=' + today + '&to=' + today, []), g('/api/board', []), g('/api/notes', []), g('/api/usage', []), g('/api/p/goals', { goals: [] })]);
+    DR.d = { today, cal, board, notes: notes.filter(n => n.updatedAt >= start), use, goals: (lists.goals || []).filter(x => x.status !== 'done' && lists.today <= x.end) };
     again();
   }
-  const dailyMd = d => ['# Daily review ' + d.today, '', '## Today', ...(d.cal.length ? d.cal.map(e => '- ' + (e.time ? e.time + ' ' : '') + e.title) : ['- Nothing scheduled']), '', '## Board', ...['doing', 'todo', 'done'].map(s => '- ' + s + ': ' + (d.board.filter(x => x.status === s).map(x => x.title).join(', ') || 'none')), '', '## Notes touched today', ...(d.notes.length ? d.notes.map(n => '- [[' + n.id + ']]') : ['- none']), '', '## Open goals', ...(d.goals.length ? d.goals.map(x => '- ' + x.text) : ['- none']), '', '## Answers today', ...(d.use.length ? d.use.map(u => '- ' + u.engine + ': ' + u.today) : ['- none']), '', '## What I learned', '', ''].join('\n');
+  const dailyMd = d => ['# Daily review ' + d.today, '', '## Today', ...(d.cal.length ? d.cal.map(e => '- ' + (e.time ? e.time + ' ' : '') + e.title) : ['- Nothing scheduled']), '', '## Board', ...['doing', 'todo', 'done'].map(s => '- ' + s + ': ' + (d.board.filter(x => x.status === s).map(x => x.title).join(', ') || 'none')), '', '## Notes touched today', ...(d.notes.length ? d.notes.map(n => '- [[' + n.id + ']]') : ['- none']), '', '## Open goals', ...(d.goals.length ? d.goals.map(x => '- ' + x.title) : ['- none']), '', '## Answers today', ...(d.use.length ? d.use.map(u => '- ' + u.engine + ': ' + u.today) : ['- none']), '', '## What I learned', '', ''].join('\n');
   V['Daily review'] = () => {
     if (!DR.d) { void loadDaily(); return `<div class="nx-view enter">${head('Daily review', 'Today on one page.', 'Dream')}<div class="og-wrap">${loadingCard()}</div></div>`; }
-    const d = DR.d, card = (title, rows) => `<div class="og-card"><div class="og-row"><h4>${E(title)}</h4></div>${rows.length ? '<ul class="nx-list">' + rows.map(x => '<li><span>' + E(x) + '</span></li>').join('') + '</ul>' : '<p>Nothing.</p>'}</div>`;
+    const d = DR.d, card = (title, rows) => `<div class="og-card"><div class="og-row"><h4>${E(title)}</h4></div>${rows.length ? '<ul class="nx-list"' + (title === 'Answers today' ? '' : ' data-no-i18n') + '>' + rows.map(x => '<li><span>' + E(x) + '</span></li>').join('') + '</ul>' : '<p>Nothing.</p>'}</div>`;
     return `<div class="nx-view enter">${head('Daily review', 'Today on one page, read from this device. Save it as a note when the day is done.', 'Dream')}<div class="og-wrap">
-      <div class="og-grid">${card('On the schedule', d.cal.map(e => (e.time ? e.time + ' · ' : '') + e.title))}${card('In progress', d.board.filter(x => x.status === 'doing').map(x => x.title))}${card('Still to do', d.board.filter(x => x.status === 'todo').map(x => x.title))}${card('Done', d.board.filter(x => x.status === 'done').map(x => x.title))}${card('Notes touched today', d.notes.map(n => n.id))}${card('Open goals', d.goals.map(x => x.text))}${card('Answers today', d.use.map(u => u.engine + ': ' + u.today))}</div>
+      ${vzTiles([vzTile('On the schedule', d.cal.length, 'today', 'a'), vzTile('In progress', d.board.filter(x => x.status === 'doing').length, 'on the Board', 's'), vzTile('Done', d.board.filter(x => x.status === 'done').length, 'on the Board', 'g'), vzTile('Open goals', d.goals.length, '', 'm')])}
+      ${vzStack([['To do', d.board.filter(x => x.status === 'todo').length, 'a'], ['Doing', d.board.filter(x => x.status === 'doing').length, 's'], ['Done', d.board.filter(x => x.status === 'done').length, 'g']])}
+      <div class="og-grid">${card('On the schedule', d.cal.map(e => (e.time ? e.time + ' · ' : '') + e.title))}${card('In progress', d.board.filter(x => x.status === 'doing').map(x => x.title))}${card('Still to do', d.board.filter(x => x.status === 'todo').map(x => x.title))}${card('Done', d.board.filter(x => x.status === 'done').map(x => x.title))}${card('Notes touched today', d.notes.map(n => n.id))}${card('Open goals', d.goals.map(x => x.title))}${card('Answers today', d.use.map(u => u.engine + ': ' + u.today))}</div>
+      ${window.xBrief ? xBrief() : ''}
       <div class="og-row">${btn('drsave', 'Save as a note')}${btn('drrefresh', 'Refresh')}</div>${RD.err.dr ? `<p role="alert">${E(RD.err.dr)}</p>` : ''}${DR.saved ? `<p role="status">Saved as the note "${E(DR.saved)}".</p>` : ''}</div></div>`;
   };
 
@@ -432,22 +438,25 @@
 
   /* ---------- Health, Cost, Updates: this machine, answers per engine, versions (no network involved) ---------- */
   const HL = { d: null };
-  async function loadHealth() { const [hw, det, eng, ver, run] = await Promise.all([g('/api/hardware', { machine: {} }), g('/api/detect', { engines: [] }), g('/api/engines', { engines: [] }), g('/api/version', {}), g('/api/running', { count: 0 })]); HL.d = { hw, det, eng, ver, run }; again(); }
+  /* each source paints as it answers (HL.p), the page is whole (HL.d) once all five did; Updates reads HL.d */
+  async function loadHealth() { const p = HL.p = {}, one = (k, url, fb) => g(url, fb).then(v => { p[k] = v; again(); }); await Promise.all([one('hw', '/api/hardware', { machine: {} }), one('det', '/api/detect', { engines: [] }), one('eng', '/api/engines', { engines: [] }), one('ver', '/api/version', {}), one('run', '/api/running', { count: 0 })]); HL.d = p; again(); }
   V.Health = () => {
-    if (!HL.d) { void loadHealth(); return `<div class="nx-view enter">${head('Health', 'The machine under CaesarOS.', 'Vitals')}<div class="og-wrap">${loadingCard()}</div></div>`; }
-    const { hw, det, eng, ver, run } = HL.d, m = hw.machine || {};
+    if (!HL.d && !HL.p) void loadHealth();
+    const P = HL.d || HL.p || {}, { hw, det, eng, ver, run } = P, m = (hw && hw.machine) || {}, W = (x, n, k) => x ? k() : ARTSKEL(n, 'Loading');
+    if (!HL.d && !(hw && ver && run)) return `<div class="nx-view enter">${head('Health', 'The machine under CaesarOS.', 'Vitals')}<div class="og-wrap">${ARTSKEL(3, 'Loading from this device')}</div></div>`;
     const tool = x => `<div>${I('system', 16)}<span>${E(x.label)} <small>${x.found ? (x.probe.ok ? 'answers · ' + E(x.probe.version || '') : 'installed, not answering' + (x.signIn ? ' · sign in with: ' + E(x.signIn) : '')) : 'not installed'}</small></span><span class="og-tag ${x.probe.ok ? 'sig' : 'mut'}">${x.probe.ok ? 'OK' : x.found ? 'Check' : 'Absent'}</span></div>`;
     const en = e => `<div>${I('engine', 16)}<span>${E(e.label)} <small>${e.health.ok ? (e.models.length + ' models') : E(e.health.detail || 'not answering')}</small></span><span class="og-tag ${e.health.ok ? 'sig' : 'mut'}">${e.health.ok ? 'Answering' : 'Down'}</span></div>`;
     return `<div class="nx-view enter">${head('Health', 'The machine under CaesarOS, read live. Nothing here leaves the computer.', 'Vitals')}<div class="og-wrap">
-      <div class="og-grid"><div class="og-card"><h4>Memory</h4><p>${m.ramGb} GB</p></div><div class="og-card"><h4>Processor</h4><p>${m.cores} cores</p></div><div class="og-card"><h4>Free disk</h4><p>${m.freeDiskGb} GB</p></div><div class="og-card"><h4>Graphics</h4><p>${E(m.gpu || 'unknown')}</p></div><div class="og-card"><h4>Running now</h4><p>${run.count} ${run.count === 1 ? 'turn' : 'turns'}</p></div><div class="og-card"><h4>CaesarOS</h4><p>${E(ver.version || '?')} · build ${E(ver.build || '?')}</p></div></div>
-      ${sec('Tools found on this machine')}<div class="og-list">${det.engines.map(tool).join('')}</div>
-      ${sec('Chat engines')}<div class="og-list">${eng.engines.length ? eng.engines.map(en).join('') : '<div style="display:block"><span>No engine.</span></div>'}</div>
+      ${vzTiles([vzTile('Memory', m.ramGb + ' GB', 'installed', 'a'), vzTile('Processor', m.cores + ' cores', '', 's'), vzTile('Free disk', m.freeDiskGb + ' GB', 'on this machine', 'g'), vzTile('Graphics', m.gpu || 'unknown', '', 'm'), vzTile('Running now', run.count, run.count === 1 ? 'turn' : 'turns', run.count ? 'a' : 's'), vzTile('CaesarOS', ver.version || '?', '#' + (ver.build || '?'), 'g')])}
+      ${sec('Is everything answering')}${W(eng && det, 2, () => vzBars([['Chat engines', eng.engines.length ? eng.engines.filter(e => e.health.ok).length / eng.engines.length * 100 : 0, eng.engines.filter(e => e.health.ok).length + ' of ' + eng.engines.length, 's'], ['Tools found', det.engines.length ? det.engines.filter(x => x.probe.ok).length / det.engines.length * 100 : 0, det.engines.filter(x => x.probe.ok).length + ' of ' + det.engines.length, 'a']]))}
+      ${sec('Tools found on this machine')}${W(det, 3, () => `<div class="og-list">${det.engines.map(tool).join('')}</div>`)}
+      ${sec('Chat engines')}${W(eng, 3, () => `<div class="og-list">${eng.engines.length ? eng.engines.map(en).join('') : '<div style="display:block"><span>No engine.</span></div>'}</div>`)}
       <div class="og-row">${btn('hlrefresh', 'Refresh')}</div></div></div>`;
   };
   V.Cost = () => {
     if (!RD.use) { void (async () => { RD.use = await g('/api/usage', []); again(); })(); return `<div class="nx-view enter">${head('Cost', 'What this install used.', 'Rationes')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     const total = RD.use.reduce((n, u) => n + u.week, 0);
-    return `<div class="nx-view enter">${head('Cost', 'Answers this week, per engine. Money is not tracked here: your subscriptions and providers show their own bills.', 'Rationes')}<div class="og-wrap"><div class="og-card"><h4>${total} ${total === 1 ? 'answer' : 'answers'} in the last seven days</h4><p>Local models cost electricity only; tools like Claude Code and Codex draw on your own subscription. Open Usage for the per-engine bars.</p><div class="og-row">${btn('goUsage', 'Open Usage')}</div></div></div></div>`;
+    return `<div class="nx-view enter">${head('Cost', 'Answers this week, per engine. Money is not tracked here: your subscriptions and providers show their own bills.', 'Rationes')}<div class="og-wrap">${RD.use.length ? vzTiles([vzTile('Last 7 days', total, total === 1 ? 'answer' : 'answers', 'a'), vzTile('Today', RD.use.reduce((n, u) => n + u.today, 0), 'answers', 's'), vzTile('Local', RD.use.filter(u => !/claude|codex|gemini/i.test(u.engine)).reduce((n, u) => n + u.week, 0), 'electricity only', 'g')]) + vzStack(RD.use.map((u, i) => [u.engine.replace('hermes:', ''), u.week, ['a', 's', 'g', 'm'][i % 4]])) : vzEmpty('Nothing counted yet', 'Answers appear here as soon as you talk to an engine.')}<div class="og-card"><h4>${total} ${total === 1 ? 'answer' : 'answers'} in the last seven days</h4><p>Local models cost electricity only; tools like Claude Code and Codex draw on your own subscription. Open Usage for the per-engine bars.</p><div class="og-row">${btn('goUsage', 'Open Usage')}</div></div></div></div>`;
   };
   V.Updates = () => {
     if (!HL.d) { void loadHealth(); return `<div class="nx-view enter">${head('Updates', 'Versions on this machine.', 'Novitates')}<div class="og-wrap">${loadingCard()}</div></div>`; }
@@ -461,29 +470,33 @@
 
   /* ---------- Notifications: what needs you, from the core's own events (approvals, tasks sent to you, failures, today's events) ---------- */
   const NF = { d: null };
+  /* read state is shared with the bell panel (live.js): same storage key, same ids for approvals, handoffs and failures */
+  const NFKEY = 'caesar.live.read.v1';
+  const nfRead = () => { try { return new Set(JSON.parse(localStorage.getItem(NFKEY) || '[]')); } catch { return new Set(); } };
+  const nfMark = keys => { const r = nfRead(); keys.forEach(k => r.add(k)); try { localStorage.setItem(NFKEY, JSON.stringify([...r].slice(-300))); } catch { /* storage full or blocked: unread stays */ } if (window.CLIVE) CLIVE.sync(); };
   async function loadNotif() {
     const t = new Date(), today = iso(t.getFullYear(), t.getMonth(), t.getDate());
-    const [ap, inbox, fail, cal, bk, board, rules] = await Promise.all([g('/api/approvals', { pending: [] }), g('/api/handoff', []), g('/api/failures', []), g('/api/calendar?from=' + today + '&to=' + today, []), g('/api/backup', []), g('/api/board', []), watchRules()]);
-    NF.d = { ap: ap.pending || [], inbox, fail, cal: rules.today.on ? cal : [], bk, board, rules }; again();
+    let failed = false; const src = (u, d) => g(u, null).then(r => r === null ? (failed = true, d) : r);
+    const [ap, inbox, fail, cal, bk, board, rules] = await Promise.all([src('/api/approvals', { pending: [] }), src('/api/handoff', []), src('/api/failures', []), src('/api/calendar?from=' + today + '&to=' + today, []), src('/api/backup', null), src('/api/board', []), watchRules()]);
+    NF.d = { ap: ap.pending || [], inbox, fail, cal: rules.today.on ? cal : [], bk: bk || [], board, rules: bk ? rules : { ...rules, backup: { on: false } }, failed, today }; again();
   }
   V.Notifications = () => {
-    if (!NF.d) { void loadNotif(); return `<div class="nx-view enter">${head('Notifications', 'What needs you.', 'Nuntii')}<div class="og-wrap">${loadingCard()}</div></div>`; }
+    if (!NF.d) { void loadNotif(); return window.xPG ? xPG.loading('Notifications', 'What needs you.', 'Nuntii') : `<div class="nx-view enter">${head('Notifications', 'What needs you.', 'Nuntii')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     const d = NF.d, rows = [];
-    d.ap.forEach(a => rows.push(['Approval', a.title, 'Waiting for your yes', 'Chat', 'Review']));
-    d.inbox.forEach(h => rows.push([h.kind === 'note' ? 'Note' : 'Task', (h.kind === 'note' ? h.name : h.text.slice(0, 80)), 'From ' + h.from + ' · ' + ago(h.at), 'Devices', 'Open']));
-    d.fail.forEach(f => rows.push(['Failed', f.engine + ': ' + f.error, ago(f.at), 'Usage', 'Open']));
-    d.cal.forEach(e => rows.push(['Today', (e.time ? e.time + ' · ' : '') + e.title, 'On your schedule', 'Schedule', 'Open']));
-    if (d.rules.backup.on && (!d.bk[0] || Date.now() - d.bk[0].at > d.rules.backup.days * 86400000)) rows.push(['Backup', 'No backup in the last ' + d.rules.backup.days + ' days', 'A copy of your settings, chats and keys', 'Settings', 'Open']);
-    if (d.rules.stale.on) d.board.filter(x => x.status === 'doing' && Date.now() - x.updated > d.rules.stale.days * 86400000).forEach(x => rows.push(['Overdue', 'Still in progress: ' + x.title, 'No change for more than ' + d.rules.stale.days + ' days', 'Board', 'Open']));
+    d.ap.forEach(a => rows.push(['Approval', a.title, 'Waiting for your yes', 'Chat', 'Review', 'ap:' + (a.id || a.title), a.title]));
+    d.inbox.forEach(h => rows.push([h.kind === 'note' ? 'Note' : 'Task', (h.kind === 'note' ? h.name : h.text.slice(0, 80)), 'From ' + h.from + ' · ' + ago(h.at), 'Devices', 'Open', 'ho:' + (h.id || h.at)]));
+    d.fail.forEach(f => rows.push(['Failed', f.engine + ': ' + f.error, ago(f.at), 'Usage', 'Open', 'fl:' + f.at + f.engine]));
+    d.cal.forEach(e => rows.push(['Today', (e.time ? e.time + ' · ' : '') + e.title, 'On your schedule', 'Schedule', 'Open', 'cal|' + d.today + '|' + (e.id || e.title), e.title]));
+    if (d.rules.backup.on && (!d.bk[0] || Date.now() - d.bk[0].at > d.rules.backup.days * 86400000)) rows.push(['Backup', 'No backup in the last ' + d.rules.backup.days + ' days', 'A copy of your settings, chats and keys', 'Settings', 'Open', 'bk|' + ((d.bk[0] && d.bk[0].at) || 0)]);
+    if (d.rules.stale.on) d.board.filter(x => x.status === 'doing' && Date.now() - x.updated > d.rules.stale.days * 86400000).forEach(x => rows.push(['Overdue', 'Still in progress: ' + x.title, 'No change for more than ' + d.rules.stale.days + ' days', 'Board', 'Open', 'stale|' + (x.id || x.title) + '|' + x.updated, x.title]));
+    if (window.xPG) return xPG.notifs(rows, nfRead(), d.failed);
     return `<div class="nx-view enter">${head('Notifications', 'What needs you, read from this device. Nothing is sent anywhere.', 'Nuntii')}<div class="og-wrap">
       <div class="og-list">${rows.length ? rows.map(r => `<div>${I('alert', 16)}<span>${E(r[1])} <small>${E(r[0])} · ${E(r[2])}</small></span><span class="og-row"><button class="btn" data-open-app="${E(r[3])}">${E(r[4])}</button></span></div>`).join('') : '<div style="display:block"><span>Nothing needs you right now.</span></div>'}</div>
       <div class="og-row">${btn('nfrefresh', 'Refresh')}</div></div></div>`;
   };
 
 
-  /* ---------- Skills and Fleet point at the real pages; Integrations lists what is actually connected ---------- */
-  V.Skills = () => OG.Marketplace();
-  V.Fleet = () => OG.Devices();
+  /* ---------- Skills point at the real page; Integrations lists what is actually connected ---------- */
   const IG = { d: null };
   async function loadInteg() {
     const [det, ms, gw, pair, skills, set] = await Promise.all([g('/api/detect', { engines: [] }), g('/api/model-servers', []), g('/api/gateways', { gateways: [] }), g('/api/pairing', { devices: [] }), g('/api/skills', []), g('/api/settings', {})]);
@@ -513,8 +526,8 @@
   V.Meetings = () => {
     if (!MT.list) { void loadMeetings(); return `<div class="nx-view enter">${head('Meetings', 'Agenda and notes for each meeting.', 'Commentarii')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     return `<div class="nx-view enter">${head('Meetings', 'One note per meeting, with an agenda to fill in. You can also turn a recording into text on this computer; the audio never leaves it.', 'Commentarii')}<div class="og-wrap">
-      <div class="og-card"><div class="og-row"><input class="og-input" id="rd-mtitle" placeholder="Meeting title" style="flex:1"><input class="og-input" id="rd-mdate" type="date" value="${new Date().toISOString().slice(0, 10)}" style="min-width:150px"></div><div class="og-row"><input class="og-input" id="rd-mwho" placeholder="Who is there (optional)" style="flex:1">${btn('mmake', 'Make the note')}</div>${MT.err ? `<p role="alert">${E(MT.err)}</p>` : ''}</div>
-      ${sec('Transcribe a recording')}<div class="og-card">${MT.tr.ready ? `<div class="og-row"><input class="og-input" id="rd-maudio" type="file" accept="audio/*,video/*" style="flex:1">${btn('mtfile', MT.tr.busy ? 'Working…' : 'Transcribe file', MT.tr.busy ? 'disabled' : '')}${btn('mtrec', MT.tr.recording ? 'Stop recording' : 'Record', MT.tr.busy ? 'disabled' : '')}</div>` : '<p>Local transcription is not installed on this computer.</p>'}${MT.tr.err ? `<p role="alert">${E(MT.tr.err)}</p>` : ''}${MT.tr.text ? `<textarea class="og-input" id="rd-mtext" rows="8" style="width:100%">${E(MT.tr.text)}</textarea><div class="og-row">${btn('mtsave', 'Save as a note')}</div>` : ''}</div>
+      <div class="og-card"><div class="og-row"><input class="og-input" id="rd-mtitle" aria-label="Meeting title" placeholder="Meeting title" style="flex:1">${CSDATE('rd-mdate')}</div><div class="og-row"><input class="og-input" id="rd-mwho" aria-label="Who is there" placeholder="Who is there (optional)" style="flex:1">${btn('mmake', 'Make the note')}</div>${MT.err ? `<p role="alert">${E(MT.err)}</p>` : ''}</div>
+      ${sec('Transcribe a recording')}<div class="og-card">${MT.tr.ready ? `<div class="og-row"><input class="og-input" id="rd-maudio" type="file" accept="audio/*,video/*" style="flex:1">${btn('mtfile', MT.tr.busy ? 'Working…' : 'Transcribe file', MT.tr.busy ? 'disabled' : '')}${btn('mtrec', MT.tr.recording ? 'Stop recording' : 'Record', MT.tr.busy ? 'disabled' : '')}</div>` : '<p>Local transcription is not installed on this computer.</p>'}${MT.tr.err ? `<p role="alert">${E(MT.tr.err)}</p>` : ''}${MT.tr.text ? `<textarea class="og-input" id="rd-mtext" aria-label="Meeting notes" rows="8" style="width:100%">${E(MT.tr.text)}</textarea><div class="og-row">${btn('mtsave', 'Save as a note')}</div>` : ''}</div>
       ${sec('Your meeting notes')}<div class="og-list">${MT.list.length ? MT.list.map(n => `<div>${I('mic', 16)}<span>${E(n.id)} <small>${E(n.snippet || '')}</small></span><span class="og-row">${btn('mopen:' + E(n.id), 'Open')}</span></div>`).join('') : '<div style="display:block"><span>No meeting notes yet.</span></div>'}</div></div></div>`;
   };
 
@@ -571,13 +584,13 @@
     if (!MS.items) { void loadMissions(); return `<div class="nx-view enter">${head('Missions', 'Bigger goals, broken into steps.', 'Expeditiones')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     const pct = m => m.steps.length ? Math.round(m.steps.filter(s => s.done).length / m.steps.length * 100) : 0;
     const open = MS.items.find(m => m.id === MS.open);
-    const detail = open ? `<div class="og-card"><div class="og-row"><h4>${E(open.title)}</h4><span class="og-tag ${pct(open) === 100 ? 'sig' : 'mut'}">${pct(open)}%</span></div><progress max="100" value="${pct(open)}" style="width:100%"></progress>
+    const detail = open ? `<div class="og-card"><div class="og-row"><h4>${E(open.title)}</h4><span class="og-tag ${pct(open) === 100 ? 'sig' : 'mut'}">${pct(open)}%</span></div>${vzSeg(pct(open), pct(open) === 100 ? 's' : 'a', 30)}
       <div class="og-list">${open.steps.length ? open.steps.map((s, i) => `<div>${I(s.done ? 'check' : 'sparkle', 16)}<span style="${s.done ? 'text-decoration:line-through;opacity:.6' : ''}">${E(s.t)}</span><span class="og-row">${btn('mstep:' + i, s.done ? 'Reopen' : 'Done')}${btn('mstepdel:' + i, 'Remove')}</span></div>`).join('') : '<div style="display:block"><span>No steps yet. Add the first one.</span></div>'}</div>
       <div class="og-row"><input class="og-input" id="rd-mstep" placeholder="A step" style="flex:1" maxlength="200">${btn('mstepadd', 'Add step')}</div>
       <div class="og-row">${btn('mclose', 'Back')}${MS.sure ? btn('mdelgo', 'Delete for good') : btn('mdel', 'Delete mission')}</div></div>` : '';
     return `<div class="nx-view enter">${head('Missions', 'Bigger goals, broken into steps with a progress bar. They stay on this device.', 'Expeditiones')}<div class="og-wrap">
       ${detail || `<div class="og-card"><div class="og-row"><input class="og-input" id="rd-mtitle2" placeholder="A new mission" style="flex:1" maxlength="120">${btn('mmk', 'Start the mission')}</div></div>
-      <div class="og-list">${MS.items.length ? MS.items.map(m => `<div>${I('missions', 16)}<span>${E(m.title)} <small>${m.steps.filter(s => s.done).length} of ${m.steps.length} steps · ${pct(m)}%</small></span><span class="og-row">${btn('mopen2:' + E(m.id), 'Open')}</span></div>`).join('') : '<div style="display:block"><span>No missions yet.</span></div>'}</div>`}</div></div>`;
+      <div class="og-list">${MS.items.length ? MS.items.map(m => `<div>${I('missions', 16)}<span>${E(m.title)} <small>${m.steps.filter(s => s.done).length} of ${m.steps.length} steps · ${pct(m)}%</small>${vzSeg(pct(m), pct(m) === 100 ? 's' : 'a', 20)}</span><span class="og-row">${btn('mopen2:' + E(m.id), 'Open')}</span></div>`).join('') : vzEmpty('No missions yet', 'Name a bigger goal above and break it into steps.')}</div>`}</div></div>`;
   };
 
 
@@ -585,23 +598,14 @@
   const PR = { items: null, err: '' };
   const parseP = it => { try { const j = JSON.parse(it.text); if (j && typeof j.title === 'string' && typeof j.body === 'string') return { id: it.id, title: j.title, body: j.body }; } catch { /* ignored */ } return null; };
   async function loadPrompts() { PR.items = (await g('/api/lists/prompts', [])).map(parseP).filter(Boolean); again(); }
-  V.Command = () => {
-    if (!PR.items) { void loadPrompts(); return `<div class="nx-view enter">${head('Command', 'Your own prompts, one press away.', 'Praetorium')}<div class="og-wrap">${loadingCard()}</div></div>`; }
-    return `<div class="nx-view enter">${head('Command', 'Your own prompts, kept on this device. Use one and it lands in a conversation with Caesar; nothing is sent until you press Send.', 'Praetorium')}<div class="og-wrap">
-      <div class="og-card"><div class="og-row"><input class="og-input" id="rd-ptitle" placeholder="A name for it" style="flex:1" maxlength="80"></div><textarea class="og-input" id="rd-pbody" rows="4" placeholder="The prompt" style="width:100%;box-sizing:border-box" maxlength="3000"></textarea><div class="og-row">${btn('padd', 'Keep it')}</div>${PR.err ? `<p role="alert">${E(PR.err)}</p>` : ''}</div>
-      <div class="og-list">${PR.items.length ? PR.items.map(p => `<div>${I('command', 16)}<span>${E(p.title)} <small>${E(p.body.slice(0, 100))}</small></span><span class="og-row">${btn('puse:' + E(p.id), 'Use in chat')}${PR.sure === p.id ? btn('pdelgo:' + E(p.id), 'Delete for good') : btn('pdel:' + E(p.id), 'Delete')}</span></div>`).join('') : '<div style="display:block"><span>No prompts yet.</span></div>'}</div></div></div>`;
+  /* the prompts are the Command page's third tab (lair.js draws the page); this is their body */
+  window.xPromptsBody = () => {
+    if (!PR.items) { void loadPrompts(); return loadingCard(); }
+    return `<div class="og-wrap">
+      <div class="og-card"><div class="og-row"><input class="og-input" id="rd-ptitle" aria-label="Prompt name" placeholder="A name for it" style="flex:1" maxlength="80"></div><textarea class="og-input" id="rd-pbody" aria-label="Prompt text" rows="4" placeholder="The prompt" style="width:100%;box-sizing:border-box" maxlength="3000"></textarea><div class="og-row">${btn('padd', 'Keep it')}</div>${PR.err ? `<p role="alert">${E(PR.err)}</p>` : ''}</div>
+      <div class="og-list">${PR.items.length ? PR.items.map(p => `<div>${I('command', 16)}<span data-no-i18n>${E(p.title)} <small>${E(p.body.slice(0, 100))}</small></span><span class="og-row">${btn('puse:' + E(p.id), 'Use in chat')}${PR.sure === p.id ? btn('pdelgo:' + E(p.id), 'Delete for good') : btn('pdel:' + E(p.id), 'Delete')}</span></div>`).join('') : vzEmpty('No prompts yet', 'Keep the prompts you reuse; one press opens them in a chat.')}</div></div>`;
   };
 
-
-  /* ---------- Tool graph: which tools the engines called in your conversations, how often, how long, how many failed ---------- */
-  const TG = { d: null };
-  V['Tool graph'] = () => {
-    if (!TG.d) { void (async () => { TG.d = await g('/api/toolstats', []); setTimeout(() => { TG.d = null; }, 20000); again(); })(); return `<div class="nx-view enter">${head('Tool graph', 'What the tools did.', 'Instrumenta')}<div class="og-wrap">${loadingCard()}</div></div>`; }
-    const max = Math.max(1, ...TG.d.map(t => t.calls)), total = TG.d.reduce((n, t) => n + t.calls, 0), bad = TG.d.reduce((n, t) => n + t.errors, 0);
-    return `<div class="nx-view enter">${head('Tool graph', 'Tool calls recorded in your conversations over the last 30 days, grouped by tool. Counted from this device.', 'Instrumenta')}<div class="og-wrap">
-      <div class="og-card"><h4>${total} ${total === 1 ? 'call' : 'calls'}${bad ? ' · ' + bad + ' failed' : ''}</h4></div>
-      <div class="og-card nx-bars">${TG.d.length ? TG.d.map(t => `<div class="r"><b style="color:var(--text)">${E(t.name)}</b><span>${t.calls} ${t.calls === 1 ? 'call' : 'calls'}${t.errors ? ' · ' + t.errors + ' failed' : ''}${t.avgMs != null ? ' · avg ' + (t.avgMs < 1000 ? t.avgMs + ' ms' : (t.avgMs / 1000).toFixed(1) + ' s') : ''}</span></div><div class="nx-meter"><i style="width:${Math.round(t.calls / max * 100)}%${t.errors ? ';background:var(--danger,#ff5a5a)' : ''}"></i></div>`).join('') : '<p>No tool calls recorded. In this version no engine reports them yet: Caesar and the crew answer in one shot, and Claude Code and Codex run with their own tools switched off inside chat. This page fills as soon as an engine reports tool calls.</p>'}</div></div></div>`;
-  };
 
 
   /* ---------- Orchestration (plan 7.11): one honest state per crew member, and what waits for you ---------- */
@@ -625,6 +629,8 @@
     return `<div class="nx-view enter">${head('Horde desk', 'Who is working right now, what they did lately, and a stop button. Refreshes by itself every few seconds.', 'Castra')}<div class="og-wrap">
       ${HD.orch ? needsStrip(HD.orch) : ''}
       ${window.xLimitsHtml ? window.xLimitsHtml() : ''}
+      ${vzTiles([vzTile('Working', working.length, 'of ' + crew.length + ' in the crew', 'a'), vzTile('Turns running', run, run ? 'right now' : 'all quiet', 's'), vzTile('Needs you', HD.orch ? HD.orch.needsYou : 0, 'waiting for your answer', HD.orch && HD.orch.needsYou ? 'g' : 's')])}
+      ${vzBars(crew.map(c => [c.name, c.status === 'work' ? 100 : 0, c.status === 'work' ? 'working' : 'idle', c.status === 'work' ? 'a' : 's']))}
       <div class="og-card"><div class="og-row"><h4>${working.length} of ${crew.length} working · ${run} ${run === 1 ? 'turn' : 'turns'} running</h4>${btn('hdstop', 'Stop everything', run ? '' : 'disabled')}</div>${HD.msg ? `<p role="status">${E(HD.msg)}</p>` : ''}</div>
       ${sec('The crew')}<div class="og-list">${crew.map(c => `<div>${I('crew', 16)}<span>${E(c.name)} <small>${E(c.role)}${c.status === 'work' && c.doing ? ' · <span data-no-i18n>' + E(c.doing) + '</span>' : ''}</small></span>${stateOf(HD.orch, c.id) ? chip(stateOf(HD.orch, c.id)) : `<span class="og-tag ${c.status === 'work' ? 'sig' : 'mut'}">${c.status === 'work' ? 'Working' : 'Idle'}</span>`}</div>`).join('')}</div>
       ${sec('Latest tool calls')}<div class="og-list">${(HD.tools || []).length ? HD.tools.map(t => `<div>${I('system', 16)}<span>${E(t.name)} <small>${E(t.engine.replace('hermes:', '').replace('!alone', ' (alone)'))} · ${ago(t.at)}${t.ms != null ? ' · ' + (t.ms < 1000 ? t.ms + ' ms' : (t.ms / 1000).toFixed(1) + ' s') : ''}</small></span><span class="og-tag ${t.status === 'error' ? '' : 'sig'}">${t.status === 'error' ? 'Failed' : 'OK'}</span></div>`).join('') : '<div style="display:block"><span>No tool calls in the last day.</span></div>'}</div></div></div>`;
@@ -640,24 +646,27 @@
     st.load = load; st.fields = fields; st.stages = stages;
     V[name] = () => {
       if (!st.items) { void load(); return `<div class="nx-view enter">${head(name, sub, la)}<div class="og-wrap">${loadingCard()}</div></div>`; }
-      return `<div class="nx-view enter">${head(name, sub, la)}<div class="og-wrap"><div class="og-card">${fields.map(f => `<div class="og-row"><input class="og-input" id="rd-${key}-${f[0]}" placeholder="${E(f[1])}" style="flex:1" maxlength="${f[2] || 300}"></div>`).join('')}<div class="og-row">${btn('radd:' + key, 'Add')}</div>${st.err ? `<p role="alert">${E(st.err)}</p>` : ''}</div>
-      ${summary ? `<div class="og-card"><p>${E(summary(st.items))}</p></div>` : ''}<div class="og-list">${st.items.length ? st.items.map(x => `<div>${I('folder', 16)}<span>${E(x[fields[0][0]] || '')} <small>${fields.slice(1).map(f => x[f[0]] ? E(f[1]) + ': ' + E(x[f[0]]) : '').filter(Boolean).join(' · ')}${x._stage ? ' · ' + E(x._stage) : ''} · ${ago(x._at)}</small></span><span class="og-row">${stages ? stages.map(s => `<button class="btn" data-rd="rstage:${key}|${E(x._id)}|${E(s)}" aria-pressed="${x._stage === s}">${E(s)}</button>`).join('') : ''}${st.sure === x._id ? btn('rdelgo:' + key + '|' + E(x._id), 'Delete for good') : btn('rdel:' + key + '|' + E(x._id), 'Delete')}</span></div>`).join('') : '<div style="display:block"><span>Nothing here yet.</span></div>'}</div></div></div>`;
+      const TN = ['s', 'a', 'g', 'm', 'a', 'g'], cnt = stages ? stages.map((s, i) => [s, st.items.filter(x => x._stage === s).length, TN[i % TN.length]]) : [], un = stages ? st.items.filter(x => !stages.includes(x._stage)).length : 0;
+      const viz = summary ? summary(st.items) : stages ? vzStack(un ? [...cnt, ['Not sorted', un, 'd']] : cnt) : '';
+      return `<div class="nx-view enter">${head(name, sub, la)}<div class="og-wrap">${viz}<div class="og-card">${fields.map(f => `<div class="og-row"><input class="og-input" id="rd-${key}-${f[0]}" placeholder="${E(f[1])}" style="flex:1" maxlength="${f[2] || 300}"></div>`).join('')}<div class="og-row">${btn('radd:' + key, 'Add')}</div>${st.err ? `<p role="alert">${E(st.err)}</p>` : ''}</div>
+      <div class="og-list">${st.items.length ? st.items.map(x => `<div>${I('folder', 16)}<span>${E(x[fields[0][0]] || '')} <small>${fields.slice(1).map(f => x[f[0]] ? E(f[1]) + ': ' + E(x[f[0]]) : '').filter(Boolean).join(' · ')}${x._stage ? ' · ' + E(x._stage) : ''} · ${ago(x._at)}</small></span><span class="og-row">${stages ? stages.map(s => `<button class="btn" data-rd="rstage:${key}|${E(x._id)}|${E(s)}" aria-pressed="${x._stage === s}">${E(s)}</button>`).join('') : ''}${st.sure === x._id ? btn('rdelgo:' + key + '|' + E(x._id), 'Delete for good') : btn('rdel:' + key + '|' + E(x._id), 'Delete')}</span></div>`).join('') : vzEmpty('Nothing here yet', 'Add the first one above.')}</div></div></div>`;
     };
   };
   recPage('evidence', 'Evidence', 'A log of proof that things were done: what, and where to find it.', 'Acta', [['what', 'What was done'], ['where', 'Where the proof is (a note, a link, a file)']]);
   recPage('leads', 'Leads', 'People and companies you may work with, and where each stands.', 'Venatio', [['name', 'Name or company'], ['contact', 'How to reach them'], ['note', 'A note']], ['New', 'Contacted', 'Talking', 'Won', 'Lost']);
   recPage('builds', 'Builds', 'A log of builds: what was built, which version, and how it went.', 'Forge', [['what', 'What was built'], ['version', 'Version or commit'], ['note', 'A note']], ['Planned', 'Building', 'Passed', 'Failed']);
   const num = s => { const n = Number(String(s || '').replace(',', '.').replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0; };
-  recPage('business', 'Business', 'A plain ledger of money in and out. Amounts are yours to read; nothing is connected to a bank.', 'Negotium', [['what', 'What it was for'], ['amount', 'Amount (a number)'], ['note', 'A note']], ['Income', 'Expense'], items => { const inc = items.filter(x => x._stage === 'Income').reduce((n, x) => n + num(x.amount), 0), exp = items.filter(x => x._stage === 'Expense').reduce((n, x) => n + num(x.amount), 0); return 'Income ' + inc.toFixed(2) + ' · Expense ' + exp.toFixed(2) + ' · Balance ' + (inc - exp).toFixed(2); });
+  recPage('business', 'Business', 'A plain ledger of money in and out. Amounts are yours to read; nothing is connected to a bank.', 'Negotium', [['what', 'What it was for'], ['amount', 'Amount (a number)'], ['note', 'A note']], ['Income', 'Expense'], items => { const inc = items.filter(x => x._stage === 'Income').reduce((n, x) => n + num(x.amount), 0), exp = items.filter(x => x._stage === 'Expense').reduce((n, x) => n + num(x.amount), 0); return vzTiles([vzTile('Income', inc.toFixed(2), 'recorded', 's'), vzTile('Expense', exp.toFixed(2), 'recorded', 'm'), vzTile('Balance', (inc - exp).toFixed(2), inc >= exp ? 'in the black' : 'in the red', inc >= exp ? 'g' : 'd')]) + vzStack([['Income', Math.round(inc), 's'], ['Expense', Math.round(exp), 'm']]); });
   recPage('designs', 'Web tools', 'Design systems and site notes as plain text the agents read: tokens, rules, motion, one entry per system.', 'Officina', [['name', 'Name (e.g. Canon, Neutral)', 120], ['rules', 'The rules in plain text (colours, type, corners, motion)', 2000], ['note', 'Where it is used']], ['Draft', 'In use', 'Retired']);
-  recPage('reels', 'Reels', 'A human-gated tracker for short vertical videos: each one moves through the steps only when you say so.', 'Cinema', [['title', 'The reel'], ['idea', 'Direction in a line'], ['note', 'Script, materials or a link']], ['Direction', 'Script', 'Materials', 'Takes', 'Review', 'Delivered']);
-  recPage('offers', 'Offer Boards', 'What you offer, in a line each, with a price.', 'Tabulae', [['title', 'The offer'], ['price', 'Price'], ['note', 'Who it is for']]);
 
 
   /* ---------- Mirror: what each crew profile keeps for itself (sizes and counts only; the text of a memory is never read out) ---------- */
-  const MR = { d: null };
+  const MR = { d: null, at: 0, busy: false };
   V.Mirror = () => {
-    if (!MR.d) { void (async () => { [MR.d, MR.k, MR.c] = await Promise.all([g('/api/mirror', []), g('/api/mirror/kanban', []), g('/api/mirror/curator', { enabled: false, lines: [] })]); setTimeout(() => { MR.d = null; }, 30000); again(); })(); return `<div class="nx-view enter">${head('Mirror', 'What each crew member keeps for itself.', 'Speculum')}<div class="og-wrap">${loadingCard()}</div></div>`; }
+    if (!MR.busy && (!MR.d || Date.now() - MR.at > 30000)) { MR.busy = true; MR.k = MR.k || []; MR.c = MR.c || { enabled: false, lines: [] };
+      /* the profile list paints first; the slow kanban and curator fill in after, and a refresh keeps the old data on screen */
+      void (async () => { MR.d = await g('/api/mirror', MR.d || []); MR.at = Date.now(); again(); await Promise.all([g('/api/mirror/kanban', MR.k).then(v => { MR.k = v; }), g('/api/mirror/curator', MR.c).then(v => { MR.c = v; })]); MR.busy = false; again(); })(); }
+    if (!MR.d) return `<div class="nx-view enter">${head('Mirror', 'What each crew member keeps for itself.', 'Speculum')}<div class="og-wrap">${loadingCard()}</div></div>`;
     const kb = n => n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB', skills = MR.d.reduce((n, x) => n + x.skills, 0);
     return `<div class="nx-view enter">${head('Mirror', 'What each crew profile keeps for itself, read only. You see sizes, ages and counts, never the text of a memory.', 'Speculum')}<div class="og-wrap">
       <div class="og-grid"><div class="og-card"><h4>Profiles</h4><p>${MR.d.length}</p></div><div class="og-card"><h4>Skills carried</h4><p>${skills}</p></div><div class="og-card"><h4>Memory kept</h4><p>${kb(MR.d.reduce((n, x) => n + x.memoryBytes, 0))}</p></div></div>
@@ -672,7 +681,7 @@
   const wxCity = () => { try { return localStorage.getItem('caesaros.wxcity') || ''; } catch { return ''; } };
   V.Weather = () => `<div class="nx-view enter">${head('Weather', 'The forecast for a city you type. Only the city name is sent, to the public Open-Meteo service, when you press Look up. Nothing is stored there.', 'Auguria')}<div class="og-wrap">
     <div class="og-card"><div class="og-row"><input class="og-input" id="rd-wx-city" placeholder="City" value="${E(wxCity())}" maxlength="80" style="flex:1">${btn('wxgo', WX.busy ? 'Looking…' : 'Look up', WX.busy ? 'disabled' : '')}</div>${WX.err ? `<p role="alert">${E(WX.err)}</p>` : ''}</div>
-    ${WX.w ? `<div class="og-card"><h4>${E(WX.w.place)}</h4><p>${WX.w.now.temp}°C · ${E(WX.w.now.sky)} · wind ${WX.w.now.wind} km/h</p></div><div class="og-list">${WX.w.days.map(d => `<div>${I('calendar', 16)}<span>${E(d.date)} <small>${E(d.sky)}</small></span><span class="og-tag mut">${d.min}° / ${d.max}°</span></div>`).join('')}</div>` : ''}</div></div>`;
+    ${WX.w ? `${vzTiles([vzTile(WX.w.place, WX.w.now.temp + '°C', WX.w.now.sky, 'a'), vzTile('Wind', WX.w.now.wind + ' km/h', '', 's'), vzTile('Today', WX.w.days[0].min + '° / ' + WX.w.days[0].max + '°', WX.w.days[0].sky, 'g')])}${sec('The week, one bar per day')}${vzRange(WX.w.days.map(d => [d.date, d.min, d.max, d.min + '° / ' + d.max + '° · ' + d.sky]))}` : vzEmpty('No forecast yet', 'Type a city and press Look up.')}</div></div>`;
 
 
   /* ---------- News: feeds you add; fetched only when you press Refresh, public hosts only (the core refuses the rest) ---------- */
@@ -681,7 +690,7 @@
   V.News = () => {
     if (!NW.feeds) { void nwLoad(); return `<div class="nx-view enter">${head('News', 'Your own feeds.', 'Acta diurna')}<div class="og-wrap">${loadingCard()}</div></div>`; }
     return `<div class="nx-view enter">${head('News', 'Headlines from RSS or Atom feeds you add. They are fetched only when you press Refresh, and only from public addresses.', 'Acta diurna')}<div class="og-wrap">
-      <div class="og-card"><div class="og-row"><input class="og-input" id="rd-nw-url" placeholder="https://example.org/feed.xml" style="flex:1" maxlength="400">${btn('nwadd', 'Add feed')}${btn('nwgo', NW.busy ? 'Loading…' : 'Refresh', NW.busy || !NW.feeds.length ? 'disabled' : '')}</div>${NW.err ? `<p role="alert">${E(NW.err)}</p>` : ''}</div>
+      <div class="og-card"><div class="og-row"><input class="og-input" id="rd-nw-url" aria-label="Feed address" placeholder="https://example.org/feed.xml" style="flex:1" maxlength="400">${btn('nwadd', 'Add feed')}${btn('nwgo', NW.busy ? 'Loading…' : 'Refresh', NW.busy || !NW.feeds.length ? 'disabled' : '')}</div>${NW.err ? `<p role="alert">${E(NW.err)}</p>` : ''}</div>
       ${NW.feeds.length ? NW.feeds.map(f => `${sec(f.text.replace(/^https?:\/\//, '').slice(0, 60))}<div class="og-list">${NW.items[f.id] === undefined ? '<div style="display:block"><span>Press Refresh to load.</span></div>' : NW.items[f.id] === null ? '<div style="display:block"><span>This feed could not be loaded (or its address is not public).</span></div>' : NW.items[f.id].map(i => `<div>${I('news', 16)}<span>${i.link ? `<a href="${E(i.link)}" target="_blank" rel="noopener noreferrer">${E(i.title)}</a>` : E(i.title)} <small>${E(i.at)}</small></span></div>`).join('') || '<div style="display:block"><span>No items.</span></div>'}</div><div class="og-row">${btn('nwdel:' + f.id, 'Remove feed')}</div>`).join('') : '<div class="og-list"><div style="display:block"><span>No feeds yet. Add an RSS or Atom address above.</span></div></div>'}</div></div>`;
   };
 
@@ -716,6 +725,20 @@
   setInterval(() => { void refreshSyncChip(); }, 60000);
   const val = id => (document.getElementById(id) || {}).value || '';
   document.addEventListener('change', async e => {
+    if (!e.target || e.target.id !== 'rd-skill-bundle' || !e.target.files || !e.target.files[0]) return;
+    RD.marketErr = ''; RD.marketBusy = true; again();
+    try {
+      const pack = JSON.parse(await e.target.files[0].text());
+      if (!pack || typeof pack !== 'object' || !Array.isArray(pack.files) || pack.files.some(f => !f || typeof f.path !== 'string' || typeof f.content !== 'string')) throw new Error('The JSON must contain a files list with path and text content.');
+      const files = pack.files.map(f => ({ path: f.path, base64: utf8Base64(f.content) }));
+      const r = await w('/api/install-gate/quarantine', 'POST', { ...pack, kind: 'skill', files });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'The package could not be scanned.');
+      RD.marketItems = [data, ...(RD.marketItems || [])];
+    } catch (err) { RD.marketErr = err && err.message ? err.message : 'The package could not be read.'; }
+    RD.marketBusy = false; e.target.value = ''; again();
+  });
+  document.addEventListener('change', async e => {
     if (e.target && e.target.id === 'rd-kfile' && e.target.files[0]) { const f = e.target.files[0]; const t = await f.text(); const n = document.getElementById('rd-kname'); const x = document.getElementById('rd-ktext'); if (x) x.value = t; if (n && !n.value) n.value = f.name.replace(/\.[^.]+$/, ''); }
   });
   document.addEventListener('input', e => { if (e.target && e.target.id === 'rd-url') RD.join.url = e.target.value; if (e.target && e.target.id === 'rd-code') RD.join.code = e.target.value.replace(/\D/g, ''); if (e.target && e.target.id === 'rd-kq') RD.kbq = e.target.value; });
@@ -735,6 +758,7 @@
     else if (k === 'cladd') { const t = val('rd-clip').trim(); if (t) { await w('/api/lists/clipboard', 'POST', { text: t }); LS.clipboard.items = null; again(); } }
     else if (k === 'clcopy') { const it = LS.clipboard.items.find(x => x.id === v); try { await navigator.clipboard.writeText(it ? it.text : ''); } catch {} }
     else if (k === 'cldel') { await w('/api/lists/item/' + encodeURIComponent(v), 'DELETE'); LS.clipboard.items = null; again(); }
+    else if (/^v(make|open|save)$/.test(k) && !crypto.subtle) { VT.err = 'The Vault needs https, or the computer that runs CaesarOS.'; again(); }   // plain-http gateway: no Web Crypto
     else if (k === 'vmake') { const name = val('rd-vname').trim(), text = val('rd-vnew'), pass = val('rd-vpass'); if (!name || !text || pass.length < 6) { VT.err = 'A name, some text and a passphrase of at least six characters are needed.'; again(); } else { const s = await seal(pass, text); const r = await w('/api/vault', 'POST', { name, ...s }); VT.err = r.ok ? '' : 'It could not be saved.'; VT.items = null; again(); } }
     else if (k === 'vopen') { const pass = val('rd-vp-' + v); const item = await g('/api/vault/' + encodeURIComponent(v), null); if (!item) return; try { VT.text = await unseal(pass, item); VT.open = item; VT.pass = pass; VT.err = ''; } catch { VT.err = 'That passphrase does not open this note.'; } again(); }
     else if (k === 'vsave') { const s = await seal(VT.pass, val('rd-vtext')); const r = await w('/api/vault/' + encodeURIComponent(VT.open.id), 'PUT', { name: VT.open.name, ...s }); VT.err = r.ok ? '' : 'It could not be saved.'; VT.text = val('rd-vtext'); VT.items = null; again(); }
@@ -743,7 +767,7 @@
     else if (k === 'vdelgo') { await w('/api/vault/' + encodeURIComponent(VT.open.id), 'DELETE'); VT.open = null; VT.text = ''; VT.pass = ''; VT.sure = false; VT.items = null; again(); }
     else if (k === 'drrefresh') { DR.d = null; DR.saved = ''; again(); }
     else if (k === 'drsave') { const d = DR.d; let name = 'Daily review ' + d.today; let r = await w('/api/notes', 'POST', { name, content: dailyMd(d) }); if (!r.ok) { name += ' (' + new Date().toTimeString().slice(0, 5).replace(':', '.') + ')'; r = await w('/api/notes', 'POST', { name, content: dailyMd(d) }); } if (r.ok) { DR.saved = name; RD.err.dr = ''; } else RD.err.dr = 'The note could not be saved.'; again(); }
-    else if (k === 'hlrefresh') { HL.d = null; again(); }
+    else if (k === 'hlrefresh') { HL.d = null; HL.p = null; again(); }
     else if (k === 'goUsage') { open_({ k: 'app', id: 'Usage' }); render(); }
     else if (k === 'wtog') { await saveRule(v, { on: !WT.rules[v].on }); }
     else if (k === 'wdays') { const n = Math.max(1, Math.min(365, Number(val('rd-w-' + v)) || 1)); await saveRule(v, { days: n }); }
@@ -786,6 +810,10 @@
     else if (k === 'imdel') { IM.prompt = val('rd-impr'); IM.sure = v; again(); }
     else if (k === 'imdelgo') { await w('/api/image/' + encodeURIComponent(v), 'DELETE'); IM.sure = null; await imLoad(); }
     else if (k === 'nfrefresh') { NF.d = null; again(); }
+    else if (k === 'nfread') { nfMark([v]); again(); }
+    else if (k === 'nfall') { nfMark([...document.querySelectorAll('.pgm [data-rd^="nfread:"]')].map(b => b.dataset.rd.slice(7))); again(); }
+    else if (k === 'mkretry') { RD.mkFail = false; RD.skills = null; again(); }
+    else if (k === 'mkcat') { RD.mkcat = v; again(); }
     else if (k === 'goMarket') { open_({ k: 'app', id: 'Marketplace' }); render(); }
     else if (k === 'goDevices') { open_({ k: 'app', id: 'Devices' }); render(); }
     else if (k === 'orchgo') { open_({ k: 'chat', id: v }); render(); }
@@ -804,10 +832,26 @@
     else if (k === 'ntheirs') { if (NT.theirs) { NT.open = NT.theirs; NT.text = NT.theirs.content; NT.status = 'saved'; again(); } }
     else if (k === 'nmine') { if (NT.theirs) { NT.open = NT.theirs; NT.status = 'dirty'; await flushNote(); await loadNotes(); } }
     else if (k === 'skgo') { RD.skq = val('rd-skq'); again(); }
+    else if (k === 'mgapprove') {
+      const item = (RD.marketItems || []).find(x => x.id === v); if (!item) return;
+      const confirmYellow = item.scan.verdict === 'yellow';
+      if (confirmYellow && !window.confirm('This scan has yellow findings. Review the exact findings and hash before continuing. Approve this hash?')) return;
+      const card = t.closest('.og-card'); const targets = card ? [...card.querySelectorAll('[data-agent-target]:checked')].map(x => x.dataset.agentTarget) : [];
+      if (!targets.length) { RD.marketErr = 'Select at least one agent before approving.'; again(); return; }
+      const r = await w('/api/install-gate/' + encodeURIComponent(v) + '/approve', 'POST', { sha256: item.scan.sha256, confirmYellow, targets });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) { if (data.item) { RD.marketItems = RD.marketItems.map(x => x.id === v ? data.item : x); RD.skills = await g('/api/skills', []); } RD.marketErr = data.error === 'scan_changed' ? 'The package changed. Review the new scan before approving.' : data.error === 'agent_projection_failed' ? 'Some selected agents were updated. Select the remaining agents and retry.' : 'The package could not be added (' + (data.error || 'failed') + ').'; }
+      else { RD.marketItems = RD.marketItems.map(x => x.id === v ? data : x); RD.skills = await g('/api/skills', []); }
+      again();
+    }
+    else if (k === 'mgremove') {
+      if (!window.confirm('Remove this unchanged skill from CaesarOS?')) return;
+      const r = await w('/api/install-gate/' + encodeURIComponent(v), 'DELETE');
+      if (!r.ok) RD.marketErr = 'Some unchanged agent copies may already be removed. Modified files were preserved; resolve the change and retry to finish.';
+      else { RD.marketItems = RD.marketItems.filter(x => x.id !== v); RD.skills = await g('/api/skills', []); }
+      again();
+    }
     else if (k === 'wbadd') { const i = document.getElementById('rd-wb'); const title = i ? i.value.trim() : ''; if (title) { await w('/api/board', 'POST', { title }); await refreshW(); } }
-    else if (k === 'cprev' || k === 'cnext') { const c = RD.cal; c.m += k === 'cnext' ? 1 : -1; if (c.m < 0) { c.m = 11; c.y--; } if (c.m > 11) { c.m = 0; c.y++; } c.sel = null; await loadCal(); }
-    else if (k === 'ctoday') { const t = new Date(); RD.cal.y = t.getFullYear(); RD.cal.m = t.getMonth(); RD.cal.sel = null; await loadCal(); }
-    else if (k === 'cday') { RD.cal.sel = v; again(); }
     else if (k === 'cadd') { const r = await w('/api/calendar', 'POST', { title: val('rd-ctitle'), time: val('rd-ctime').trim(), date: RD.cal.sel }); if (!r.ok) { const j = await r.json().catch(() => ({})); RD.err.cal = j.error === 'time' ? 'Time must look like 09:30.' : 'Write a title first.'; again(); } else await loadCal(); }
     else if (k === 'cdel') { RD.cdel = v; again(); }
     else if (k === 'cdelgo') { await w('/api/calendar/' + encodeURIComponent(v), 'DELETE'); RD.cdel = null; await loadCal(); }
@@ -830,13 +874,16 @@
     else if (k === 'hodone') { await w('/api/handoff/' + encodeURIComponent(v), 'DELETE'); await loadDev(); }
     else if (k === 'hocopy') { const h = (RD.inbox || []).find(x => x.id === v); try { await navigator.clipboard.writeText(h ? h.text : ''); } catch {} }
     else if (k === 'bkmake') { await w('/api/backup', 'POST'); await loadDev(); RD.set && await loadSet(); }
-    else if (k === 'pull') { await w('/api/models/pull', 'POST', { model: v }); RD.pull = { model: v, status: 'starting', completed: 0, total: 0, done: false, error: null }; again(); watchPull(); }
+    else if (k === 'pull') { const r = await w('/api/models/pull', 'POST', { model: v }); RD.err.pull = r.ok ? '' : (await r.json().catch(() => ({}))).error === 'queue_full' ? 'The line is full. Wait for a download to finish.' : 'That download could not be started.'; RD.pull = await g('/api/models/pull', null); again(); watchPull(); }
+    else if (k === 'pulldrop') { await w('/api/models/pull?model=' + encodeURIComponent(v), 'DELETE'); RD.pull = await g('/api/models/pull', null); again(); }
     else if (k === 'pullstop') { await w('/api/models/pull', 'DELETE'); }
     else if (k === 'rm') { RD.sure = v; again(); }
     else if (k === 'rmgo') { await w('/api/models/installed', 'DELETE', { name: v }); RD.sure = null; RD.inst = await g('/api/models/installed', []); again(); }
     else if (k === 'keymk') { const name = val('rd-key').trim().toLowerCase(); const r = await w('/api/tokens', 'POST', { name }); const j = await r.json().catch(() => ({})); if (r.ok && j.token) RD.fresh = j.token; else RD.err.key = j.error || 'The key could not be made.'; await loadKeys(); }
     else if (k === 'keyrm') { await w('/api/tokens/' + encodeURIComponent(v), 'DELETE'); RD.fresh = null; await loadKeys(); }
     else if (k === 'kbsearch') { RD.kbq = val('rd-kq'); RD.kbhits = RD.kbq.trim() ? await g('/api/knowledge/search?q=' + encodeURIComponent(RD.kbq), []) : null; again(); }
+    else if (k === 'kcol') { RD.kfilter = decodeURIComponent(v) || null; RD.kbsel = null; again(); }
+    else if (k === 'lib') { const doc = (RD.kb || []).find(x => x.id === v); if (doc) { RD.kbsel = doc.id; RD.kbq = doc.name; RD.kbhits = await g('/api/knowledge/search?q=' + encodeURIComponent(doc.name), []); } again(); }
     else if (k === 'kbadd') { const r = await w('/api/knowledge', 'POST', { name: val('rd-kname'), text: val('rd-ktext') }); if (!r.ok) RD.err.kb = 'The document could not be added.'; await loadKb(); }
     else if (k === 'kbrm') { RD.ksure = v; again(); }
     else if (k === 'kbrmgo') { await w('/api/knowledge/' + encodeURIComponent(v), 'DELETE'); RD.ksure = null; RD.kbhits = null; await loadKb(); }
@@ -855,5 +902,6 @@
   setInterval(() => { void fillNeeds(); }, 15000);
   void fillNeeds();
 
+  window.xSys = { MT, MR, NW, IM, HL, again };   // read by pg-sys.js (stat tiles on top of these pages)
   register({ id: 'real', views: V });
 })();

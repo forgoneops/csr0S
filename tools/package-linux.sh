@@ -7,9 +7,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 OUT="$ROOT/dist/caesaros-linux-x64"; rm -rf "$OUT"; mkdir -p "$OUT/resources/web" "$ROOT/dist"
 echo "1/4 web"; bunx vite build web >/dev/null
 echo "2/4 core (one executable)"; bun build core/server.ts --compile --outfile "$OUT/caesaros-core" >/dev/null
-echo "3/4 native window"; (cd src-tauri && cargo build --release -q) ; cp src-tauri/target/release/caesaros-shell "$OUT/caesaros-shell"
+echo "3/4 native window"; (cd src-tauri && RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$HOME=/build --remap-path-prefix=$ROOT=/src" cargo build --release -q) ; cp src-tauri/target/release/caesaros-shell "$OUT/caesaros-shell"
 echo "4/4 files"
-cp -r web/atrium web/dist "$OUT/resources/web/"; cp -r packs skills "$OUT/resources/"; cp LICENSE THIRD-PARTY-NOTICES.md README.md "$OUT/"
+cp -r web/atrium web/dist "$OUT/resources/web/"; cp -r packs skills "$OUT/resources/"; while IFS= read -r x; do case "$x" in skills/*) rm -rf "$OUT/resources/$x";; esac; done < tools/clean-exclude.txt; mkdir -p "$OUT/resources/tools/speech"; cp -r tools/speech/. "$OUT/resources/tools/speech/"; cp tools/caesar-computer-mcp.ts "$OUT/resources/tools/"
+cp LICENSE THIRD-PARTY-NOTICES.md README.md "$OUT/"
 cp src-tauri/icons/128x128.png "$OUT/caesaros.png"
 cat > "$OUT/caesaros.desktop" <<D
 [Desktop Entry]

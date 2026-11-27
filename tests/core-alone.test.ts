@@ -30,7 +30,7 @@ function run(cmd: string[], cwd: string) {
   return { code: p.exitCode, out: new TextDecoder().decode(p.stdout) + new TextDecoder().decode(p.stderr) };
 }
 
-describe("core alone (owner removed)", () => {
+describe.skipIf(!!process.env.CAESAROS_SKIP_HEAVY)("core alone (owner removed)", () => {
   test("type check, core build and web build pass without owner/", () => {
     const dir = mkdtempSync(join(tmpdir(), "caesaros-core-alone-"));
     try {

@@ -2,7 +2,7 @@
    Rules: one infinite loop at most (the holo sweep on the top bar), transform/opacity only, everything off in motion reduced/off. */
 html[data-skin=neo]{
  --bg:#05060d;--surface:#0b0d18;--line:#2a2548;--text:#e8ecff;--muted:#8b90b8;
- --accent:var(--p1);--accent-ink:#0a0310;--signal:var(--p2);--cx-mag:var(--p1);--cx-gold:#f2c46b;
+ --accent:var(--p1);--accent-ink:#0a0310;--signal:var(--p2);--cx-mag:var(--p1);--cx-gold:#f2c46b;--gold:var(--cx-gold);
  --g1:var(--p1r);--g2:var(--p2r);--g3:242,196,107;--g4:139,92,255;
  --meander:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='8'><path d='M0 7H4V1H12V5H8V3H10M12 7H16V1H24' fill='none' stroke='%23f2c46b' stroke-width='1' opacity='.7'/></svg>")}
 /* the void: deep blue-violet with teal-orange haze, no brown */
@@ -33,12 +33,12 @@ html[data-skin=neo] .ns-side{background:linear-gradient(180deg,#0a0c1ccc,#05060c
 html[data-skin=neo] .ns-side:before{background:linear-gradient(180deg,transparent,var(--p2),var(--p1),transparent);opacity:.7}
 /* workspace tabs: Roman numerals, neon active */
 html[data-skin=neo] .ws-bar .ws.on{background:linear-gradient(135deg,rgba(var(--p1r),.28),rgba(var(--p2r),.10));box-shadow:inset 0 -2px var(--p2),inset 0 0 0 1px rgba(var(--p1r),.5),0 0 18px -4px rgba(var(--p1r),.6)}
-html[data-skin=neo] .ws-bar .ws.on b{color:var(--cx-gold);text-shadow:0 0 10px #f2c46b}
+html[data-skin=neo] .ws-bar .ws.on b{color:var(--cx-gold);text-shadow:0 0 10px color-mix(in srgb,var(--cx-gold) 80%,transparent)}
 /* buttons: ghost neon */
 html[data-skin=neo] .btn,html[data-skin=neo] .act-btn{background:#ffffff08;color:var(--text);box-shadow:inset 0 0 0 1px rgba(var(--p2r),.35)}
 html[data-skin=neo] .btn:hover{box-shadow:inset 0 0 0 1px var(--p2),0 0 14px -2px rgba(var(--p2r),.6)}
 /* hologram sweep: the ONE ambient loop, on the top bar only, transform+opacity */
-html[data-skin=neo][data-motion=on] .atrium-top:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 40%,rgba(var(--p2r),.12) 50%,transparent 60%);transform:translateX(-100%);animation:neosweep 9s linear infinite}
+html[data-skin=neo] .shell.atrium{position:relative}html[data-skin=neo][data-motion=on] .shell.atrium:before{content:"";position:absolute;left:0;right:0;top:0;height:var(--nx-top,64px);pointer-events:none;z-index:4;background:linear-gradient(100deg,transparent 40%,rgba(var(--p2r),.12) 50%,transparent 60%);transform:translateX(-100%);animation:neosweep 9s linear infinite}
 @keyframes neosweep{to{transform:translateX(100%)}}
 @media (prefers-reduced-motion:reduce){html[data-skin=neo][data-motion=on] .atrium-top:before{animation:none}}
 

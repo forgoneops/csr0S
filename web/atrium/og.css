@@ -67,3 +67,18 @@
 .og-empty{display:grid;place-items:center;gap:10px;align-content:center;text-align:center;color:var(--muted);height:100%;padding:20px}
 .og-term{background:#0a0807;font:12px/1.55 var(--font-mono);color:#c9c3b8;padding:12px;overflow:auto}
 .og-term .p{color:var(--accent)}
+
+/* art: scene headers and ported art take their hue from the palette (luminosity blend over --p1), never a baked colour */
+.nx-scene{background-color:var(--p1,var(--accent,#ff8a3d));background-blend-mode:luminosity}
+.ax-logo{display:inline-block;width:18px;height:18px;margin-right:8px;vertical-align:-3px;background:var(--p2,var(--accent,#33e8ff));-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.ax-state{grid-template-columns:72px 1fr;align-items:center;gap:14px}
+.ax-state h4,.ax-state p{margin:0}
+.ax-art{width:72px;height:72px;background:var(--m) center/cover,var(--p1,#ff8a3d);background-color:var(--p1,#ff8a3d);background-blend-mode:luminosity;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+html[data-motion=on] .ax-state.loading .ax-art{animation:nxflick 3.4s ease-in-out infinite}
+.ax-state.error .ax-art{background-color:var(--danger,#ff5a5a)}
+/* phone: an icon row with trailing actions drops the actions under the text instead of clipping them */
+@media (max-width:600px){.og-list>div:not(.vz-empty):has(>svg:first-child){grid-template-columns:28px minmax(0,1fr)}.og-list>div:not(.vz-empty):has(>svg:first-child)>:nth-child(n+3){grid-column:2;justify-self:start}.og-list>div>.og-row{flex-wrap:wrap}}
+/* the browser's own file picker, dressed in tokens with a cut corner */
+input[type=file]{color:var(--muted);font:12px var(--font-mono,monospace)}
+input[type=file]::file-selector-button{margin-right:12px;height:28px;padding:0 12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 11px var(--font-mono,monospace);letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+input[type=file]::file-selector-button:hover{border-color:var(--p1);color:var(--p1)}

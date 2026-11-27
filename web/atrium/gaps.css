@@ -1,0 +1,46 @@
+/* Daily-use additions: conversation list, context meter, autosave control, brief, permissions and outbound cards.
+   Tokens only, cut corners, pixel squares. Root: .gx */
+.gx .gx-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.gx .gx-bar .og-input{flex:1 1 220px;min-height:44px;min-width:0}
+.gx .gx-chips{display:flex;flex-wrap:wrap;gap:6px}
+.gx .gx-chip{all:unset;box-sizing:border-box;cursor:var(--cursor-active,pointer);min-height:44px;display:inline-flex;align-items:center;padding:0 14px;border:1px solid var(--line);background:var(--surface);font-size:13px;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.gx .gx-chip.on{border-color:var(--p1);background:color-mix(in srgb,var(--p1) 14%,var(--surface))}
+.gx .gx-chip:focus-visible,.gx .gx-open:focus-visible,.gx .gx-ico:focus-visible{outline:2px solid var(--p2);outline-offset:-3px}
+.gx .gx-day{margin:6px 0 0;font:500 11px var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.gx .gx-day em{font-style:normal;color:var(--muted)}
+.gx .gx-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.gx .gx-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line);background:var(--surface);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.gx .gx-row.pinned{border-color:color-mix(in srgb,var(--p1) 55%,var(--line))}
+.gx .gx-open{all:unset;box-sizing:border-box;cursor:var(--cursor-active,pointer);flex:1 1 200px;min-width:0;min-height:44px;display:grid;align-content:center;padding:2px 6px}
+.gx .gx-open b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx .gx-open small{color:var(--muted);font-size:12px}
+.gx .gx-acts{display:flex;gap:2px;margin-left:auto}
+.gx .gx-ico{all:unset;box-sizing:border-box;cursor:var(--cursor-active,pointer);width:44px;height:44px;display:grid;place-items:center;color:var(--muted)}
+.gx .gx-ico:hover,.gx .gx-ico[aria-pressed=true]{color:var(--p1)}
+.gx .gx-sure,.gx .gx-edit{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+.gx .gx-edit{flex:1;margin:0}
+.gx .gx-edit .og-input{flex:1 1 200px;min-width:0;min-height:44px}
+.gx .btn{min-height:44px}
+.gx .gx-warn{margin:0;color:var(--gold)}
+.gx.gx-meter{flex:1 0 100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);background:var(--surface);display:grid;gap:8px;font-size:13px;text-align:left;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.gx.gx-meter p{margin:0}
+.gx.gx-meter .vz-seg{width:100%}
+.gx.gx-meter pre{margin:0;max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 var(--font-mono);padding:8px;border-left:2px solid var(--p2)}
+.gx .gx-mut{color:var(--muted)}
+.gx .og-row{flex-wrap:wrap}
+.gx.gx-brief{display:grid;gap:10px}
+.gx.gx-brief pre{margin:0;max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 var(--font-mono);padding:8px;border-left:2px solid var(--p2)}
+.gx.gx-caps{display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:8px;vertical-align:middle}
+.gx .gx-cap{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:1px 6px;border:1px solid color-mix(in srgb,var(--p2) 45%,var(--line));font:500 10px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--p2);vertical-align:middle;clip-path:polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))}
+.gx.gx-perm{display:grid;gap:10px}
+.gx.gx-perm h4{margin:4px 0 0;font:500 11px var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.gx.gx-perm p{margin:0}
+.gx .gx-out{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.gx .gx-out li{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1.4fr);gap:2px 12px;padding:8px 10px;border:1px solid var(--line);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.gx .gx-out code,.gx .gx-out .gx-state{overflow-wrap:anywhere;color:var(--p2)}
+.gx .gx-out li>span:not(.gx-state){grid-column:1/-1;color:var(--muted);font-size:12px}
+@media (max-width:560px){.gx .gx-out li{grid-template-columns:1fr}}
+.gx.gx-perm .su-btn{min-height:44px}
+.gx .gx-out li .su-btn{grid-column:1/-1;justify-self:start}
+.gx .gx-state.denied{color:var(--gold)}
+.gx .gx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}

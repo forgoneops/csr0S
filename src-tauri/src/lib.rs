@@ -235,30 +235,33 @@ mod connect {
         let status = Status::online(gw, code, shared.core_running(), now_ms());
         if shared.set_status(generation, status) {
             window::go_gateway(app, &gw.address);
+            window::show_and_focus(app);
             window::restore_pops(app);
             hud::after_online(app);
         }
     }
 
-    fn offline(shared: &Shared, generation: u64, gw: &Gateway, reason: Reason, code: Option<u16>, detail: Option<String>) {
+    fn offline(app: &AppHandle, shared: &Shared, generation: u64, gw: &Gateway, reason: Reason, code: Option<u16>, detail: Option<String>) {
         let status = Status::offline(Some(gw), reason, code, detail, shared.core_running(), now_ms());
-        shared.set_status(generation, status);
+        if shared.set_status(generation, status) {
+            window::show_and_focus(app); // the window starts hidden; an offline gateway is the one reason to show the picker
+        }
     }
 
     fn run(app: &AppHandle, shared: &Shared, generation: u64, gw: &Gateway) {
         match probe(&gw.address) {
             ProbeResult::Online(code) => online(app, shared, generation, gw, code),
             ProbeResult::HttpStatus(code) => {
-                offline(shared, generation, gw, Reason::HttpStatus, Some(code), None)
+                offline(app, shared, generation, gw, Reason::HttpStatus, Some(code), None)
             }
-            ProbeResult::BadUrl => offline(shared, generation, gw, Reason::BadUrl, None, None),
+            ProbeResult::BadUrl => offline(app, shared, generation, gw, Reason::BadUrl, None, None),
             ProbeResult::Failed(reason, detail) => {
                 // The core is started on demand only for the local gateway,
                 // and only when nothing answers there.
                 if gw.kind == GatewayKind::Local && reason.core_may_help() {
                     start_core(app, shared, generation, gw);
                 } else {
-                    offline(shared, generation, gw, reason.into(), None, Some(detail));
+                    offline(app, shared, generation, gw, reason.into(), None, Some(detail));
                 }
             }
         }
@@ -268,10 +271,10 @@ mod connect {
         let started = lock(&shared.core).ensure_started(&gw.address);
         match started {
             Err(StartError::Missing) => {
-                return offline(shared, generation, gw, Reason::CoreMissing, None, None);
+                return offline(app, shared, generation, gw, Reason::CoreMissing, None, None);
             }
             Err(StartError::Failed(e)) => {
-                return offline(shared, generation, gw, Reason::CoreFailed, None, Some(e));
+                return offline(app, shared, generation, gw, Reason::CoreFailed, None, Some(e));
             }
             Ok(()) => {}
         }
@@ -287,7 +290,7 @@ mod connect {
                 return online(app, shared, generation, gw, code);
             }
             if !shared.core_running() {
-                return offline(
+                return offline(app, 
                     shared,
                     generation,
                     gw,
@@ -298,7 +301,7 @@ mod connect {
             }
             std::thread::sleep(CORE_POLL);
         }
-        offline(shared, generation, gw, Reason::CoreTimeout, None, None);
+        offline(app, shared, generation, gw, Reason::CoreTimeout, None, None);
     }
 }
 
@@ -330,6 +333,7 @@ pub fn run() {
         // Single instance must be the first plugin.
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| handle_second_launch(app, &argv)))
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             commands::get_shell_state,
             commands::select_gateway,

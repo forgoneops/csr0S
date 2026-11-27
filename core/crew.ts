@@ -5,12 +5,13 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, w
 import { tmpdir } from "node:os";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 import { ENGINES, detectEngines } from "./detect";
 import type { EngineAdapter, EngineEvent } from "./engines/types";
-import { listEngines } from "./engines/registry";
+import { listEngines, registerEngine, unregisterEngine } from "./engines/registry";
 import { memoFor } from "./memo";
 import { hermesScope, scopeOf } from "./scope";
+import { change, cleanLine, ID_RE, readRoster, writeRoster } from "./roster";
 
 const PROFILES = () => join(process.env.HERMES_HOME ?? join(homedir(), ".hermes"), "profiles");
 
@@ -39,14 +40,16 @@ const modelOf = (dir: string): string => {
   } catch { return ""; }
 };
 
-export function listCrew(): CrewMember[] {
-  const root = PROFILES();
+/** The Hermes profiles as crew. Retired members are left out unless `retired` is set; the roster's own names and roles win. */
+export function listCrew(opts: { retired?: boolean } = {}): CrewMember[] {
+  const root = PROFILES(), ro = readRoster();
   if (!existsSync(root)) return [];
   const ids = readdirSync(root).filter((d) => /^[a-z0-9][a-z0-9_-]*$/i.test(d) && statSync(join(root, d)).isDirectory());
-  ids.sort((a, b) => (ORDER.indexOf(a) < 0 ? 99 : ORDER.indexOf(a)) - (ORDER.indexOf(b) < 0 ? 99 : ORDER.indexOf(b)) || a.localeCompare(b));
-  return ids.map((id) => {
+  const shown = ids.filter((id) => opts.retired ? ro.retired.includes(id) : !ro.retired.includes(id));
+  shown.sort((a, b) => (ORDER.indexOf(a) < 0 ? 99 : ORDER.indexOf(a)) - (ORDER.indexOf(b) < 0 ? 99 : ORDER.indexOf(b)) || a.localeCompare(b));
+  return shown.map((id) => {
     const k = KNOWN[id], jobs = working.get(id) ?? [];
-    return { id, name: k?.name ?? id[0].toUpperCase() + id.slice(1), role: k?.role ?? "Agent", does: k?.does ?? "a Hermes profile on this machine", img: k?.img ?? "art/caesaros-caesar-neo.webp", model: modelOf(join(root, id)), status: jobs.length ? "work" : "idle", doing: jobs[0]?.doing ?? "", at: jobs[0]?.at ?? null };
+    return { id, name: ro.names[id] ?? k?.name ?? id[0].toUpperCase() + id.slice(1), role: ro.roles[id] ?? k?.role ?? "Agent", does: k?.does ?? "a Hermes profile on this machine", img: k?.img ?? "art/caesaros-caesar-neo.webp", model: modelOf(join(root, id)), status: jobs.length ? "work" : "idle", doing: jobs[0]?.doing ?? "", at: jobs[0]?.at ?? null };
   });
 }
 
@@ -168,8 +171,47 @@ export async function chatTargets(localOnly = false): Promise<Target[]> {
   return out;
 }
 
-export function crewApi(app: Hono, localOnly: () => boolean = () => false): void {
+/** Run `hermes profile create` for a new member; the error is a short word, never the profile's contents. */
+async function hermesCreate(id: string): Promise<"ok" | "hermes_missing" | "failed"> {
+  const bin = Bun.which("hermes") ?? join(homedir(), ".local", "bin", "hermes");
+  if (!existsSync(bin)) return "hermes_missing";
+  try {
+    const p = Bun.spawn([bin, "profile", "create", "--no-alias", id], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
+    const t = setTimeout(() => p.kill(), 60_000); const code = await p.exited; clearTimeout(t);
+    return code === 0 ? "ok" : "failed";
+  } catch { return "failed"; }
+}
+
+/** After the roster changes, the chat engines follow it without a restart: only the Hermes ones are swapped. */
+function syncCrewEngines(): void {
+  for (const e of listEngines()) if (e.id.startsWith("hermes:")) unregisterEngine(e.id);
+  for (const e of hermesCrewEngines()) registerEngine(e);
+}
+
+export function crewApi(app: Hono, localOnly: () => boolean = () => false, isOperator: (c: Context) => boolean = () => true): void {
   app.get("/api/crew", (c) => c.json(listCrew()));
+  // retired members, so the Lair can offer to bring them back
+  app.get("/api/crew/retired", (c) => c.json(listCrew({ retired: true })));
+  // hire (a new Hermes profile), rename and retire/restore: operator only, and only the roster file changes except for a hire
+  app.post("/api/crew", async (c) => {
+    if (!isOperator(c)) return c.json({ error: "operator_only" }, 403);
+    const b = await c.req.json().catch(() => ({})) as { id?: string; name?: string; role?: string };
+    const id = cleanLine(b.id, 32).toLowerCase();
+    if (!ID_RE.test(id)) return c.json({ error: "id" }, 400);
+    if (listCrew({ retired: true }).concat(listCrew()).some((m) => m.id === id)) return c.json({ error: "exists" }, 409);
+    const made = await hermesCreate(id);
+    if (made !== "ok") return c.json({ error: made }, made === "hermes_missing" ? 409 : 502);
+    writeRoster(change(readRoster(), id, { name: b.name ?? "", role: b.role ?? "" })); syncCrewEngines();
+    return c.json({ ok: true, id });
+  });
+  app.patch("/api/crew/:id", async (c) => {
+    if (!isOperator(c)) return c.json({ error: "operator_only" }, 403);
+    const id = c.req.param("id"), b = await c.req.json().catch(() => ({})) as { name?: string; role?: string; retired?: boolean };
+    if (!listCrew({ retired: true }).concat(listCrew()).some((m) => m.id === id)) return c.json({ error: "unknown" }, 404);
+    if (b.retired === true && id === "caesar") return c.json({ error: "caesar_stays" }, 400);
+    writeRoster(change(readRoster(), id, { name: typeof b.name === "string" ? b.name : undefined, role: typeof b.role === "string" ? b.role : undefined, retire: typeof b.retired === "boolean" ? b.retired : undefined })); syncCrewEngines();
+    return c.json({ ok: true });
+  });
   app.get("/api/chat-targets", async (c) => c.json(await chatTargets(localOnly())));
   // who answers a first message and a new chat: the preference order above, not detection order
   app.get("/api/chat-targets/default", async (c) => {

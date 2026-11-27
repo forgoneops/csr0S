@@ -26,6 +26,12 @@ describe("control plane writes", () => {
     ["POST", "/api/model-servers", { name: "x", url: "http://a.example" }],
     ["POST", "/api/chat/sessions", { engine: "ollama" }],
     ["PUT", "/api/plugins/hello/enabled", { enabled: false }],
+    ["POST", "/api/chat/sessions/x/compact", {}],
+    ["DELETE", "/api/chat/sessions/x/summary", {}],
+    ["PATCH", "/api/chat/sessions/x", { pinned: true }],
+    ["POST", "/api/chat/sessions/x/turns", { content: "read", attachments: [{ name: "a.pdf", mime: "application/pdf", data: "JVBERi0=" }] }],
+    ["POST", "/api/models/pull", { model: "llama3.2:1b" }],
+    ["DELETE", "/api/models/pull?model=llama3.2:1b", {}],
   ];
   test("a plain network caller (curl, a script, a tailnet peer) is refused on every one", async () => {
     for (const [m, p, b] of writes) {
@@ -44,6 +50,7 @@ describe("control plane writes", () => {
     expect((await post("/api/settings", { textScale: 1 }, browser(), "PUT")).status).toBe(200);
     expect((await fetch(url + "/api/settings")).status).toBe(200);
     expect((await fetch(url + "/api/health")).status).toBe(200);
+    expect((await fetch(url + "/api/egress")).status).toBe(403);    // the outbound list is the operator's own
   });
   test("a browser marked cross-site is refused even with the right headers otherwise", async () => {
     expect((await post("/api/settings", { textScale: 1 }, { "Sec-Fetch-Site": "cross-site", Origin: url }, "PUT")).status).toBe(403);

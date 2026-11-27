@@ -2,6 +2,7 @@
 // keeps its own store, and answers 404 the moment it is switched off. No shell rebuild involved.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
+import { rmSync } from "node:fs";
 
 const DIR = `/tmp/caesaros-module-${process.pid}`;
 process.env.CAESAROS_DATA = DIR;
@@ -18,7 +19,7 @@ beforeAll(async () => {
   ctx = { app, plugins };
 });
 
-afterAll(() => { /* the temp data folder is small and lives outside the repo */ });
+afterAll(() => { rmSync(DIR, { recursive: true, force: true }); });
 
 describe("module registry", () => {
   test("the module is discovered and lists itself with its manifest", () => {
@@ -40,11 +41,11 @@ describe("module registry", () => {
   });
 
   test("switching it off stops its routes at once, and on brings them back", async () => {
-    expect(ctx.plugins.setEnabled("hello", false)).toBe("now");
+    expect(await ctx.plugins.setEnabled("hello", false)).toBe("now");
     const off = await ctx.app.request("/api/p/hello");
     expect(off.status).toBe(404);
 
-    expect(ctx.plugins.setEnabled("hello", true)).toBe("now");
+    expect(await ctx.plugins.setEnabled("hello", true)).toBe("now");
     const on = await ctx.app.request("/api/p/hello");
     expect(on.status).toBe(200);
   });
@@ -57,7 +58,7 @@ describe("module registry", () => {
     expect(leftOutOfEdition("owner", "")).toBe(false);
   });
 
-  test("an unknown id is reported, not invented", () => {
-    expect(ctx.plugins.setEnabled("nope", true)).toBe("unknown");
+  test("an unknown id is reported, not invented", async () => {
+    expect(await ctx.plugins.setEnabled("nope", true)).toBe("unknown");
   });
 });

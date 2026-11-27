@@ -1,4 +1,4 @@
-// Konrad, 2026-11-23: no round shapes, no rounded-card "every app looks the same" look. CaesarOS uses cut corners (clip-path) and pixel squares.
+// Owner, 2026-11-23: no round shapes, no rounded-card "every app looks the same" look. CaesarOS uses cut corners (clip-path) and pixel squares.
 // The Atrium styles carry no border-radius at all except the old shared sheet (real.css), which switches every radius off under the CaesarOS theme.
 import { expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";

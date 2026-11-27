@@ -5,7 +5,7 @@
   const get = async u => { try { const r = await fetch(u); return r.ok ? await r.json() : null; } catch { return null; } };
   const post = (u, b) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b || {}) });
   const K = { st: null, wins: [], audit: [], shot: '', shotFor: '', ttl: 300, msg: '', token: false };
-  const hhmm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const hhmm = t => new Date(t).toLocaleTimeString(uiLocale([]), { hour: '2-digit', minute: '2-digit' });
   const left = () => K.st && K.st.armed ? Math.max(0, Math.round((K.st.until - Date.now()) / 1000)) : 0;
   const mmss = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 
@@ -20,10 +20,10 @@
   const on = () => S.tabs[S.act] && S.tabs[S.act].id === 'Computer';
 
   function view() {
-    if (!K.st) { void refresh().then(() => on() && render()); return `<div class="nx-view enter cx">${nsHead('Computer', 'Loading…', 'Machina', 'atrium-hero')}</div>`; }
+    if (!K.st) { void refresh().then(() => on() && render()); return `<div class="nx-view enter cx">${nsHead('Computer', 'Reading this machine', 'Machina', 'atrium-hero')}<div class="og-wrap">${ARTSKEL(3, 'Loading')}</div></div>`; }
     const armed = K.st.armed, s = left();
     const wins = K.wins.map(w => `<li class="cx-w"><span class="cx-wt"><b>${esc(w.title || w.class)}</b><small>${esc(w.class)} · workspace ${esc(String(w.workspace))} · ${w.width}×${w.height}</small></span><button class="su-btn" data-cx="shot" data-v="${esc(w.address)}">${I('image', 16)}<span>Look</span></button></li>`).join('');
-    const audit = K.audit.map(a => `<li class="cx-a"><time>${esc(new Date(a.time).toLocaleTimeString())}</time><b>${esc(a.action)}</b><span>${esc(a.class || '')} ${esc((a.title || '').slice(0, 40))}</span><em class="${/ok|armed/.test(a.result) ? 'ok' : 'no'}">${esc(a.result)}${a.length != null ? ' · ' + a.length + ' chars' : ''}</em></li>`).join('');
+    const audit = K.audit.map(a => `<li class="cx-a"><time>${esc(new Date(a.time).toLocaleTimeString(uiLocale()))}</time><b>${esc(a.action)}</b><span>${esc(a.class || '')} ${esc((a.title || '').slice(0, 40))}</span><em class="${/ok|armed/.test(a.result) ? 'ok' : 'no'}">${esc(a.result)}${a.length != null ? ' · ' + a.length + ' chars' : ''}</em></li>`).join('');
     return `<div class="nx-view enter cx">${nsHead('Computer', 'Caesar can see and use this computer, but only while you switch it on.', 'Machina', 'atrium-hero')}<div class="su-wrap">
       <section class="su-card cx-main ${armed ? 'live' : ''}"><div class="cx-state"><span class="su-dot ${armed ? 'warn' : ''}"></span><div><b>${armed ? 'ON' : 'OFF'}</b><small>${armed ? 'until ' + hhmm(K.st.until) + ' · ' + mmss(s) + ' left' : 'Nothing can look at or type into your computer.'}</small></div></div>
         ${armed ? `<button class="su-btn cx-stop" data-cx="stop">${I('stop', 18)}<span>Stop now</span></button>` : `<div class="cx-on"><span class="su-note">Switch on for</span><div class="cx-ttl">${[[300, '5 min'], [900, '15 min']].map(([v, l]) => `<button class="su-btn ${K.ttl === v ? 'go' : ''}" data-cx="ttl" data-v="${v}"><span>${l}</span></button>`).join('')}</div><button class="su-btn go big" data-cx="arm">${I('power', 18)}<span>Switch on</span></button></div>`}

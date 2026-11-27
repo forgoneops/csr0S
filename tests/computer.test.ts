@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { Hono } from "hono";
 import {
-  appendAudit, auditLine, comboArgs, computerApi, createArmed, createComputer, discoverSession, isLoopback,
+  appendAudit, auditLine, comboArgs, computerApi, createArmed, createComputer, discoverSession,
   looksLikeSecret, parseCombo, pngSize, readAudit, type Exec, type ExecResult, ComputerError,
 } from "../core/computer";
 
@@ -113,14 +113,12 @@ test("routes: loopback and operator only, then 409 not_armed", async () => {
   const c = createComputer({ exec: fakeExec("0xabc123"), env: () => ({ XDG_RUNTIME_DIR: "x", WAYLAND_DISPLAY: "wayland-1", HYPRLAND_INSTANCE_SIGNATURE: "s" }), data: () => dir });
   computerApi(app, (ctx) => ctx.req.header("x-operator") === "yes", c);
   const get = (headers: Record<string, string> = {}, ip = "127.0.0.1") =>
-    app.fetch(new Request("http://127.0.0.1:4400/api/computer/windows", { headers }), { requestIP: () => ({ address: ip }) });
+    app.fetch(new Request("http://127.0.0.1:4400/api/computer/windows", { headers }), { server: { requestIP: () => ({ address: ip }) } });   // the env shape core/server.ts passes
   expect((await get({ "x-operator": "yes" }, "203.0.113.7")).status).toBe(403);
   expect((await get()).status).toBe(403);
   const armed = await get({ "x-operator": "yes" });
   expect(armed.status).toBe(409);
   expect(await armed.json()).toEqual({ error: "not_armed" });
-  expect(isLoopback(undefined)).toBe(true);
-  expect(isLoopback("::ffff:127.0.0.1")).toBe(true);
-  expect(isLoopback("203.0.113.9")).toBe(false);
+  expect((await get({ "x-operator": "yes", "x-forwarded-for": "203.0.113.7" })).status).toBe(403);   // forwarded by a proxy on this machine
   rmSync(dir, { recursive: true, force: true });
 });

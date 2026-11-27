@@ -36,6 +36,7 @@ load them without a bundler. Verified by SHA-256 against `node_modules`:
 | `web/atrium/vendor/xterm.js` | `@xterm/xterm@6.0.0/lib/xterm.js` | MIT (The xterm.js authors, SourceLair Private Company) |
 | `web/atrium/vendor/xterm.css` | `@xterm/xterm@6.0.0/css/xterm.css` | MIT (same) |
 | `web/atrium/vendor/addon-fit.js` | `@xterm/addon-fit@0.11.0/lib/addon-fit.js` | MIT (The xterm.js authors) |
+| `web/atrium/vendor/three.min.js` | `three.js r128 build/three.min.js` | MIT (three.js authors; full notice in `web/atrium/vendor/THREE-LICENSE.txt`) |
 
 SHA-256: `xterm.js` 14903579ff54664cd72f8e8699e6961a6272c21863ec1c3b118cdc8af5d4a972,
 `xterm.css` 854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6,
@@ -45,9 +46,9 @@ SHA-256: `xterm.js` 14903579ff54664cd72f8e8699e6961a6272c21863ec1c3b118cdc8af5d4
 
 | Pack | Fonts | Licence | Notes |
 |---|---|---|---|
-| `packs/fonts/ds0` | Cinzel, Alegreya Sans, Azeret Mono (WOFF2, latin and latin-ext subsets) | SIL Open Font License 1.1, per `packs/fonts/ds0/manifest.json` | Files fetched from Google Fonts (`fonts.google.com` per the manifest). The licence text is not bundled with this pack. Copyright holder: **UNKNOWN** (not recorded in the tree). |
-| `packs/fonts/plain` | Alegreya Sans, Azeret Mono (the same files as DS0 type, without Cinzel) | SIL Open Font License 1.1, per `packs/fonts/plain/manifest.json` | As above; licence text not bundled. Copyright holder: **UNKNOWN**. |
-| `packs/fonts/writer` | iA Writer Duospace | SIL Open Font License 1.1, per `packs/fonts/writer/OFL-NOTE.txt` and the pack manifest | Copyright Information Architects Inc., with Reserved Font Name "iA Writer". Converted from TTF to WOFF2 with unchanged glyphs. Licence text not bundled; the note points at https://openfontlicense.org. |
+| `packs/fonts/ds0` | Cinzel, Alegreya Sans, Azeret Mono (WOFF2, latin and latin-ext subsets) | SIL Open Font License 1.1, per `packs/fonts/ds0/manifest.json` | Files fetched from Google Fonts (`fonts.google.com` per the manifest). Copyright: The Cinzel Project Authors; The Alegreya Sans Project Authors; The Azeret Project Authors. Upstream links and full licence texts are bundled in `web/atrium/fonts/CAESAR-LEGIO-{CINZEL,ALEGREYA-SANS,AZERET-MONO}-OFL.txt`. |
+| `packs/fonts/plain` | Alegreya Sans, Azeret Mono (the same files as DS0 type, without Cinzel) | SIL Open Font License 1.1, per `packs/fonts/plain/manifest.json` | As above. Copyright: The Alegreya Sans Project Authors and The Azeret Project Authors. Their upstream links and full licence texts are bundled in `web/atrium/fonts/CAESAR-LEGIO-{ALEGREYA-SANS,AZERET-MONO}-OFL.txt`. |
+| `packs/fonts/writer` | iA Writer Duospace | SIL Open Font License 1.1, per `packs/fonts/writer/OFL.txt` and the pack manifest | Copyright Information Architects Inc., with Reserved Font Name "iA Writer". Converted from TTF to WOFF2 with unchanged glyphs. |
 
 ## Icons and themes (`packs/icons/`, `packs/themes/`)
 
@@ -58,16 +59,41 @@ embedded in them per their manifests; nothing here was verified beyond those dec
 
 ## Bundled art (`web/atrium/art/`)
 
-114 files (111 `.webp`, 3 `.svg`, 12.2 MB) shipped with the app: banners, scenes, the Caesar
+117 recursively served files (114 `.webp`, 3 `.svg`, 12,510,650 bytes): 29 WebP and 3 SVG files at
+the art root, plus 85 WebP files in nested art folders. They include banners, scenes, the Caesar
 portrait, crew portraits and tool marks.
 
-**Provenance.** These images were generated for the project owner with an AI image tool (Codex, OpenAI
-image generation), from the owner's own prompts and direction, and are not taken from any third party's
+**Provenance.** These images were generated for the project owner with an AI image generator, from the owner's own prompts and direction, and are not taken from any third party's
 artwork. The owner releases them under this project's MIT licence together with the code. Two honest
 notes: the copyright status of AI-generated images differs between jurisdictions (in some, purely
 machine-generated images carry no copyright at all, in which case they are free to use anyway), and the
 tool's own terms apply to the generated files. The prompts and generation dates are not stored in this
 tree; the owner keeps the originals.
+
+## Connector marks (`web/atrium/art/connectors/`)
+
+24 SVG icons from [Simple Icons](https://simpleicons.org) 13.21.0, released under CC0 1.0. The marks
+themselves belong to their owners and are shown only to say what CaesarOS can connect to; no
+endorsement is implied.
+
+## Native shell and runtime (release tarball only)
+
+| Component | Licence | Notes |
+|---|---|---|
+| [Tauri](https://github.com/tauri-apps/tauri) 2.12.7 and its plugins `single-instance`, `deep-link`, `opener` | MIT OR Apache-2.0 | The native window (`src-tauri/`). Its Rust crates are pinned in `src-tauri/Cargo.lock` (492 packages), each under its own licence, mostly MIT or Apache-2.0; a full per-crate list is not generated here (run `cargo license` in `src-tauri/`). |
+| [Bun](https://bun.sh) | MIT (with bundled components under their own licences, see bun.sh) | `bun build --compile` embeds the runtime in `caesaros-core`. |
+| WebKitGTK 4.1 | LGPL-2.1 and BSD | A system library the native window links against dynamically; not shipped in the tarball. |
+
+## Own typefaces (`web/atrium/fonts/`)
+
+The `caesar-legio-*` and `caesaros-*` files are the project's own font builds, covered by the MIT
+licence, except where derived from the OFL fonts listed above; their OFL texts sit in the same folder.
+Their build provenance is not recorded in this tree.
+
+## Ideas credited
+
+[Oh My Hermes](https://github.com/rlaope/oh-my-hermes) by rlaope: the agent layer builds on its ideas
+and is our own rewritten code. No Oh My Hermes source is bundled.
 
 ## Build-time dependencies (`devDependencies`, not shipped in the app)
 
@@ -87,9 +113,9 @@ the shipped tree.
 
 These are separate installations on your machine; each keeps its own licence:
 
-- **Hermes Agent** — MIT, Nous Research (https://github.com/NousResearch/hermes-agent). The default
+- **Hermes Agent**: MIT, Nous Research (https://github.com/NousResearch/hermes-agent). The default
   crew reads its profiles; no Hermes code is bundled here.
-- **Claude Code**, **Codex**, **Gemini CLI**, **Ollama** — used through their own command-line
+- **Claude Code**, **Codex**, **Gemini CLI**, **Ollama**: used through their own command-line
   interfaces or local HTTP API when installed and signed in by the user. Their licences are their
   own and are not redistributed by this repository.
 

@@ -7,9 +7,9 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 export const MAX_AUDIO = 40 * 1024 * 1024;
-const DIR = () => process.env.CAESAROS_SPEECH_DIR ?? join(homedir(), ".local", "share", "caesaros-speech");
-const python = () => join(DIR(), ".venv", "bin", "python");
-export const speechReady = () => existsSync(python()) && existsSync(join(DIR(), "transcribe.py"));
+export const speechDir = () => process.env.CAESAROS_SPEECH_DIR ?? join(homedir(), ".local", "share", "caesaros-speech");
+const python = () => join(speechDir(), ".venv", "bin", "python");
+export const speechReady = () => existsSync(python()) && existsSync(join(speechDir(), "transcribe.py"));
 
 export type Transcript = { text: string; language: string; segments: { start: number; end: number; text: string }[] };
 
@@ -28,7 +28,7 @@ export async function transcribe(audio: Uint8Array, language = "auto"): Promise<
   const dir = mkdtempSync(join(tmpdir(), "caesaros-speech-")), f = join(dir, "in.audio");
   try {
     writeFileSync(f, audio, { mode: 0o600 });
-    const p = Bun.spawn([python(), join(DIR(), "transcribe.py"), f, language], { stdin: "ignore", stdout: "pipe", stderr: "ignore" });
+    const p = Bun.spawn([python(), join(speechDir(), "transcribe.py"), f, language], { stdin: "ignore", stdout: "pipe", stderr: "ignore" });
     const t = setTimeout(() => p.kill(), 10 * 60_000);
     const out = await new Response(p.stdout as ReadableStream).text(); clearTimeout(t);
     return parseTranscript(out) ?? { error: "failed" };

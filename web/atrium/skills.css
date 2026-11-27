@@ -1,0 +1,44 @@
+/* Skills page. Every rule lives under .sk. Colours come from the palette tokens (--p1 lead, --p2 answer, --gold), square cut corners only. */
+.sk .sk-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.sk .sk-stats .pg-tile{padding:8px 12px}.sk .sk-stats .pg-tile i{display:none}
+.sk .sk-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sk .sk-count{color:var(--muted);font-size:.85rem}
+.sk .sk-filters{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.sk .sk-filters .label{margin-right:2px}
+.sk .sk-chip{all:unset;box-sizing:border-box;cursor:pointer;min-height:32px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;font-size:.8rem;border:1px solid var(--line);color:var(--text);clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))}
+.sk .sk-chip i{font-style:normal;color:var(--muted);font-size:.72rem}
+.sk .sk-chip.on{border-color:var(--p1,var(--accent));background:color-mix(in srgb,var(--p1,var(--accent)) 18%,transparent)}
+.sk .sk-chip:focus-visible,.sk .sk-row:focus-visible,.sk .sk-card:focus-visible{outline:2px solid var(--p2,var(--accent));outline-offset:1px}
+.sk .sk-map{position:relative;border:1px solid var(--line);background:var(--surface);clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
+.sk .sk-map canvas{display:block;width:100%;touch-action:manipulation;cursor:pointer}
+.sk .sk-legend{display:flex;flex-wrap:wrap;gap:12px;padding:8px 12px;border-top:1px solid var(--line);font-size:.75rem;color:var(--muted)}
+.sk .sk-legend i{display:inline-block;width:8px;height:8px;margin-right:5px}
+.sk .sk-legend .c1{background:var(--p1,#ff8a3d)}.sk .sk-legend .c2{background:var(--p2,#33e8ff)}.sk .sk-legend .c3{background:var(--gold,#f2c46b)}.sk .sk-legend .c4{background:var(--muted)}
+.sk .sk-hint{margin-left:auto}
+.sk .sk-tree{display:grid;gap:4px}
+.sk .sk-in{margin-left:18px}
+.sk .sk-row{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 10px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+.sk .sk-row i{margin-left:auto;font-style:normal;color:var(--muted);font-size:.78rem}
+.sk .sk-leaf{margin-top:3px;font-size:.88rem}
+.sk .sk-leaf .og-tag{margin-left:auto}
+.sk .sk-row.on{border-color:var(--p1,var(--accent))}
+.sk .sk-sq{width:8px;height:8px;flex:none;background:var(--p1,#ff8a3d)}
+.sk .sk-a .sk-sq{background:var(--p2,#33e8ff)}.sk .sk-sq.review{background:var(--gold,#f2c46b)}.sk .sk-sq.disabled{background:var(--muted)}
+.sk .sk-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.sk .sk-card{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:6px;align-content:start;padding:0 0 12px;border:1px solid var(--line);background:var(--surface);color:var(--text);clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%)}
+.sk .sk-card b,.sk .sk-card small,.sk .sk-card .sk-meta{padding:0 12px}
+.sk .sk-card small{color:var(--muted);line-height:1.4}
+.sk .sk-card.on{border-color:var(--p1,var(--accent))}
+.sk .sk-art{height:64px;background:var(--m) center/cover,var(--p1,#ff8a3d);background-color:var(--p1,#ff8a3d);background-blend-mode:luminosity;border-bottom:1px solid var(--line)}
+.sk .sk-meta{display:flex;flex-wrap:wrap;gap:5px}
+.sk .sk-ag{font-size:.7rem;padding:1px 6px;border:1px solid color-mix(in srgb,var(--p2,#33e8ff) 50%,transparent);color:var(--p2,#33e8ff)}
+.sk .sk-small{color:var(--muted);font-size:.8rem}
+.sk .sk-drawer{position:fixed;z-index:60;top:calc(var(--nx-top,64px) + 8px);right:8px;bottom:8px;width:min(440px,calc(100vw - 16px));overflow:auto;display:grid;gap:10px;align-content:start;padding:14px;border:1px solid var(--p1,var(--accent));background:var(--bg);box-shadow:0 0 32px color-mix(in srgb,var(--p1,#ff8a3d) 25%,transparent);clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
+.sk .sk-dh{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sk .sk-dh h3{margin:0;font-size:1rem;overflow-wrap:anywhere}
+.sk .sk-body{font-size:.85rem;line-height:1.5;border-top:1px solid var(--line);padding-top:10px}
+.sk .sk-body h5{margin:12px 0 4px;color:var(--p1,var(--accent));font-size:.85rem}
+.sk .sk-body pre{overflow:auto;padding:8px;background:var(--surface);border:1px solid var(--line)}
+.sk .sk-body code{font-family:var(--font-mono,monospace);font-size:.8rem}
+.sk .sk-body p,.sk .sk-body ul{margin:0 0 8px}
+@media (max-width:900px){.sk .sk-drawer{top:auto;left:8px;right:8px;width:auto;height:70dvh;bottom:calc(8px + env(safe-area-inset-bottom))}.sk .sk-hint{margin-left:0;flex-basis:100%}}

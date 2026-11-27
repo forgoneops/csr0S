@@ -65,6 +65,15 @@ describe("core server", () => {
     expect(d.gateways).toEqual([]);
   });
 
+  test("a second detect is served from the cache at once, ?fresh=1 probes again", async () => {
+    await app.request("/api/detect");
+    const t = performance.now();
+    const r = await app.request("/api/detect");
+    expect(r.status).toBe(200);
+    expect(performance.now() - t).toBeLessThan(150);
+    expect((await app.request("/api/detect?fresh=1")).status).toBe(200);
+  });
+
   test("modules answer as a list, empty or not, never as an error", async () => {
     const r = await app.request("/api/plugins/all");
     expect(r.status).toBe(200);

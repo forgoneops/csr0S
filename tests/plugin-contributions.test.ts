@@ -2,6 +2,7 @@
 // and a command; the core reports them for a running module only, under the module's permissions and the
 // edition gate. Switch the module off and its routes, timer and listener go with it.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { rmSync } from "node:fs";
 import { Hono } from "hono";
 
 const DATA = `/tmp/caesaros-contrib-${process.pid}`;
@@ -25,6 +26,7 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
+  rmSync(DATA, { recursive: true, force: true });
   process.env.CAESAROS_DATA = prior.data;
   process.env.CAESAROS_MODULE_DIRS = prior.dirs;
   if (prior.edition === undefined) delete process.env.CAESAROS_EDITION; else process.env.CAESAROS_EDITION = prior.edition;
@@ -83,7 +85,7 @@ describe("contribution registry", () => {
     expect(before.ticks).toBeGreaterThan(0);
     expect(before.heard).toBeGreaterThan(0);
 
-    expect(on.plugins.setEnabled("contrib-demo", false)).toBe("now");
+    expect(await on.plugins.setEnabled("contrib-demo", false)).toBe("now");
     const info = on.plugins.all().find((m) => m.id === "contrib-demo");
     expect(info?.running).toBe(false);
     expect(info?.contributions).toEqual({ settings: [], status: [], commands: [], actions: [] });
@@ -97,7 +99,7 @@ describe("contribution registry", () => {
     expect(store.get<number>("heard", 0)).toBe(before.heard);
 
     // Switching it on brings the surfaces and its background work back without a rebuild.
-    expect(on.plugins.setEnabled("contrib-demo", true)).toBe("now");
+    expect(await on.plugins.setEnabled("contrib-demo", true)).toBe("now");
     const back = on.plugins.all().find((m) => m.id === "contrib-demo");
     expect(back?.contributions.status).toHaveLength(1);
     await sleep(1_100);
@@ -113,7 +115,7 @@ describe("contribution registry", () => {
     expect(info?.running).toBe(false);
     expect(info?.enabled).toBe(false);
     expect(info?.available).toBe(false);
-    expect(plugins.setEnabled("owner-only", true)).toBe("unavailable");
+    expect(await plugins.setEnabled("owner-only", true)).toBe("unavailable");
     expect(info?.contributions).toEqual({ settings: [], status: [], commands: [], actions: [] });
     expect((await app.request("/api/p/owner-only/status")).status).toBe(404);
     process.env.CAESAROS_EDITION = "";

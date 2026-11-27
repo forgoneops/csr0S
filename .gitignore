@@ -9,3 +9,6 @@ src-tauri/gen/schemas/
 docs/design/captures/
 docs-shots/
 .DS_Store
+
+# a symlink to a shared install is not a directory, so node_modules/ misses it
+node_modules

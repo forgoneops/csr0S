@@ -1,0 +1,13 @@
+{
+  "id": "fleet",
+  "name": "Fleet",
+  "version": "0.1.0",
+  "description": "Read-only rows for the servers where CAESAR is installed for other people: reachable, disk, memory, load, version. Empty until you add a server. It only ever asks a server how it is; it never changes one.",
+  "group": "client",
+  "edition": "standard",
+  "defaultOff": true,
+  "tags": ["business", "optional", "read-only"],
+  "nav": [],
+  "routes": [],
+  "permissions": []
+}

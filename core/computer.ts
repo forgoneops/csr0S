@@ -9,6 +9,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { Context, Hono } from "hono";
 import { DATA } from "./db";
+import { ROOT } from "./root";
+import { isLocal } from "./webgate";
 
 export type SessionEnv = { XDG_RUNTIME_DIR: string; WAYLAND_DISPLAY: string; HYPRLAND_INSTANCE_SIGNATURE: string };
 export type ExecResult = { code: number; out: string; err: string };
@@ -206,15 +208,12 @@ export function createComputer(opts: { exec?: Exec; env?: () => SessionEnv; data
 export type Computer = ReturnType<typeof createComputer>;
 
 // ---- routes: loopback + operator only; one stream here, one instance below (the armed state is in memory)
-export const isLoopback = (a?: string | null) => !a || a === "127.0.0.1" || a === "::1" || a === "::ffff:127.0.0.1";
-type WithIP = { requestIP?: (r: Request) => { address: string } | null };
-const fromLoopback = (c: Context) => isLoopback((c.env as WithIP | undefined)?.requestIP?.(c.req.raw)?.address);
 
 /** `agent` says whether the caller is an agent holding a token scoped "computer". Agents may use the action calls, and only while a
  *  person has armed it; arming, stopping, reading the audit and issuing the token stay with the person. */
 export function computerApi(app: Hono, isOperator: (c: Context) => boolean, comp: Computer = createComputer(), agent: (c: Context) => boolean = () => false, issueToken?: () => string) {
   const gate = (c: Context, agentOk: boolean) => {
-    if (!fromLoopback(c)) return c.json({ error: "computer control is loopback only" }, 403);
+    if (!isLocal(c)) return c.json({ error: "computer control is loopback only" }, 403);
     if (isOperator(c)) return null;
     if (agentOk && agent(c)) return null;
     return c.json({ error: agentOk ? "operator or a computer token only" : "operator only" }, 403);
@@ -238,7 +237,7 @@ export function computerApi(app: Hono, isOperator: (c: Context) => boolean, comp
   app.post("/api/computer/token", wrap(async (c) => (issueToken ? (issueToken(), c.json({ ok: true, file: "computer-token", days: 7 })) : c.json({ error: "not available" }, 501))));
   app.get("/api/computer/state", wrap(async (c) => c.json({
     armed: comp.isArmed(), until: comp.until(), hasToken: existsSync(join(DATA, "computer-token")),
-    mcpScript: join(import.meta.dir, "..", "tools", "caesar-computer-mcp.ts"), dataDir: DATA, pointer: false,
+    mcpScript: join(ROOT, "tools", "caesar-computer-mcp.ts"), dataDir: DATA, pointer: false,
   })));
   app.post("/api/computer/stop", wrap(async (c) => { comp.stop(); return c.json({ armed: false }); }));
   app.get("/api/computer/windows", wrap(async (c) => c.json(await comp.listWindows()), true));

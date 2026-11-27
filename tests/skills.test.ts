@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { Hono } from "hono";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scanSkills } from "../core/skills";
+import { scanSkills, skillsApi } from "../core/skills";
 
 const make = () => {
   const d = mkdtempSync(join(tmpdir(), "skills-"));
@@ -24,10 +25,28 @@ test("the scan flags what is worth a second look and leaves plain skills clean",
 });
 test("no folder means an empty list, not an error", () => { expect(scanSkills(null)).toEqual([]); });
 
+test("the scan does not follow symlinks to skill files outside the selected folder", () => {
+  const root = mkdtempSync(join(tmpdir(), "skills-root-"));
+  const outside = mkdtempSync(join(tmpdir(), "skills-outside-"));
+  writeFileSync(join(outside, "SKILL.md"), "---\nname: private\ndescription: must stay private\n---\nsecret body");
+  symlinkSync(outside, join(root, "linked-directory"));
+  symlinkSync(join(outside, "SKILL.md"), join(root, "SKILL.md"));
+  expect(scanSkills(root)).toEqual([]);
+});
+
 test("several folders are scanned in order and a skill found earlier wins", () => {
   const a = mkdtempSync(join(tmpdir(), "skills-a-")), b = mkdtempSync(join(tmpdir(), "skills-b-"));
   for (const [d, n, desc] of [[a, "same", "from a"], [b, "same", "from b"], [b, "only-b", "b only"]] as const) { mkdirSync(join(d, n), { recursive: true }); writeFileSync(join(d, n, "SKILL.md"), `---\nname: ${n}\ndescription: ${desc}\n---\nbody`); }
   const out = scanSkills([a, b]);
   expect(out.map((x) => x.id).sort()).toEqual(["only-b", "same"]);
   expect(out.find((x) => x.id === "same")!.description).toBe("from a");
+});
+
+test("skills from the app-managed registry appear in the Marketplace list", async () => {
+  const registry = mkdtempSync(join(tmpdir(), "skills-managed-")), pack = join(registry, "managed-skill");
+  mkdirSync(pack, { recursive: true }); writeFileSync(join(pack, "SKILL.md"), "---\nname: Managed\ndescription: Caesar registry skill\n---\nSafe body");
+  const app = new Hono(); skillsApi(app, () => true, [registry]);
+  const response = await app.request("/api/skills");
+  expect(response.status).toBe(200);
+  expect(await response.json()).toContainEqual(expect.objectContaining({ name: "Managed", description: "Caesar registry skill" }));
 });

@@ -9,6 +9,8 @@ import { scopeOf } from "./scope";
 import { createThinkSplitter } from "./think-split";
 import { search as searchKnowledge } from "./knowledge";
 import { readAttachments, withTextFiles, type AttachmentMeta } from "./attachments";
+import { readDocuments } from "./doc-text";
+import { contextRoutes, dropSummary, sinceSummary, summaryNote } from "./chat-context";
 import type { ChatMessage, ChatRole, EngineAdapter } from "./engines";
 import type { ToolCall } from "./engines/types";
 
@@ -27,6 +29,8 @@ db.exec(`
 // A conversation can be archived: out of the default list, still searchable and readable (older chats are kept for reference, the Brain holds what matters).
 if (!db.query<{ name: string }, []>("PRAGMA table_info(chat_sessions)").all().some((c) => c.name === "archived")) db.exec("ALTER TABLE chat_sessions ADD COLUMN archived INTEGER NOT NULL DEFAULT 0");
 
+if (!db.query<{ name: string }, []>("PRAGMA table_info(chat_sessions)").all().some((c) => c.name === "pinned")) db.exec("ALTER TABLE chat_sessions ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0");
+
 // Reasoning is kept beside the answer, never inside it, so it can be shown folded and never fed back as the reply.
 if (!db.query<{ name: string }, []>("PRAGMA table_info(chat_messages)").all().some((c) => c.name === "thinking")) db.exec("ALTER TABLE chat_messages ADD COLUMN thinking TEXT NOT NULL DEFAULT ''");
 
@@ -37,11 +41,11 @@ if (!db.query<{ name: string }, []>("PRAGMA table_info(chat_messages)").all().so
 /** A passage from the person's own knowledge that the reply was given, numbered as the model cites it ([1], [2]). */
 export type Source = { n: number; docId: string; name: string; passage: string };
 
-export type ChatSession = { id: string; title: string; engine: string; model: string; createdAt: number; updatedAt: number; archived: boolean };
+export type ChatSession = { id: string; title: string; engine: string; model: string; createdAt: number; updatedAt: number; archived: boolean; pinned: boolean };
 export type MessageStatus = "complete" | "error" | "stopped";
 export type ChatMessageRow = { id: string; sessionId: string; role: ChatRole; content: string; status: MessageStatus; error: string | null; createdAt: number; thinking: string; tools: ToolCall[]; sources: Source[]; attachments: AttachmentMeta[] };
 
-type SessionRecord = { id: string; title: string; engine: string; model: string; created_at: number; updated_at: number; archived: number };
+type SessionRecord = { id: string; title: string; engine: string; model: string; created_at: number; updated_at: number; archived: number; pinned: number };
 type MessageRecord = { id: string; session_id: string; role: ChatRole; content: string; status: MessageStatus; error: string | null; created_at: number; seq: number; thinking: string; tools: string; sources: string; attachments: string };
 
 const parseTools = (raw: string | null | undefined): ToolCall[] => { try { const v = JSON.parse(raw || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
@@ -58,7 +62,7 @@ export function recall(question: string, limit = 5): { docId: string; name: stri
   return all;
 }
 
-const toSession = (r: SessionRecord): ChatSession => ({ id: r.id, title: r.title, engine: r.engine, model: r.model, createdAt: r.created_at, updatedAt: r.updated_at, archived: !!r.archived });
+const toSession = (r: SessionRecord): ChatSession => ({ id: r.id, title: r.title, engine: r.engine, model: r.model, createdAt: r.created_at, updatedAt: r.updated_at, archived: !!r.archived, pinned: !!r.pinned });
 const toMessage = (r: MessageRecord): ChatMessageRow => ({ id: r.id, sessionId: r.session_id, role: r.role, content: r.content, status: r.status, error: r.error, createdAt: r.created_at, thinking: r.thinking ?? "", tools: parseTools(r.tools), sources: parseTools(r.sources) as unknown as Source[], attachments: parseTools(r.attachments) as unknown as AttachmentMeta[] });
 
 const q = {
@@ -70,6 +74,7 @@ const q = {
   setArchived: db.query("UPDATE chat_sessions SET archived = ? WHERE id = ?"),
   deleteMessages: db.query("DELETE FROM chat_messages WHERE session_id = ?"),
   deleteSession: db.query("DELETE FROM chat_sessions WHERE id = ?"),
+  setPinned: db.query("UPDATE chat_sessions SET pinned = ? WHERE id = ?"),
   setModel: db.query("UPDATE chat_sessions SET model = ? WHERE id = ?"),
   messages: db.query<MessageRecord, [string]>("SELECT * FROM chat_messages WHERE session_id = ? ORDER BY seq"),
   nextSeq: db.query<{ n: number }, [string]>("SELECT COALESCE(MAX(seq), 0) + 1 AS n FROM chat_messages WHERE session_id = ?"),
@@ -116,6 +121,10 @@ export function appendMessage(
   return { id, sessionId, role: m.role, content: m.content, status: m.status ?? "complete", error: m.error ?? null, createdAt: now, thinking: m.thinking ?? "", tools: m.tools ?? [], sources: m.sources ?? [], attachments: m.attachments ?? [] };
 }
 
+/** What a later turn sends for a stored message; null when it is left out. */
+const promptText = (m: ChatMessageRow): string | null => (m.status === "error" || m.content.trim() === "" ? null
+  : withTextFiles(m.content, m.attachments) + m.attachments.filter((a) => a.kind === "image").map((a) => `\n[An image named ${a.name} was attached here.]`).join(""));
+
 const sse = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 const asText = (v: unknown) => (typeof v === "string" ? v : "");
 const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e)) || "engine failed";
@@ -151,8 +160,9 @@ export function chatApi(localOnly: () => boolean = () => false): Hono {
     if (!q.session.get(id)) return c.json({ error: "no such session" }, 404);
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     if (typeof body.archived === "boolean") q.setArchived.run(body.archived ? 1 : 0, id);
+    if (typeof body.pinned === "boolean") q.setPinned.run(body.pinned ? 1 : 0, id);    // pinning does not move it in time
     const title = asText(body.title).trim().slice(0, 200);
-    if (!title && typeof body.archived !== "boolean") return c.json({ error: "title is required" }, 400);
+    if (!title && typeof body.archived !== "boolean" && typeof body.pinned !== "boolean") return c.json({ error: "title is required" }, 400);
     if (title) q.setTitle.run(title, id);
     return c.json(toSession(q.session.get(id)!));
   });
@@ -162,9 +172,11 @@ export function chatApi(localOnly: () => boolean = () => false): Hono {
     const id = c.req.param("id");
     if (!q.session.get(id)) return c.json({ error: "no such session" }, 404);
     if (busy.has(id)) return c.json({ error: "busy", message: "this conversation is still answering" }, 409);
-    db.transaction(() => { q.deleteMessages.run(id); q.deleteSession.run(id); })();
+    db.transaction(() => { q.deleteMessages.run(id); q.deleteSession.run(id); dropSummary(id); })();
     return c.json({ ok: true });
   });
+
+  contextRoutes(api, { get: getSession, textOf: promptText, busy, localOnly });
 
   api.post("/sessions/:id/turns", async (c) => {
     const found = getSession(c.req.param("id"));
@@ -192,7 +204,8 @@ export function chatApi(localOnly: () => boolean = () => false): Hono {
     }
     if (!model && !replaced) return c.json({ error: "no-model", message: `${adapter.label} has no model to answer with` }, 409);
 
-    const files = readAttachments(body.attachments);
+    const docs = await readDocuments(body.attachments);       // PDF and Office files become text first
+    const files = docs.ok ? readAttachments(docs.raw) : docs;
     if (!files.ok) return c.json({ error: "attachment-refused", why: files.why, name: files.name }, files.why === "too-large" || files.why === "total-too-large" ? 413 : 400);
     const images = files.items.filter((f) => f.kind === "image");
     if (images.length && !replaced && !adapter.vision) return c.json({ error: "attachment-refused", why: "no-vision", message: `${adapter.label} cannot be handed images` }, 409);
@@ -200,9 +213,9 @@ export function chatApi(localOnly: () => boolean = () => false): Hono {
     // Check and take the session in the same synchronous step: two turns must never interleave.
     if (busy.has(session.id)) return c.json({ error: "busy", message: "this conversation is still answering" }, 409);
     busy.add(session.id);
-    const prior: ChatMessage[] = history
-      .filter((m) => m.status !== "error" && m.content.trim() !== "")
-      .map((m) => ({ role: m.role, content: withTextFiles(m.content, m.attachments) + m.attachments.filter((a) => a.kind === "image").map((a) => `\n[An image named ${a.name} was attached here.]`).join("") }));
+    const { summary, rest } = sinceSummary(session.id, history);     // a compacted part is sent as its summary
+    const prior: ChatMessage[] = rest.flatMap((m) => { const t = promptText(m); return t === null ? [] : [{ role: m.role, content: t }]; });
+    if (summary) prior.unshift({ role: "system", content: summaryNote(summary) });
     if (model !== session.model) q.setModel.run(model, session.id);
     // "Use my knowledge": the person's own passages ride along as a system note; the reply keeps them as numbered sources.
     const sources: Source[] = body.useKnowledge === true ? recall(content, 5).map((h, i) => ({ n: i + 1, docId: h.docId, name: h.name, passage: h.passage })) : [];

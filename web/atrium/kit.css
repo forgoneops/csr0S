@@ -37,7 +37,7 @@
 .pk-ctx:focus-visible{outline:2px solid var(--accent,#ff8a3d);outline-offset:-4px}
 
 /* no replayed entry animation while staying on the same view (Edit layout, toggles, streaming): it looked like a reload */
-html[data-still] .nx-view,html[data-still] .nx-view *{animation:none !important}
+html[data-still] .nx-view.enter>*{animation:none !important}
 
 /* the real terminal inside the prototype's pane */
 .rt-slot{flex:1;min-height:0;height:calc(100% - 38px);padding:6px 10px;overflow:hidden}
@@ -175,8 +175,16 @@ textarea.su-in{display:block;resize:vertical;min-height:84px}
 .nt-md{overflow-wrap:anywhere;overflow:auto;flex:1;font:.95rem/1.6 var(--font-body,sans-serif)}
 .nt-md pre{overflow:auto;padding:10px;background:var(--surface-2,#11142a);border:1px solid var(--line,#26304a)}
 .nt-md code{font-family:var(--font-mono,monospace)}.nt-md a{color:var(--accent,#ff8a3d)}
+.nt-gcwrap{position:relative;min-height:clamp(300px,54vh,620px);overflow:hidden;border:1px solid var(--line);background:color-mix(in srgb,var(--bg) 72%,var(--p1) 5%);touch-action:none}
+.nt-gc{display:block;width:100%;height:100%;min-height:clamp(300px,54vh,620px);cursor:grab;outline:none}.nt-gc:active{cursor:grabbing}.nt-gc:focus-visible{outline:2px solid var(--gold);outline-offset:-3px}
+.nt-clusters{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:2px 0}.nt-cluster{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font:500 .65rem/1 var(--font-mono,monospace);letter-spacing:.08em;text-transform:uppercase}.nt-cluster i{width:8px;height:8px;background:var(--cluster);transform:rotate(45deg)}
+.nt-links{display:grid;gap:8px;padding:8px 10px;border-block:1px solid var(--line);background:color-mix(in srgb,var(--p1) 3%,transparent)}.nt-links .nt-back{min-height:28px}.nt-pinrow{display:flex;gap:6px;align-items:center}.nt-pinrow .nt-tag{justify-content:flex-start;flex:1}.nt-unpin{min-height:34px;padding-inline:9px;font-size:.58rem}
+.nt-statecard{display:grid;justify-items:start;align-content:center;gap:8px;min-height:220px;padding:clamp(18px,4vw,42px);border:1px solid var(--line);background:linear-gradient(135deg,color-mix(in srgb,var(--p1) 8%,transparent),color-mix(in srgb,var(--p2) 3%,transparent))}.nt-statecard h4{margin:0;color:var(--ink);font:600 1.15rem/1.2 var(--font-display,inherit);letter-spacing:.04em}.nt-statecard p{max-width:50ch;line-height:1.5}.nt-state-mark{display:grid;place-items:center;width:32px;height:32px;color:var(--gold);border:1px solid var(--gold);transform:rotate(45deg)}
+.nt-focus{grid-template-columns:minmax(0,1fr)}.nt-focus .nt-list{display:none}.nt-focus .nt-ed{height:calc(100dvh - 170px)}
+.nt-recent{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-block:6px}.nt-recent>.label{flex-basis:100%}
 @media (max-width:900px){
   .nt-wrap{grid-template-columns:minmax(0,1fr);height:auto;padding:12px}
+  .nt-focus{padding:4px}.nt-focus .nt-ed{height:calc(100dvh - 150px);min-height:0}.nt-gcwrap,.nt-gc{min-height:clamp(280px,48vh,620px)}
   .nt-wrap:not(.nt-open) .nt-ed,.nt-wrap.nt-open .nt-list{display:none}
   .nt-backbtn{display:inline-flex}
 }
@@ -246,12 +254,13 @@ textarea.su-in{display:block;resize:vertical;min-height:84px}
 #inp{max-height:40vh!important;overflow-y:auto}
 
 /* Settings > Credits, Hall of Fame: statues picture with a link over each statue */
-.hof{position:relative;margin:12px 0;border:1px solid var(--line);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));background:#000}
+.hof{position:relative;margin:12px 0;border:1px solid var(--line);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));background:#000;aspect-ratio:1800/1013}
 .hof img{display:block;width:100%;height:auto}
 .hof-spots{position:absolute;inset:0}
 .hof-spot{position:absolute;top:4%;width:12.4%;height:70%;display:block;color:inherit;text-decoration:none;outline:0}
-.hof-spot span{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);padding:3px 8px;font:600 10px var(--mono,monospace);letter-spacing:.12em;text-transform:uppercase;background:#000c;color:#ffd9a0;border:1px solid #ff8a3d88;opacity:0;pointer-events:none;white-space:nowrap}
-.hof-spot:hover,.hof-spot:focus-visible{background:linear-gradient(180deg,transparent,rgba(255,138,61,.16));box-shadow:inset 0 0 0 1px #ff8a3d99,0 0 22px -4px #ff8a3d}
+.hof-spot span{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);padding:3px 8px;font:600 10px var(--mono,monospace);letter-spacing:.12em;text-transform:uppercase;background:#000c;color:var(--ink);border:1px solid rgba(var(--p1r),.53);opacity:0;pointer-events:none;white-space:nowrap}
+/* a keeper is a statue, not a panel: hovering marks his feet with a lit line, never a wash over his body */
+.hof-spot:hover,.hof-spot:focus-visible{background:linear-gradient(180deg,transparent 72%,rgba(var(--p1r),.13) 96%,rgba(var(--p1r),.34));box-shadow:0 6px 0 -5px var(--p1),0 10px 24px -18px var(--p1)}
 .hof-spot:hover span,.hof-spot:focus-visible span{opacity:1}
 .hof-list{list-style:none;margin:6px 0 10px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px 14px}
 .hof-list a{display:flex;align-items:baseline;gap:8px;min-height:44px;padding:0 10px;align-items:center;border:1px solid var(--line);color:var(--text);text-decoration:none}
@@ -263,6 +272,9 @@ textarea.su-in{display:block;resize:vertical;min-height:84px}
 
 .nt-map{overflow:auto;flex:1;min-height:280px;border:1px solid var(--line,#26304a)}
 .nt-map svg{display:block;min-width:100%}
+.nt-gcwrap{height:min(62vh,560px);min-height:300px;overflow:hidden;position:relative;clip-path:polygon(0 12px,12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%);background:color-mix(in srgb,var(--surface,#0b0d18) 70%,transparent)}
+.nt-gc{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+.nt-gc:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
 .nt-edges line{stroke:var(--line,#26304a);stroke-width:1;opacity:.8}
 .nt-node{cursor:pointer;outline:none}
 .nt-node text{fill:var(--muted,#8a93a8);font-size:11px;pointer-events:none}
@@ -345,23 +357,25 @@ html[data-motion=on] .su-chibi{animation:suHolo 6s ease-in-out infinite}
 @media (max-width:560px){.su-guide{flex-direction:column;align-items:flex-start;gap:10px}.su-chibi{width:104px;height:104px}}
 
 /* the guided tour: a card that never blocks the page, and a highlight with cut corners around the target */
-#tour{position:fixed;inset:0;z-index:90;pointer-events:none}
+#tour{position:fixed;inset:0;z-index:96;pointer-events:none}
 .tour-hl{position:fixed;display:none;box-sizing:border-box;border:2px solid var(--accent,#e8a33d);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));background:color-mix(in srgb,var(--accent,#e8a33d) 10%,transparent);box-shadow:0 0 18px color-mix(in srgb,var(--accent,#e8a33d) 55%,transparent);transition:all .25s ease}
-:root[data-motion=off] .tour-hl{transition:none}
-.tour-card{position:fixed;right:24px;bottom:72px;width:min(420px,calc(100vw - 24px));box-sizing:border-box;display:flex;gap:12px;padding:14px;pointer-events:auto;background:color-mix(in srgb,var(--surface,#0b0d18) 94%,transparent);border:1px solid var(--accent,#e8a33d);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+:root[data-motion=off] .tour-hl,:root[data-motion=reduced] .tour-hl{transition:none}
+@media(prefers-reduced-motion:reduce){.tour-hl{transition:none}}
+.tour-card{position:fixed;right:24px;bottom:72px;width:min(420px,calc(100vw - 24px));box-sizing:border-box;display:flex;gap:12px;padding:14px;max-height:calc(100dvh - 16px);overflow:auto;pointer-events:auto;background:linear-gradient(var(--surface),var(--surface)) var(--bg);border:1px solid var(--accent,#e8a33d);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
 .tour-chibi{width:84px;height:84px}
 .tour-body{display:grid;gap:6px;min-width:0}
 .tour-title{margin:0;font-size:16px}.tour-text{margin:0;font-size:13px;line-height:1.5;color:var(--text,#e8e2d2)}
 .tour-dots{display:flex;gap:4px;flex-wrap:wrap}.tour-dots i{width:8px;height:8px;background:var(--line,#26304a);transform:rotate(45deg)}.tour-dots i.was{background:color-mix(in srgb,var(--accent,#e8a33d) 50%,var(--line,#26304a))}.tour-dots i.on{background:var(--accent,#e8a33d)}
-.tour-acts{display:flex;gap:6px;flex-wrap:wrap}
+.tour-say{display:grid;gap:6px}
+.tour-acts{display:flex;gap:6px;flex-wrap:wrap}.tour-acts button{min-height:44px;min-width:44px}.tour-acts button[hidden]{display:none}
 @media(max-width:600px){.tour-card{left:12px;right:12px;bottom:76px;width:auto}.tour-chibi{width:60px;height:60px}}
 
 /* the mascot: the chibi as a small hologram that shows what the system is doing */
-.mc{position:fixed;left:124px;bottom:44px;z-index:40;display:flex;align-items:flex-end;gap:8px;pointer-events:none}
+.mc{position:fixed;left:auto;right:6px;bottom:96px;z-index:40;display:flex;flex-direction:row-reverse;align-items:flex-end;gap:8px;pointer-events:none}.mc.mc-dragging{z-index:80;pointer-events:auto}.mc.mc-dragging .mc-chibi{cursor:grabbing}
 .mc[hidden]{display:none}
-.mc-btn{all:unset;pointer-events:auto;cursor:pointer;display:block}
+.mc-btn{all:unset;pointer-events:auto;cursor:grab;touch-action:none;display:block}
 .mc-btn:focus-visible{outline:2px solid var(--accent,#e8a33d);outline-offset:2px}
-.mc-chibi{width:72px;height:72px;display:block}
+.mc-chibi{width:56px;height:56px;display:block}
 .mc-say{pointer-events:none;max-width:210px;padding:6px 10px;font-size:12px;color:var(--text,#e8e2d2);background:color-mix(in srgb,var(--surface,#0b0d18) 94%,transparent);border:1px solid var(--line,#26304a);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));order:2;margin-bottom:22px}
 .mc[data-state=work] .mc-say,.mc[data-state=wait] .mc-say,.mc[data-state=fail] .mc-say,.mc[data-state=done] .mc-say{border-color:var(--accent,#e8a33d)}
 .mc[data-state=fail] .mc-say{border-color:var(--warn,#c98a2b);color:var(--warn,#c98a2b)}
@@ -374,10 +388,21 @@ html[data-motion=on] .mc[data-state=done] .mc-chibi{animation:mcDone .9s ease-ou
 @keyframes mcWork{50%{transform:translateY(-3px);filter:brightness(1.25)}}
 @keyframes mcWait{50%{transform:scale(1.06)}}
 @keyframes mcDone{40%{transform:translateY(-8px)}}
-@media(max-width:900px){.mc{left:auto;right:10px;bottom:84px}.mc-chibi{width:52px;height:52px}.mc-say{max-width:150px;margin-bottom:14px;font-size:11px}}
+@media(max-width:900px){.mc{left:auto;right:10px;bottom:calc(148px + env(safe-area-inset-bottom));max-width:calc(100vw - 76px)}.mc-chibi{width:52px;height:52px}.mc-say{max-width:min(150px,calc(100vw - 150px));margin-bottom:14px;font-size:11px}}
+@media(max-width:900px){.mc[data-state=idle] .mc-say,.mc[data-state=idle] .mc-off,.mc[data-state=sleep] .mc-say,.mc[data-state=sleep] .mc-off{display:none}}   /* phone: a resting mascot is the chibi alone, it never covers the page */
 
-.mc-off{all:unset;pointer-events:auto;cursor:pointer;order:3;align-self:flex-start;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:var(--muted,#8a93a8);font-size:16px}
+.ws-manage{display:flex;align-items:center;gap:3px;padding-left:6px}
+.ws-manage button{min-height:36px;padding:0 8px;background:transparent;border:1px solid var(--p1);color:var(--ink);font:10px var(--font-mono);cursor:pointer;clip-path:polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,0 100%)}
+.ws-manage button:hover,.ws-manage button:focus-visible{border-color:var(--p1);color:var(--p1)}
+@media(max-width:900px){.ws-manage{width:100%;overflow:auto;padding:3px 8px}.ws-manage button{flex:none;min-height:40px}}
+
+.mc-off{all:unset;pointer-events:auto;cursor:pointer;order:3;align-self:flex-start;width:56px;height:56px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--muted,#8a93a8);font-size:24px;border:1px solid var(--line,#424752);background:var(--surface,#17191f);clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,0 100%)}
 .mc-off:hover,.mc-off:focus-visible{color:var(--text,#e8e2d2)}.mc-off:focus-visible{outline:2px solid var(--accent,#e8a33d)}
+/* Close/remove affordances are deliberately oversized everywhere: a clear X and a generous hit target. */
+:where(.shell-close,.cd-tab-close,.cd-chooser-close,.hub-rm,.mc-off,.bw-link-remove,.cx-row-del,.nx-hp-hd [data-history],.nx-att [aria-label^="Remove"]){min-width:56px!important;min-height:56px!important}
+:where(.cd-close){min-width:72px!important;min-height:72px!important;font-size:36px!important}
+:where(.nx-tab button[data-tx],.nx-tab button[data-po]){min-width:24px!important;min-height:24px!important;font-size:14px!important;padding:0 2px!important;line-height:1!important}
+:where(.shell-close,.cd-tab-close,.cd-chooser-close,.hub-rm,.mc-off,.bw-link-remove,.cx-row-del,.nx-hp-hd [data-history],.nx-att [aria-label^="Remove"]) .icon,:where(.shell-close,.cd-tab-close,.cd-chooser-close,.hub-rm,.bw-link-remove,.cx-row-del,.nx-hp-hd [data-history],.nx-att [aria-label^="Remove"]) svg{width:28px!important;height:28px!important}
 
 /* HUD mode (/?hud=1): only the strip is drawn; the page behind it is hidden and the window is transparent around the bar. Calm on purpose: no animation at all,
    no blur (a blur over a transparent window flickers), and the panels are mostly see-through so the work behind them shows. */
@@ -397,3 +422,293 @@ html.hud-mode *,html.hud-mode *::before,html.hud-mode *::after{animation:none!im
 .hud-thread p{margin:0 0 8px;white-space:pre-wrap;word-break:break-word}.hud-me{color:var(--muted,#8a93a8)}.hud-err{color:var(--warn,#c98a2b)}
 .hud-ap{display:grid;gap:4px}.hud-a{display:flex;gap:6px;align-items:center;padding:4px 10px;background:color-mix(in srgb,var(--surface,#0b0d18) 55%,transparent);border:1px solid var(--accent,#e8a33d)}.hud-a span{flex:1;font-size:13px}
 @media(max-width:520px){.hud-b[data-hud=open]{display:none}}
+
+/* Hall of Fame legend card, drawn over the hall: a keeper's epithet, relic and line. Cut corners, no radius. */
+.hof-legend{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:14px;
+  background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.hf-card{width:min(360px,100%);display:grid;gap:8px;padding:16px 16px 14px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--ink) 7%,var(--bg)),var(--bg));border:1px solid var(--gold);
+  box-shadow:0 26px 44px -26px var(--bg),inset 0 0 0 1px color-mix(in srgb,var(--ink) 7%,transparent);
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.hf-eyebrow{font:500 10px var(--font-mono,monospace);letter-spacing:.18em;text-transform:uppercase;color:var(--p1)}
+.hf-card h4{margin:0;font:400 22px var(--font-display,serif);letter-spacing:.06em;color:var(--ink)}
+.hf-epithet{margin:0;color:var(--gold);font-size:13px}
+.hf-relic{margin:0;font:500 10.5px var(--font-mono,monospace);letter-spacing:.14em;text-transform:uppercase;color:var(--p2)}
+.hf-relic span{color:color-mix(in srgb,var(--ink) 62%,var(--bg));margin-right:6px}
+.hf-line{margin:0;color:color-mix(in srgb,var(--ink) 84%,var(--bg));font-size:13px;line-height:1.55}
+.hf-acts{display:flex;gap:8px;margin-top:4px}
+.hf-acts .btn{min-height:44px}
+@media (max-width:520px){.hf-card{padding:14px}.hf-card h4{font-size:19px}}
+
+/* Hall of Fame: a temple backdrop drawn with ImageMagick, the glyph film sits over it. */
+.hof{background:url(art/hof-temple.webp) center/cover no-repeat,var(--bg,#05060d)}
+@media (max-width:640px){.hof{aspect-ratio:4/5}}
+.hof:before{content:"";position:absolute;inset:0;background:var(--p1);mix-blend-mode:color;opacity:.5;pointer-events:none}
+
+/* ---- CaesarOS cursors: standard shapes cut like the crystal, inside the app only ----
+   Generated by tools/cursors/make-cursors.py (1x 24px and @2x 48px, nearest-neighbour). The desktop keeps its own cursor theme; these
+   rules only apply under the shell, and every one carries !important because the shell sets
+   cursor:pointer in a hundred places. The shapes that mean "this reacts" carry the glow. */
+html{--cur-arrow:image-set(url(cursors/left_ptr.png) 1x,url(cursors/left_ptr@2x.png) 2x) 3 2,default;
+     --cur-pointer:image-set(url(cursors/pointer.png) 1x,url(cursors/pointer@2x.png) 2x) 4 2,pointer;
+     --cur-text:image-set(url(cursors/text.png) 1x,url(cursors/text@2x.png) 2x) 12 12,text;
+     --cur-vtext:image-set(url(cursors/vertical-text.png) 1x,url(cursors/vertical-text@2x.png) 2x) 12 12,vertical-text;
+     --cur-cross:image-set(url(cursors/crosshair.png) 1x,url(cursors/crosshair@2x.png) 2x) 12 12,crosshair;
+     --cur-cell:image-set(url(cursors/cell.png) 1x,url(cursors/cell@2x.png) 2x) 12 12,cell;
+     --cur-wait:image-set(url(cursors/wait.png) 1x,url(cursors/wait@2x.png) 2x) 12 12,wait;
+     --cur-progress:image-set(url(cursors/progress.png) 1x,url(cursors/progress@2x.png) 2x) 3 2,progress;
+     --cur-grab:image-set(url(cursors/grab.png) 1x,url(cursors/grab@2x.png) 2x) 12 10,grab;
+     --cur-grabbing:image-set(url(cursors/grabbing.png) 1x,url(cursors/grabbing@2x.png) 2x) 12 12,grabbing;
+     --cur-ns:image-set(url(cursors/ns-resize.png) 1x,url(cursors/ns-resize@2x.png) 2x) 12 12,ns-resize;
+     --cur-ew:image-set(url(cursors/ew-resize.png) 1x,url(cursors/ew-resize@2x.png) 2x) 12 12,ew-resize;
+     --cur-nwse:image-set(url(cursors/nwse-resize.png) 1x,url(cursors/nwse-resize@2x.png) 2x) 12 12,nwse-resize;
+     --cur-nesw:image-set(url(cursors/nesw-resize.png) 1x,url(cursors/nesw-resize@2x.png) 2x) 12 12,nesw-resize;
+     --cur-no:image-set(url(cursors/not-allowed.png) 1x,url(cursors/not-allowed@2x.png) 2x) 12 12,not-allowed;
+     --cur-help:image-set(url(cursors/help.png) 1x,url(cursors/help@2x.png) 2x) 3 2,help;
+     --cur-zoom-in:image-set(url(cursors/zoom-in.png) 1x,url(cursors/zoom-in@2x.png) 2x) 10 10,zoom-in;
+     --cur-zoom-out:image-set(url(cursors/zoom-out.png) 1x,url(cursors/zoom-out@2x.png) 2x) 10 10,zoom-out;
+     --cur-menu:image-set(url(cursors/context-menu.png) 1x,url(cursors/context-menu@2x.png) 2x) 3 2,context-menu;
+     --cur-move:image-set(url(cursors/move.png) 1x,url(cursors/move@2x.png) 2x) 12 12,move;
+     --cur-copy:image-set(url(cursors/copy.png) 1x,url(cursors/copy@2x.png) 2x) 3 2,copy;
+     --cur-link:image-set(url(cursors/link.png) 1x,url(cursors/link@2x.png) 2x) 3 2,alias}
+html body,html body *{cursor:var(--cur-arrow)!important}
+html body :is(input,textarea,[contenteditable="true"],.xterm,.xterm-rows,.xterm-helper-textarea){cursor:var(--cur-text)!important}
+html body :is(a,button,summary,label[for],[role="button"],[role="tab"],[role="link"],[role="switch"],.btn,.chip,[data-nx],[data-rd],[data-open-app],[data-ses],[data-ws],[data-st],[data-po],[data-tx]){cursor:var(--cur-pointer)!important}
+html body :is([draggable="true"],.dw-head,.nx-sz,.dock-grab){cursor:var(--cur-grab)!important}
+html body :is([draggable="true"]:active,.nodrag:active){cursor:var(--cur-grabbing)!important}
+html body :is(.nx-sz,.dw-resize,[data-rs]){cursor:var(--cur-nwse)!important}
+html body :is([disabled],[aria-disabled="true"],.is-disabled):is([disabled],[aria-disabled="true"],.is-disabled){cursor:var(--cur-no)!important}
+html body :is(.xterm-screen,.tm-scroll){cursor:var(--cur-text)!important}
+html body :is(.cdk-grip[data-dk-edge="n"],.cdk-grip[data-dk-edge="s"]){cursor:var(--cur-ns)!important}
+html body :is(.cdk-grip[data-dk-edge="w"],.cdk-grip[data-dk-edge="e"]){cursor:var(--cur-ew)!important}
+html body :is(.cdk-grip[data-dk-edge="nw"],.cdk-grip[data-dk-edge="se"]){cursor:var(--cur-nwse)!important}
+html body :is(.cdk-grip[data-dk-edge="ne"],.cdk-grip[data-dk-edge="sw"]){cursor:var(--cur-nesw)!important}
+html body :is(.cdk-hd,.mc-btn,.nt-gc,.md-stage,.bd-wall){cursor:var(--cur-grab)!important}
+html body :is(.cdk-hd,.mc-btn,.nt-gc,.md-stage,.bd-wall):active,html body .mc.mc-dragging .mc-chibi{cursor:var(--cur-grabbing)!important}
+html body .bd-sticky{cursor:var(--cur-move)!important}
+
+/* ---- voice input: every state visible, the level ring shows the microphone is live ----
+   Recording pulses with the measured input level (--lvl set from an AnalyserNode), transcribing
+   turns the glyph amber, an error is a red glyph plus the reason on the line above the composer. */
+.nx-mic{position:relative;transition:color .15s,box-shadow .12s,transform .12s}
+.nx-mic[data-state="rec"]{color:var(--accent);box-shadow:0 0 0 calc(1px + var(--lvl,0) * 5px) color-mix(in srgb, var(--accent) 42%, transparent);transform:scale(calc(1 + var(--lvl,0) * .08))}
+.nx-mic[data-state="busy"]{color:var(--signal);animation:nx-mic-spin 1.1s linear infinite}
+.nx-mic[data-state="err"]{color:var(--danger,#ff5a5a)}
+.nx-mic[data-mode="on"]::after{content:"";position:absolute;right:2px;top:2px;width:5px;height:5px;background:var(--signal);box-shadow:0 0 8px var(--signal)}
+@keyframes nx-mic-spin{50%{opacity:.45}}
+.nx-vstate{flex:0 0 auto;align-self:center;max-width:46%;font:400 10px var(--font-mono,monospace);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nx-vstate[data-state="rec"]{color:var(--accent)}
+.nx-vstate[data-state="busy"]{color:var(--signal)}
+.nx-vstate[data-state="err"]{color:var(--danger,#ff5a5a)}
+@media (prefers-reduced-motion:reduce){.nx-mic{transition:none}.nx-mic[data-state="busy"]{animation:none}}
+
+/* ---- sessions flyout: a real list, not an empty flag ---- */
+.fly{position:fixed;left:calc(env(safe-area-inset-left) + 76px);bottom:76px;z-index:88;width:min(340px,calc(100vw - 96px));background:color-mix(in srgb,var(--surface) 96%,transparent);border:1px solid var(--accent);box-shadow:0 18px 48px -24px #000,0 0 24px -18px var(--accent);backdrop-filter:blur(16px)}
+.fly-head{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.fly-head .label{flex:1}
+.fly-x{all:unset;cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;color:var(--muted)}
+.fly-x:hover{color:var(--text)}
+.fly-body{max-height:min(52vh,420px);overflow:auto;padding:4px}
+.fly-row{all:unset;display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding:8px 8px;border-bottom:1px solid var(--line);cursor:pointer}
+.fly-row:last-child{border-bottom:0}
+.fly-row:hover,.fly-row:focus-visible{background:var(--a08);outline:none}
+.fly-t{display:grid;min-width:0;flex:1}
+.fly-t b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fly-t small{color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fly-go{color:var(--accent)}
+/* the live bar keeps its clicks: the sidebar footer is decoration and used to eat 64x11 of it */
+.ns-foot{pointer-events:none}.ns-foot button{pointer-events:auto}   /* the rail ends above the live bar, so its buttons are safe to click */
+.live-bar{position:relative;z-index:3}
+.live-piece[data-state="busy"]{color:var(--signal)}
+.live-piece[data-state="done"]{color:var(--ok,#3fb68b)}
+.live-piece[data-state="err"]{color:var(--danger,#ff5a5a)}
+
+/* The live bar used to sit at the end of the document (top 1185 on a 900 px viewport), so "Stop
+   everything" was only reachable after scrolling and the footer measured as unreachable. It is a
+   status bar: it stays at the bottom of the viewport, above the content, and the page keeps room. */
+.live-bar{position:fixed;left:0;right:0;bottom:0;z-index:58;display:flex;align-items:center;gap:10px;
+  padding:0 max(12px,env(safe-area-inset-left)) env(safe-area-inset-bottom) max(12px,env(safe-area-inset-right));
+  background:color-mix(in srgb,var(--bg) 92%,transparent);border-top:1px solid var(--line);backdrop-filter:blur(14px)}
+.live-piece{min-height:40px;cursor:pointer}
+.live-piece:hover{color:var(--text)}
+.shell.atrium main{padding-bottom:calc(56px + env(safe-area-inset-bottom))}
+@media (max-width:760px){.shell.atrium .live-bar{display:none}}
+
+.live-bar{z-index:72}
+@media (min-width:761px){.ns-wrap{bottom:calc(44px + env(safe-area-inset-bottom))}}
+
+/* the composer eases its growth instead of jumping 8 px per line */
+.nx-box textarea{transition:height .12s cubic-bezier(.2,.7,.2,1)}
+@media (prefers-reduced-motion:reduce){.nx-box textarea{transition:none}}
+/* board cards and the phone bar give a press/drag state */
+.bd-card:active,[draggable="true"]:active{transform:scale(.985);opacity:.9}
+.bd-card.dragging,[draggable="true"].dragging{opacity:.55;transform:scale(.97);box-shadow:0 12px 28px -18px #000}
+@media (max-width:760px){.nx-bar button:active{background:var(--a16)}}
+
+/* ---- the workspace strip must stay a strip: it scrolls, it never paints over the rail ---- */
+.ws-bar{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden}
+.ws-tabs{min-width:0;flex:1 1 auto;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scroll-behavior:smooth}
+.ws-tabs::-webkit-scrollbar{display:none}
+.ws-tabs>[data-ws]{flex:none}
+/* a narrow window keeps every workspace reachable: the tabs stay, the words go, the numerals remain */
+@media (max-width:900px){
+  .ws-tabs{min-width:120px}
+  .ws-tabs>[data-ws]:not(.on){display:inline-flex!important}
+  .ws-bar{gap:2px}
+  [data-ws-step],[data-ws-new]{min-width:32px;min-height:32px}
+}
+
+/* up to laptop width the strip gives room back so all eight tabs sit in view: non-active tabs keep the numeral only,
+   the search turns into an icon button and, on a narrow window, the route chip leaves the bar (it stays in Settings) */
+@media (max-width:1500px){
+  html body .ws-bar .ws{width:auto}
+  html body .ws-bar .ws:not(.on) span{display:none}
+  html body .ws-bar .ws:not(.on){padding:0 10px;min-width:0!important}
+  html body .shell-search{flex:0 0 44px!important;width:44px!important;min-width:44px!important;padding:0!important;justify-content:center}
+  html body .shell-search>*:not(svg){display:none!important}
+}
+@media (max-width:760px){html body .atrium-actions .route-sw:not(.big){display:none}}
+
+/* room after the last tab, so the final workspace can be scrolled fully into the strip and clicked */
+.ws-tabs::after{content:"";flex:none;width:18px}
+@media (max-width:900px){.ws-tabs::after{width:8px}}
+/* Mail: messenger post header and composer polish */
+.ml-post{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:12px 0;padding:10px 14px;border:1px solid var(--line);
+  background:color-mix(in srgb,var(--accent) 7%,transparent);clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.ml-seal{display:grid;place-items:center;width:34px;height:34px;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.ml-route{position:relative;flex:1;min-width:48px;max-width:280px;height:8px;background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--accent) 55%,transparent) 0 6px,transparent 6px 12px)}
+.ml-route b{position:absolute;top:-2px;left:0;width:12px;height:12px;background:var(--p2,var(--accent))}
+html[data-motion=on] .ml-post.ride .ml-route b{animation:mlride 1.6s linear infinite}@keyframes mlride{to{left:calc(100% - 12px)}}
+.ml-ptxt{flex:1 1 200px;min-width:0;color:var(--muted);overflow-wrap:anywhere}.ml-ptxt b{color:var(--gold,var(--accent));font-size:1.1em}
+.ml-count{text-align:right;margin:0}
+.ml-sticky{position:sticky;bottom:0;padding:8px 0;background:linear-gradient(transparent,color-mix(in srgb,var(--bg,#0b0a08) 92%,transparent) 30%)}
+.ml-wid{display:grid;gap:8px}.ml-wid .ml-big{font:600 2rem/1 var(--font-mono,monospace);color:var(--gold,var(--accent))}
+.ml-wid ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}.ml-wid li{display:grid;min-width:0;border-left:3px solid var(--accent);padding-left:8px}
+.ml-wid li b,.ml-wid li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ml-wid li span{color:var(--muted);font-size:.8rem}
+.vz-skel{display:block;aspect-ratio:1;background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid var(--line)}
+html[data-motion=on] .vz-skel{animation:vzsk 1.4s ease-in-out infinite}@keyframes vzsk{50%{opacity:.45}}
+/* Hall of Fame card layout (moved from hof3d.css: these rules style the settings card, not the WebGL layer) */
+.hof{touch-action:pan-y;overflow:clip;background-color:var(--bg)}
+.hof-spot span{opacity:1;bottom:2px;max-width:95%;overflow:hidden;text-overflow:ellipsis}
+@media(min-width:700px){.hof-spot span{opacity:0}.hof-spot:hover span,.hof-spot:focus-visible span{opacity:1}}
+@media(max-width:699px){.hof{aspect-ratio:1/1.18}.hof-spot{top:3%;height:78%;width:19%}.hof-spot span{font-size:9px;letter-spacing:.04em;padding:4px 3px}}
+.su-module-group{border:1px solid var(--line);margin:12px 0 0;padding:10px;min-width:0}
+.su-module-group legend{padding:0 8px;color:var(--accent);font:600 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase}
+.su-module-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.su-module{min-width:0;display:flex;align-items:center;gap:12px;justify-content:space-between;padding:10px;border:1px solid var(--line);background:var(--surface-2);cursor:pointer}
+.su-module span{display:grid;gap:3px;min-width:0}.su-module b{font-size:13px}.su-module small{font-size:10px;color:var(--muted)}
+.su-module input{position:absolute;opacity:0;width:1px;height:1px}.su-module i{width:30px;height:16px;flex:none;border:1px solid var(--line);background:var(--bg);position:relative}
+.su-module i:after{content:"";position:absolute;left:2px;top:2px;width:10px;height:10px;background:var(--muted);transition:transform 120ms,background 120ms}
+.su-module input:checked+i{border-color:var(--accent)}.su-module input:checked+i:after{transform:translateX(14px);background:var(--accent)}.su-module input:focus-visible+i{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:620px){.su-module-grid{grid-template-columns:1fr}}
+
+/* core unreachable: the saved shell stays, with a plain banner instead of a white or half-empty page */
+.nx-offline{position:fixed;left:50%;bottom:calc(var(--nx-bot,42px) + 14px);transform:translate(-50%,140%);z-index:1000;display:flex;align-items:center;gap:12px;max-width:min(560px,calc(100% - 28px));padding:10px 12px 10px 14px;border:1px solid var(--tint-magenta,#ff38b8);background:var(--surface,#0e1018);color:var(--text);font-size:13px;line-height:1.4;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .24s ease,opacity .24s ease,visibility 0s .24s}
+.nx-offline i{flex:none;width:9px;height:9px;transform:rotate(45deg);background:var(--tint-magenta,#ff38b8)}
+.nx-offline b{display:block;font:600 11px var(--font-mono,monospace);letter-spacing:.14em;text-transform:uppercase;color:var(--tint-magenta,#ff38b8)}
+.nx-offline button{all:unset;box-sizing:border-box;flex:none;min-height:44px;padding:0 14px;display:inline-grid;place-items:center;border:1px solid var(--accent);color:var(--accent);font:600 12px var(--font-mono,monospace);letter-spacing:.08em;cursor:pointer}
+.nx-offline button:focus-visible{outline:2px solid var(--signal,var(--accent));outline-offset:2px}
+html[data-core-down] .nx-offline{transform:translate(-50%,0);opacity:1;pointer-events:auto;visibility:visible;transition-delay:0s}
+html[data-motion=off] .nx-offline,html[data-motion=reduced] .nx-offline{transition:none}
+
+/* loading skeletons: square bars, tint only, one slow sweep; still under reduced motion */
+.ax-skel{display:grid;gap:12px;min-height:112px;align-content:center}
+.ax-skel i{display:block;height:12px;width:var(--w,60%);background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 10%,transparent),color-mix(in srgb,var(--accent) 22%,transparent) 50%,color-mix(in srgb,var(--accent) 10%,transparent)) 0 0/220% 100%;clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))}
+html[data-motion=on] .ax-skel i{animation:axsk 1.6s linear infinite}
+@keyframes axsk{to{background-position:-220% 0}}
+
+/* keyboard focus on every control, drawn inside the cut corners (a clipped outline would vanish) */
+html body :is(button,a[href],input,select,textarea,summary,[role=tab],[role=button],[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+/* phone and touch: every target is 44 px */
+@media (pointer:coarse),(max-width:560px){
+  .nx-tab,.nx-app,.nx-ses,.nx-hp-i,.nx-pop .it,.nx-pal .it,.nx-sug button{min-height:44px}
+  .nx-mini .nx-mi,.nx-send,.nx-mic{width:44px;height:44px}
+  .nx-seg button,.nx-fav button{min-height:44px;display:grid;place-items:center}
+  .nx-tab button[data-tx],.nx-tab button[data-po]{width:44px!important;height:44px!important}
+}
+@media(max-width:560px){.nx-offline{bottom:calc(76px + env(safe-area-inset-bottom));flex-wrap:wrap}}
+
+/* Ideas module: the planning board stays a single horizontal workspace on desktop and stacks for touch. */
+.idea-view{display:block}.idea-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;max-width:1100px;margin:12px auto 18px}.idea-head h2{font:400 28px var(--font-display);letter-spacing:.08em;margin:6px 0}.idea-head p,.idea-card p{color:var(--muted);margin:4px 0 10px}.idea-export,.idea-add button{min-height:44px;border:1px solid color-mix(in srgb,var(--accent) 60%,var(--line));background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--text);padding:0 16px;font:600 12px var(--font-mono);letter-spacing:.06em;cursor:pointer}.idea-lanes{display:grid;grid-template-columns:repeat(5,minmax(190px,1fr));gap:12px;overflow-x:auto;padding:2px 2px 12px;align-items:start}.idea-lane{min-width:0;border-top:1px solid var(--accent);background:color-mix(in srgb,var(--surface) 82%,transparent);padding:12px}.idea-lane>header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:8px}.idea-lane>header h3{font:500 13px var(--font-mono);letter-spacing:.08em;margin:0;text-transform:uppercase}.idea-lane>header span,.idea-meta,.idea-empty{color:var(--muted);font:11px var(--font-mono)}.idea-card{border:1px solid var(--line);border-left:2px solid color-mix(in srgb,var(--signal) 55%,var(--line));background:var(--surface);padding:12px;margin:8px 0;overflow-wrap:anywhere}.idea-card h4{font-size:14px;font-weight:600;margin:0 0 7px}.idea-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}.idea-actions button{min-height:36px;padding:4px 7px;border:1px solid var(--line);background:transparent;color:var(--muted);font:10px var(--font-mono);cursor:pointer}.idea-actions button:hover,.idea-actions button:focus-visible,.idea-export:hover{color:var(--accent);border-color:var(--accent)}.idea-add{display:flex;gap:8px;max-width:1100px;margin:0 auto 18px}.idea-add input{flex:1;min-width:0;min-height:44px;padding:0 12px;background:var(--surface);border:1px solid var(--line);color:var(--text);font:14px var(--font-body)}.idea-empty{padding:12px 2px}.idea-disabled,.idea-error{max-width:900px;margin:24px auto;padding:14px;border-left:2px solid var(--signal);background:var(--surface);color:var(--muted)}.idea-error{border-color:var(--danger,var(--accent))}.idea-actions button:focus-visible,.idea-add button:focus-visible,.idea-export:focus-visible{outline:2px solid var(--signal);outline-offset:2px}@media(max-width:900px){.idea-head{align-items:flex-start;margin:8px 0 16px}.idea-lanes{grid-template-columns:minmax(0,1fr);overflow:visible}.idea-add{margin-bottom:14px}.idea-add button{padding:0 10px}.idea-actions button{min-height:44px}}
+
+/* keyboard shortcut sheet (shortcuts.js) */
+.keys-dlg{padding:0;border:0;background:transparent;color:var(--text,#e8e2d2);width:min(760px,calc(100vw - 24px));max-width:none;max-height:min(86dvh,900px)}
+.keys-dlg::backdrop{background:color-mix(in srgb,var(--bg,#05060d) 78%,transparent)}
+.keys-box{display:flex;flex-direction:column;max-height:min(86dvh,900px);background:var(--surface,#0b0d18);border:1px solid color-mix(in srgb,var(--accent,#ff8a3d) 55%,var(--line,#26304a));
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.keys-box header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line,#26304a)}
+.keys-box h2{margin:0;font-size:1.05rem}
+.keys-body{overflow:auto;overscroll-behavior:contain;padding:4px 20px 20px;columns:2 300px;column-gap:28px}
+.keys-body:focus-visible{outline:2px solid var(--accent,#ff8a3d);outline-offset:-4px}
+.keys-body section{break-inside:avoid;padding-top:12px}
+.keys-body h3{margin:0 0 6px;font:500 .68rem/1.4 var(--font-mono,monospace);letter-spacing:.14em;text-transform:uppercase;color:var(--accent,#ff8a3d)}
+.keys-body dl{margin:0}.keys-body dl>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:10px;padding:6px 0;border-bottom:1px solid var(--line,#26304a);font-size:.82rem;line-height:1.9}
+.keys-body dd{margin:0}
+html .keys-dlg .keys-body dt kbd{display:inline-block;padding:0 6px;border:1px solid var(--line,#26304a);border-radius:0;background:color-mix(in srgb,var(--accent,#ff8a3d) 8%,transparent);font:600 .76rem/1.6 ui-monospace,"DejaVu Sans Mono",monospace;white-space:nowrap}
+
+/* export a conversation (chatx.js): its own full row under the composer chips */
+.xp{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.xp .pk-ctx[disabled]{opacity:.45;cursor:default}
+.xp-line{margin:0;flex:1 1 180px;min-width:0;overflow-wrap:anywhere;color:var(--muted);font-size:.8rem}
+.xp-line.bad{color:var(--warn,var(--p1))}
+.xp-line:empty{flex:0}
+/* idle mascot: just the chibi, so the bubble and the close box never sit on top of the page; they show when something needs you */
+.mc[data-state=idle]:not(:focus-within) .mc-say,.mc[data-state=sleep]:not(:focus-within) .mc-say,.mc[data-state=idle]:not(:focus-within) .mc-off,.mc[data-state=sleep]:not(:focus-within) .mc-off{display:none}
+@media(max-width:900px){.mc[data-state=idle]:not(:focus-within),.mc[data-state=sleep]:not(:focus-within){display:none}}
+
+
+/* CAESAR date picker (datepick.js) and fold (art.js): no stock date input, no stock details */
+.cs-date{position:relative;display:inline-block;min-width:150px}
+.cs-date-cur{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 12px;cursor:var(--cursor-active,pointer);color:var(--text);background:#ffffff08;--cut:7px;clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent)}
+.cs-date-cur span{flex:1;font-variant-numeric:tabular-nums}.cs-date-cur:focus-visible,.cs-d:focus-visible,.cs-nav:focus-visible,.cs-today:focus-visible{outline:2px solid var(--signal,var(--accent));outline-offset:-2px}
+.cs-date-pop{position:absolute;z-index:60;left:0;top:calc(100% + 6px);width:min(320px,calc(100vw - 32px));padding:12px;background:var(--surface-2,var(--surface));clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent);filter:drop-shadow(0 14px 22px #000a)}
+.cs-date-pop[hidden]{display:none}
+.cs-date-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.cs-date-hd b{font-weight:600;letter-spacing:.04em}
+.cs-nav,.cs-today{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;cursor:var(--cursor-active,pointer);color:var(--accent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent);clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))}
+.cs-nav.r .icon{transform:none}.cs-nav:not(.r) .icon{transform:scaleX(-1)}
+.cs-date-dow,.cs-date-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}.cs-date-dow span{text-align:center;font-size:11px;color:var(--muted);padding:4px 0}
+.cs-d{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;min-height:40px;cursor:var(--cursor-active,pointer);font-variant-numeric:tabular-nums;position:relative}
+.cs-d:hover{background:color-mix(in srgb,var(--accent) 14%,transparent)}.cs-d.on{background:var(--accent);color:var(--accent-ink,var(--bg))}
+.cs-d.now::after{content:"";position:absolute;right:4px;top:4px;width:5px;height:5px;background:var(--gold,var(--accent))}
+.cs-date-ft{display:flex;justify-content:flex-end;margin-top:8px}.cs-today{padding:0 14px}
+.cs-fold-b{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;min-height:44px;cursor:var(--cursor-active,pointer);color:var(--text)}.cs-fold-b .icon{transition:transform .2s}.cs-fold-b[aria-expanded=true] .icon{transform:rotate(180deg)}.cs-fold-b:focus-visible{outline:2px solid var(--signal,var(--accent));outline-offset:2px}
+.cs-fold-body[hidden]{display:none}
+/* the pixel terminal font has no @ (it drew a box in the Start-here banner): key caps in running text use the plain mono face */
+html[data-theme] .nx-banner kbd{font-family:var(--font-mono,ui-monospace,monospace);letter-spacing:0;text-shadow:none}
+@media (max-width:560px){.nx-tpin .nx-tab{padding:0 9px;gap:5px;font-size:11px;letter-spacing:0}.nx-ta{width:26px}}
+
+/* touch: controls that were under 44px at phone width */
+@media (max-width:900px){
+ html .og-mode,html .og-mode .cur,html .og-mode .pop,html .og-mode .pop button{height:44px}
+ html .og-card summary{min-height:44px!important}   /* beats the 40px touch rule */
+}
+
+/* Home: cards follow their content (min and max), two columns on desktop, one on phone */
+.dw-grid.hm-flow{height:auto!important;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}
+.hm-flow .dw{position:static!important;width:auto!important;height:auto!important;min-height:150px;max-height:420px;display:flex;flex-direction:column;overflow:hidden}
+.hm-flow .dw-body{flex:1;min-height:0;overflow:auto}
+.hm-flow .dw-title b{white-space:normal;overflow:visible;text-overflow:clip}
+.hm-body{display:flex;flex-direction:column;gap:10px}
+.hm-date{margin:0;font:600 1.1rem/1.2 var(--font-display,inherit);color:var(--ink,var(--text))}.hm-wx{margin:0;color:var(--muted);font-size:.85rem}
+.hm-form{display:flex;gap:8px}.hm-form .og-input{flex:1;min-width:0;min-height:44px}.hm-form .su-btn{min-height:44px;min-width:64px}
+.hm-saved{margin:0;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.85rem}.hm-link{width:auto;min-height:44px;color:var(--p1,var(--accent))}
+.hm-art{display:block;width:100%;height:96px;object-fit:cover;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.hm-flow .hub-li{min-height:44px}
+@media(max-width:900px){.dw-grid.hm-flow{grid-template-columns:minmax(0,1fr)}}
+
+/* Home, What now?: a compact strip so the workspace cards stay on the first screen; the full list unfolds on demand. Tokens only, cut corners. */
+.brain-what-now.wn{margin:0 0 14px;padding:0;gap:0;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.wn .wn-row{display:flex;align-items:center;gap:12px;padding:8px 14px;min-height:52px;min-width:0}
+.wn .wn-row h2{font:400 17px/1.2 var(--font-display);margin:0;flex:none}
+.wn .wn-mark{flex:none;width:9px;height:9px;background:var(--muted);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.wn .wn-mark.live{background:var(--p1);box-shadow:0 0 8px var(--p1)}
+.wn .wn-first{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:8px;color:var(--muted);font:400 13px/1.3 var(--font-body)}
+.wn .wn-first b{color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.wn .wn-row .btn{flex:none;min-height:36px;padding:6px 12px}
+.wn .wn-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;padding:0 14px 12px;margin:0;border-top:1px solid var(--line)}
+.wn .wn-list li{border:0;background:color-mix(in srgb,var(--p1) 5%,transparent);padding:10px 12px;margin:0}
+html[data-motion=on] .wn .wn-mark.live{animation:wn-breathe 3.6s ease-in-out infinite}
+@keyframes wn-breathe{50%{opacity:.45;box-shadow:0 0 3px var(--p1)}}
+@media (prefers-reduced-motion:reduce){.wn .wn-mark.live{animation:none}}
+@media (width<=600px){.wn .wn-row{flex-wrap:wrap}.wn .wn-count,.wn .brain-what-now-count{order:3}.wn .wn-first{flex-basis:100%;order:4}}

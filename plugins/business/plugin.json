@@ -1,0 +1,13 @@
+{
+  "id": "business",
+  "name": "Business",
+  "version": "0.1.0",
+  "description": "The Business workspace: Overview, Finances, Progress and Reach. Starts empty; Reach keeps the numbers you or an agent record. Finance figures come from the Finance module, never from here.",
+  "group": "client",
+  "edition": "standard",
+  "defaultOff": true,
+  "tags": ["business", "optional"],
+  "nav": [],
+  "routes": [],
+  "permissions": []
+}

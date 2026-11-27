@@ -11,6 +11,8 @@ html[data-skin=neo][data-theme=neutral]{
  --meander:none;--art-bg:#12161b;--art-ink:#9eabb8;
  --tint-ember:#5fd6d1;--tint-gold:#8fb3c9;--tint-crimson:#9ea7c9;--tint-magenta:#a7a9c9;--tint-toxic:#7fb8a8;--tint-signal:#8f9ec9;--tint-sky:#6bb9d6;--tint-sand:#a8b4c2;
  --neutral-mark:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='1.25' y='1.25' width='21.5' height='21.5' fill='none' stroke='%235fd6d1' stroke-width='1.5'/><rect x='6' y='6' width='12' height='12' transform='rotate(45 12 12)' fill='%235fd6d1'/></svg>")}
+/* the neutral palette beats an ember pack colour that Settings or the boot script wrote inline on <html> (inline wins over any rule without !important), so the top bar, route glow and art tint stay teal and slate */
+html[data-skin=neo][data-theme=neutral]{--p1:#5fd6d1!important;--p1r:95,214,209!important;--p2:#8fb3c9!important;--p2r:143,179,201!important}
 html[data-skin=neo][data-theme=neutral]{background:radial-gradient(120% 80% at 50% 0,#1a2029 0,#0f1216 55%,#0a0c0f 100%) fixed}
 html[data-skin=neo][data-theme=neutral] .shell:before{background:radial-gradient(60% 40% at 15% 90%,rgba(var(--p1r),.10),transparent 70%),radial-gradient(50% 40% at 90% 10%,rgba(var(--p2r),.10),transparent 70%)!important;opacity:1!important}
 

@@ -8,11 +8,9 @@ owner/    The owner's layer (kept outside the clean repo; in the working tree it
           through the module interface. Deleting this folder must leave core building and running.
 packs/    icons, fonts, themes, palettes, each with a manifest (name, version, license, entries).
           The UI asks for an icon by role name; a missing role falls back to the default pack.
-docs/     specs and plans of the working tree. The clean (open-source) export leaves docs/ out entirely
-          (`tools/clean-exclude.txt`); study material is kept only in the owner's tree.
 ```
 
-Rules: core never imports owner; no component imports an icon or font file directly; one build makes core alone, another makes core + owner, and the core-alone build is a CI gate; bridge between desktop and web is the gateway registry (`docs/plan/BRIDGE-DESKTOP-WEB-STANDALONE-2026-11-22.md`); no deploy, release or main merge without Konrad's yes.
+Rules: core never imports owner; no component imports an icon or font file directly; one build makes core alone, another makes core + owner, and the core-alone build is a CI gate; bridge between desktop and web is the gateway registry; no deploy, release or main merge without the owner's yes.
 
 ## The Lego rule
 CaesarOS is built from blocks that snap together through written contracts, so any block can be rebuilt or replaced without touching the others.

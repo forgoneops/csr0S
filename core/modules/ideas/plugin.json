@@ -1,0 +1,13 @@
+{
+  "id": "ideas",
+  "name": "Ideas",
+  "version": "0.1.0",
+  "description": "Plan work as cards grouped in Inbox, Now, Next, Waiting, Parked, Done and Dropped.",
+  "group": "knowledge",
+  "tags": ["ideas", "planning"],
+  "edition": "standard",
+  "defaultOff": true,
+  "nav": [{ "id": "ideas", "label": "Ideas", "name": "Forum", "icon": "sparkle", "path": "/ideas", "category": "work", "order": 70 }],
+  "routes": ["/ideas"],
+  "permissions": []
+}
