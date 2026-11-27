@@ -4,10 +4,10 @@
 // is never returned, not even masked. A shape this reader does not understand is named in `notRead`, never guessed at.
 import type { Context, Hono } from "hono";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { findExecutable, walkPath } from "./detect";
 import { isLocalUrl } from "./scope";
+import { hermesAllowed, hermesHome } from "./host";
 
 export type Scope = "local" | "cloud";
 export type Block = { provider: string | null; model: string | null };
@@ -133,8 +133,6 @@ async function defaultRun(argv: string[], timeoutMs: number): Promise<RunResult>
   try { return await Promise.race([collected, timeout]); } finally { clearTimeout(timer); }
 }
 
-const homeOf = (): string => process.env.HERMES_HOME ?? join(homedir(), ".hermes");
-
 /** "default" plus every profile folder, the same ids and order core/crew.ts lists. */
 function profilesIn(home: string): string[] {
   const root = join(home, "profiles");
@@ -163,13 +161,13 @@ export function hermesConfApi(
 ): void {
   app.get("/api/hermes/config", async (c) => {
     if (!isOperator(c)) return c.json({ error: "operator_only" }, 403);
-    const home = opts.dir ?? homeOf();
+    const home = opts.dir ?? hermesHome();
     const defaultConfig = configOf(home, "default");
     const profiles = profilesIn(home).map((p) => readHermesConf(p, configOf(home, p)));
     const run = opts.run ?? defaultRun;
-    const path = opts.hermesPath !== undefined ? opts.hermesPath : findExecutable("hermes", walkPath());
+    const path = opts.hermesPath !== undefined ? opts.hermesPath : hermesAllowed() ? findExecutable("hermes", walkPath()) : null;
     // `hermes gateway status` takes eight seconds on a warm install; the listener answers in a millisecond.
-    const gateway = await (opts.probeGateway ?? gatewayAnswers)(gatewayPort(defaultConfig));
+    const gateway = await (opts.probeGateway ?? (hermesAllowed() ? gatewayAnswers : async () => false))(gatewayPort(defaultConfig));
     let hermes: HermesInfo = { version: null, installMethod: null, gateway };
     if (path) {
       const version = await Promise.resolve(run([path, "--version"], 3000)).catch((): RunResult => ({ code: null, out: "", err: "" }));

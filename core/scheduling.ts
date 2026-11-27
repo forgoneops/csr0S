@@ -1,6 +1,7 @@
 // Optional Hermes cron scheduling API. Every operation uses argv (never a shell) and reads
 // the cron list afresh before mutations. Tests must not call the run endpoint.
 import type { PluginContext } from "./plugins";
+import { hermesAllowed } from "./host";
 import { parseScheduleList } from "./scheduling-model";
 export { parseScheduleList } from "./scheduling-model";
 
@@ -8,7 +9,7 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const TEXT = /[\x00-\x1f\x7f]/;
 
 async function invoke(args: string[]): Promise<string> {
-  const bin = Bun.which("hermes");
+  const bin = hermesAllowed() ? Bun.which("hermes") : null;
   if (!bin) throw new Error("Hermes is not installed.");
   const proc = Bun.spawn([bin, ...args], { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: { ...process.env, NO_COLOR: "1" } });
   const timer = setTimeout(() => proc.kill(), 20_000);

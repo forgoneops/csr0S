@@ -55,34 +55,34 @@
 
   /** The messenger post: a rider route with a seal at each end. The unread count is the real one from the local store; the rider moves only while a sync runs and only when Motion is on. */
   const post = (a, add) => `<div class="ml-post${M.busy === 'sync' ? ' ride' : ''}" role="status"><span class="ml-seal" aria-hidden="true">${I('mail', 18)}</span><i class="ml-route" aria-hidden="true"><b></b></i><span class="ml-seal" aria-hidden="true">${I('inbox', 18)}</span>
-    <span class="ml-ptxt" data-no-i18n>${add ? 'No post route yet. Add an account to open one.' : `<b>${M.un || 0}</b> unread \u00b7 ${a.lastSync ? 'synced ' + esc(dt(a.lastSync)) : 'not synced yet'}`}</span></div>`;
+    <span class="ml-ptxt" data-no-i18n>${add ? uiText('No post route yet. Add an account to open one.') : `<b>${M.un || 0}</b> ${uiText('unread')} \u00b7 ${a.lastSync ? uiText('synced') + ' ' + esc(dt(a.lastSync)) : uiText('not synced yet')}`}</span></div>`;
   function addForm() {
     const fl = M.f.fill || {}, h = M.help;
     return `<section class="ml-add panel"><h3>Add your mail account</h3>
       <p class="ml-note">You type the details here yourself. The app password is kept in a protected file on this computer and is never shown again; Caesar and its agents never see it and cannot send mail.</p>
-      ${h ? `<div class="ml-help" data-no-i18n><b>${esc(h.label)}</b><p>${esc(h.note || '')}</p>${h.help ? `<ol>${h.help.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>` : ''}</div>` : ''}
+      ${h ? `<div class="ml-help" data-no-i18n><b>${esc(uiText(h.label))}</b><p>${esc(uiText(h.note || ''))}</p>${h.help ? `<ol>${h.help.steps.map(s => `<li>${esc(uiText(s))}</li>`).join('')}</ol>` : ''}</div>` : ''}
       ${field('ml-addr', 'Email address', val('ml-addr'), 'email', 'placeholder="you@example.com"')}
       <div class="ml-row">${field('ml-ih', 'IMAP server', fl.ih || val('ml-ih'))}${field('ml-ip', 'Port', String(fl.ip || val('ml-ip') || 993), 'number')}${secBtns('isec', M.f.imapSec)}</div>
       <div class="ml-row">${field('ml-sh', 'SMTP server', fl.sh || val('ml-sh'))}${field('ml-sp', 'Port', String(fl.sp || val('ml-sp') || 465), 'number')}${secBtns('ssec', M.f.smtpSec)}</div>
       <div class="ml-row">${field('ml-user', 'Username (if not the address)', val('ml-user'))}${field('ml-pass', 'App password', val('ml-pass'), 'password')}</div>
       <div class="ml-row">${field('ml-label', 'Name for this account', val('ml-label'))}${field('ml-name', 'Your name on sent mail', val('ml-name'))}</div>
-      ${M.msg ? `<p class="nt-msg" role="status" data-no-i18n>${esc(M.msg)}</p>` : ''}
+      ${M.msg ? `<p class="nt-msg" role="status" data-no-i18n>${esc(uiText(M.msg))}</p>` : ''}
       <div class="nt-acts"><button class="nt-b" data-ml="test" ${M.busy ? 'disabled' : ''}><span>${M.busy === 'test' ? 'Testing…' : 'Test the connection'}</span></button><button class="nt-b go" data-ml="add" ${M.busy ? 'disabled' : ''}><span>${M.busy === 'add' ? 'Adding…' : 'Add account'}</span></button>${M.accts && M.accts.length ? '<button class="nt-b" data-ml="addx"><span>Cancel</span></button>' : ''}</div></section>`;
   }
-  const row = m => `<button class="nt-note ml-msg${M.sel && M.sel.id === m.id ? ' on' : ''}${m.seen ? '' : ' unread'}" data-ml-msg="${m.id}"><b data-no-i18n>${esc(who(m.from))}</b><span class="ml-sub" data-no-i18n>${esc(m.subject || '(no subject)')}</span><small data-no-i18n>${esc(m.snippet)}</small><time data-no-i18n>${esc(dt(m.date))}</time></button>`;
+  const row = m => `<button class="nt-note ml-msg${M.sel && M.sel.id === m.id ? ' on' : ''}${m.seen ? '' : ' unread'}" data-ml-msg="${m.id}"><b data-no-i18n>${esc(who(m.from))}</b><span class="ml-sub" data-no-i18n>${esc(m.subject || uiText('(no subject)'))}</span><small data-no-i18n>${esc(m.snippet)}</small><time data-no-i18n>${esc(dt(m.date))}</time></button>`;
   function reader() {
     if (M.plan) { const p = M.plan.plan; return `<section class="nt-ed panel ml-read"><h3>Review before sending</h3><p class="ml-note">This is exactly what will go out. Nothing is sent until you press Send.</p>
-      <dl class="ml-plan" data-no-i18n><dt>From</dt><dd>${esc(p.from)}</dd><dt>To</dt><dd>${esc(p.to.join(', '))}</dd>${p.cc.length ? `<dt>Cc</dt><dd>${esc(p.cc.join(', '))}</dd>` : ''}${p.bcc.length ? `<dt>Bcc</dt><dd>${esc(p.bcc.join(', '))}</dd>` : ''}<dt>Subject</dt><dd>${esc(p.subject)}</dd></dl>
-      <pre class="ml-text" data-no-i18n>${esc(p.preview)}</pre>${p.warnings.length ? `<ul class="ml-warn" data-no-i18n>${p.warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+      <dl class="ml-plan" data-no-i18n><dt>${uiText('From')}</dt><dd>${esc(p.from)}</dd><dt>${uiText('To')}</dt><dd>${esc(p.to.join(', '))}</dd>${p.cc.length ? `<dt>${uiText('Cc')}</dt><dd>${esc(p.cc.join(', '))}</dd>` : ''}${p.bcc.length ? `<dt>${uiText('Bcc')}</dt><dd>${esc(p.bcc.join(', '))}</dd>` : ''}<dt>${uiText('Subject')}</dt><dd>${esc(p.subject)}</dd></dl>
+      <pre class="ml-text" data-no-i18n>${esc(p.preview)}</pre>${p.warnings.length ? `<ul class="ml-warn" data-no-i18n>${p.warnings.map(w => `<li>${esc(uiText(w))}</li>`).join('')}</ul>` : ''}
       <div class="nt-acts"><button class="nt-b go" data-ml="send" ${M.busy ? 'disabled' : ''}><span>${M.busy === 'send' ? 'Sending\u2026' : 'Send'}</span></button><button class="nt-b" data-ml="cancelplan"><span>Back to the draft</span></button></div></section>`; }
-    if (M.d) return `<section class="nt-ed panel ml-read"><div class="nt-bar"><button class="nt-b nt-backbtn" data-ml="back">${I('chevron-right', 16)}<span>Back</span></button><h3 class="nt-name">${M.d.id ? 'Draft' : 'New message'}</h3></div>
+    if (M.d) return `<section class="nt-ed panel ml-read"><div class="nt-bar"><button class="nt-b nt-backbtn" data-ml="back">${I('chevron-right', 16)}<span>Back</span></button><h3 class="nt-name">${uiText(M.d.id ? 'Draft' : 'New message')}</h3></div>
       ${field('ml-to', 'To', (M.d.to || []).map(a => a.address).join(', '))}${field('ml-cc', 'Cc', (M.d.cc || []).map(a => a.address).join(', '))}${field('ml-sub', 'Subject', M.d.subject || '')}
-      <textarea id="ml-body" class="nt-text ml-body" aria-label="Message" placeholder="Write your message" data-no-i18n>${esc(M.d.text || '')}</textarea><p class="ml-note ml-count" id="ml-count" data-no-i18n>${(M.d.text || '').length} characters</p>${M.msg ? `<p class="nt-msg" role="status">${esc(M.msg)}</p>` : ''}
+      <textarea id="ml-body" class="nt-text ml-body" aria-label="Message" placeholder="Write your message">${esc(M.d.text || '')}</textarea><p class="ml-note ml-count" id="ml-count" data-no-i18n>${uiText(`${(M.d.text || '').length} characters`)}</p>${M.msg ? `<p class="nt-msg" role="status">${esc(M.msg)}</p>` : ''}
       <div class="nt-acts ml-sticky"><button class="nt-b go" data-ml="review"><span>Review and send</span></button><button class="nt-b" data-ml="save"><span>Save draft</span></button>${M.d.id ? '<button class="nt-b" data-ml="deldraft"><span>Delete draft</span></button>' : ''}</div></section>`;
     if (!M.sel) return `<section class="nt-ed panel ml-read"><p class="nt-empty">${M.msg ? esc(M.msg) : 'Select a message, or write a new one.'}</p></section>`;
     const m = M.sel;
-    return `<section class="nt-ed panel ml-read"><div class="nt-bar"><button class="nt-b nt-backbtn" data-ml="back">${I('chevron-right', 16)}<span>Back</span></button><h3 class="nt-name ml-title" data-no-i18n>${esc(m.subject || '(no subject)')}</h3></div>
-      <p class="ml-meta" data-no-i18n>${esc(who(m.from))} &lt;${esc(m.from.address)}&gt; \u00b7 ${esc(new Date(m.date).toLocaleString(uiLocale()))}<br>To: ${esc((m.to || []).map(a => a.address).join(', '))}</p>
+    return `<section class="nt-ed panel ml-read"><div class="nt-bar"><button class="nt-b nt-backbtn" data-ml="back">${I('chevron-right', 16)}<span>Back</span></button><h3 class="nt-name ml-title" data-no-i18n>${esc(m.subject || uiText('(no subject)'))}</h3></div>
+      <p class="ml-meta" data-no-i18n>${esc(who(m.from))} &lt;${esc(m.from.address)}&gt; \u00b7 ${esc(new Date(m.date).toLocaleString(uiLocale()))}<br>${uiText('To')}: ${esc((m.to || []).map(a => a.address).join(', '))}</p>
       <pre class="ml-text" data-no-i18n>${esc(M.text)}</pre>${M.msg ? `<p class="nt-msg" role="status">${esc(M.msg)}</p>` : ''}
       <div class="nt-acts"><button class="nt-b go" data-ml="reply"><span>Reply</span></button><button class="nt-b" data-ml="replyAll"><span>Reply all</span></button><button class="nt-b" data-ml="forward"><span>Forward</span></button><button class="nt-b" data-ml="${m.seen ? 'unread' : 'read'}"><span>${m.seen ? 'Mark unread' : 'Mark read'}</span></button></div></section>`;
   }
@@ -91,7 +91,7 @@
     if (!M.accts.length || M.adding) return `<div class="nx-view enter ml">${nsHead('Mail', 'Your own mail client, searchable offline.', 'Tabellae')}<div class="og-wrap">${post(null, true)}${addForm()}</div></div>`;
     const a = M.accts.find(x => x.id === M.acc) || M.accts[0], last = a.lastSync ? `Synced ${dt(a.lastSync)}` : 'Not synced yet';
     if (M.tab === 'drafts' && !M.drafts) void loadDrafts();
-    const list = M.tab === 'drafts' ? (M.drafts || []).map(d => `<button class="nt-note ml-msg${M.d && M.d.id === d.id ? ' on' : ''}" data-ml-draft="${esc(d.id)}"><b data-no-i18n>${esc((d.to || []).map(x => x.address).join(', ') || '(no recipient)')}</b><span class="ml-sub" data-no-i18n>${esc(d.subject || '(no subject)')}</span></button>`).join('') || '<p class="nt-empty">No drafts.</p>'
+    const list = M.tab === 'drafts' ? (M.drafts || []).map(d => `<button class="nt-note ml-msg${M.d && M.d.id === d.id ? ' on' : ''}" data-ml-draft="${esc(d.id)}"><b data-no-i18n>${esc((d.to || []).map(x => x.address).join(', ') || uiText('(no recipient)'))}</b><span class="ml-sub" data-no-i18n>${esc(d.subject || uiText('(no subject)'))}</span></button>`).join('') || '<p class="nt-empty">No drafts.</p>'
       : M.msgs.map(row).join('') + (M.more ? '<button class="nt-b" data-ml="more"><span>Older</span></button>' : '') || `<p class="nt-empty">${M.q || M.unread ? 'No mail matches.' : 'No mail yet. Press Sync.'}</p>`;
     return `<div class="nx-view enter ml">${nsHead('Mail', 'Your own mail client, searchable offline.', 'Tabellae')}
       ${post(a)}<div class="nt-wrap${M.open ? ' nt-open' : ''}"><aside class="nt-list panel">
@@ -128,7 +128,7 @@
   let t = 0;
   document.addEventListener('input', e => {
     if (!e.target) return;
-    if (e.target.id === 'ml-body') { const c = document.getElementById('ml-count'); if (c) c.textContent = e.target.value.length + ' characters'; }
+    if (e.target.id === 'ml-body') { const c = document.getElementById('ml-count'); if (c) c.textContent = uiText(e.target.value.length + ' characters'); }
     if (e.target.id === 'ml-q') { M.q = e.target.value; clearTimeout(t); t = setTimeout(() => void loadList(), 300); }
   });
   document.addEventListener('keydown', e => { if (e.target && e.target.id === 'ml-body' && (e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); void review(); } });

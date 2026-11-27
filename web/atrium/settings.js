@@ -167,12 +167,12 @@
   }
   function backup() {
     const b = (D.backups || [])[0];
-    return `<div class="st-rowline"><span class="st-tool"><b>${b ? esc(b.name) : 'No backup yet'}</b><small>${b ? `${b.sizeMb} MB · ${new Date(b.at).toLocaleString('en', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : 'Take the first copy of settings, chats and keys.'}</small></span><span style="flex:1"></span>
+    return `<div class="st-rowline"><span class="st-tool"><b>${b ? esc(b.name) : 'No backup yet'}</b><small>${b ? `${b.sizeMb} MB · ${new Date(b.at).toLocaleString(uiLocale('en'), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : 'Take the first copy of settings, chats and keys.'}</small></span><span style="flex:1"></span>
       <button type="button" class="su-btn go" data-st="backup">${I('download', 16)}<span>Back up now</span></button></div>
       <p class="su-note">A consistent copy in the core's own backup folder. This card only takes copies; it never replaces your data.</p>`;
   }
   function data() {
-    const rows = (D.audit || []).slice(0, 12).map(r => `<div class="st-rowline"><span class="st-tool"><b>${esc(r.claim)}</b><small>${esc(r.actor)} · ${esc(r.subject_kind)} · ${esc(r.confidence)} · ${new Date(r.at).toLocaleString('en', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small></span></div>`).join('');
+    const rows = (D.audit || []).slice(0, 12).map(r => `<div class="st-rowline"><span class="st-tool"><b>${esc(r.claim)}</b><small>${esc(r.actor)} · ${esc(r.subject_kind)} · ${esc(r.confidence)} · ${new Date(r.at).toLocaleString(uiLocale('en'), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small></span></div>`).join('');
     return `<p class="su-note">Nothing leaves this machine unless an engine or server you added is used. The ledger below records private reads and refusals; it holds the claim, never the data.</p>
       ${rows ? `<div class="st-list">${rows}</div>` : '<p class="su-note">Nothing has been read or refused yet.</p>'}`;
   }

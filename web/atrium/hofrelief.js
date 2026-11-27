@@ -1,10 +1,10 @@
-/* Hall of Fame, relief style (opt-in: localStorage 'hof-style' = 'relief'). Approach B to the same card as hof3d.js:
-   the ten keepers are 2.5D reliefs made from the painted ape generals already in art/. A height map is derived once
-   per keeper on a canvas (luminance, edge-aware blur, a vertical swell), a high-resolution plane is displaced by it
-   in three.js (r128, WebGL2), lit by a key light and a rim from a normal map read off the height, graded to stone
-   in the theme tokens, and shaded with ASCII glyphs that burn bright on the edges and melt into smooth engraved stone in
-   the lit areas. The pointer or the phone's tilt turns the plaques; hover or a press lifts the keeper; the crystal and
-   the scar glow. Decoration only: the real .hof-spot links stay on top. Offline, no model, no download. */
+/* Hall of Fame: a 2.5D hall of real statues. The painted key art art/caesaros-thanks-statues.webp (eight stone statues on
+   plinths with torches, Caesar seen from behind) is the plate; two more statues are mirrored from it so ten keepers stand.
+   A depth and normal map is derived once from the painting (luminance, silhouette dome, ground ramp), then one fragment
+   shader on a full-card quad (three.js r128, WebGL2) does parallax from the pointer or the phone's tilt, relights the
+   stone from the torches (slow, bounded flicker) and from the hovered keeper, grades it into the theme tokens, and
+   engraves ASCII glyph cells over the shadows and edges. Hover or a press lifts and lights a statue and shows its
+   nameplate. Decoration only: the real .hof-spot links stay on top. Offline, no model, no download. */
 (() => {
   // no register(): the style is part of the hall module (hof3d), not a module of its own
   if (typeof HTMLElement === 'undefined' || !(document.body instanceof HTMLElement)) return;   // the registry test's stub
@@ -20,7 +20,7 @@
     PAL.key = key; PAL.p1.set(v[0]); PAL.p2.set(v[1]); PAL.gold.set(v[2]); PAL.mag.set(v[3]); PAL.bg.set(v[4]); PAL.ink.set(v[5]);
   }
   const stats = { running: false, statues: 0, frames: 0, avgMs: 0, hover: -1, ready: false };
-  const myHF3 = { stats: () => ({ running: stats.running, frames: stats.frames, avgMs: Math.round(stats.avgMs * 100) / 100, hover: stats.hover, ready: stats.ready, statues: stats.statues, style: 'relief' }) };
+  const myHF3 = { bench: (n = 30) => { if (!S.rnd) return -1; const gl = S.rnd.getContext(), t = performance.now(); for (let i = 0; i < n; i++) { draw(); gl.finish(); } return (performance.now() - t) / n; }, shot: () => { try { draw(); return S.cv ? S.cv.toDataURL('image/png') : ''; } catch { return ''; } }, stats: () => ({ running: stats.running, frames: stats.frames, avgMs: Math.round(stats.avgMs * 100) / 100, hover: stats.hover, ready: stats.ready, statues: stats.statues, style: 'relief' }) };
   if (isOn()) window.HF3 = myHF3;
 
   const reduced = () => {
@@ -43,15 +43,18 @@
     { epithet: 'The Watcher at the Gate', relic: 'the gate lantern', line: 'Lights the way in, and decides who may pass.' },
   ];
 
-  /* The troop: ten distinct painted generals. flip turns the outer ranks inward; mix leans a plaque toward the lead or the answer colour. */
-  const SRC = [
-    ['caesaros-caesar-portrait', 1, 0.0, 0.5], ['caesaros-crew-balbus', 0, 0.2, 0.5], ['caesaros-crew-vitruvius', 0, 0.8, 0.5], ['caesaros-crew-varro', 1, 0.5, 0.5], ['caesaros-crew-annona', 0, 1.0, 0.5],
-    ['caesaros-crew-calpurnia', 1, 0.15, 0.5], ['caesaros-crew-agrippa', 1, 0.7, 0.5], ['caesaros-tool-claudius', 1, 0.3, 0.5], ['caesaros-crew-clientdev', 1, 0.9, 0.5], ['caesaros-caesar-neo', 1, 0.5, 0.5],
-  ];
-  const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-  const TW = 256, TH = 312, PLINTH = 44, AREA = TH - PLINTH;   // plaque texture: art on top, a keeper's plinth below
 
-  /* ---------------- the relief maths (pure: also unit-tested) ---------------- */
+  /* ---------------- the plate: the painting, widened by two mirrored statues ---------------- */
+  const ART = 'art/caesaros-thanks-statues.webp';
+  const SW = 1800, PW = 2203, PH = 880, EXT0 = 222, EXT1 = 625;   // source width; plate size; the span mirrored onto the right
+  /* column edges per keeper (plate px): eight painted statues, then the mirrors of the third and second */
+  const BOUNDS = [0, 222, 425, 625, 870, 1150, 1365, 1585, 1800, 2000, 2203];
+  /* the nameplate of each keeper: x0, y0, x1, y1 (the painted ones carry their own glowing name; the two mirrored ones are redrawn) */
+  const PLAQUE = [[39, 522, 171, 595], [260, 555, 390, 613], [465, 562, 593, 622], [668, 570, 782, 625], [953, 570, 1085, 623], [1175, 567, 1313, 623], [1395, 557, 1525, 617], [1612, 525, 1755, 600], [1832, 562, 1960, 622], [2035, 555, 2165, 613]];
+  const TORCH = [200, 410, 612, 1135, 1365, 1583, 1813, 2015];   // the braziers between the plinths (plate x), burning at y 600
+  const HW = PW >> 1, HH = PH >> 1;                             // the depth map is half resolution
+
+  /* ---------------- the depth maths (pure: also unit-tested) ---------------- */
   function blur(src, w, h, r) {   // separable box blur, two passes ~ a gaussian
     const tmp = new Float32Array(src.length), out = new Float32Array(src.length);
     const pass = (a, b, horiz) => {
@@ -67,153 +70,120 @@
     return out;
   }
   const sstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  /* height 0..1 from RGBA pixels of the painted area: luminance, edge-aware blur (strong edges keep their detail),
-     a vertical swell so the bust leans toward the viewer, and a rounded rim so the plaque has a bevel. */
+  /* RGBA pixels of the painting -> { depth, nx, ny, mask } floats. The stone is a rounded body (a blurred silhouette dome)
+     carrying the painted detail (folds, cracks), standing on a floor that rises toward the viewer. */
   function heightMap(rgba, w, h) {
     const lum = new Float32Array(w * h);
-    for (let i = 0; i < w * h; i++) lum[i] = Math.pow((0.3 * rgba[i * 4] + 0.59 * rgba[i * 4 + 1] + 0.11 * rgba[i * 4 + 2]) / 255, 0.7);
-    const b = blur(lum, w, h, 4), out = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) lum[i] = (0.3 * rgba[i * 4] + 0.59 * rgba[i * 4 + 1] + 0.11 * rgba[i * 4 + 2]) / 255;
+    const fine = blur(lum, w, h, 1), soft = blur(lum, w, h, 5), mask = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) mask[i] = sstep(0.035, 0.1, soft[i]);
+    const dome = blur(mask, w, h, 10), wide = blur(mask, w, h, 26), hgt = new Float32Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const i = y * w + x, d = lum[i] - b[i];
-      const edge = sstep(0.05, 0.22, Math.abs(d));
-      const base = b[i] + d * edge * 0.9 + d * 0.15;                      // edge-aware: flat areas smooth, strong edges stay sharp
-      const swell = 0.32 * (y / h) + 0.22 * (1 - Math.pow(Math.hypot((x / w - 0.5) * 1.6, (y / h - 0.55) * 1.1), 1.2));
-      const rim = sstep(0, 10, Math.min(x, w - 1 - x, y));                // bevel at the plaque edge
-      out[i] = Math.max(0, Math.min(1, (0.5 * base + swell) * rim));
+      const i = y * w + x, ground = 0.04 + 0.2 * sstep(0.55, 1, y / h);
+      hgt[i] = ground + mask[i] * (0.22 * dome[i] + 0.2 * wide[i] + 0.34 * Math.min(1, fine[i] * 2.4) + 0.2 * Math.min(1, (lum[i] - soft[i]) * 6 + 0.5));
     }
-    return out;
+    const nx = new Float32Array(w * h), ny = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      nx[i] = hgt[i + 1] - hgt[i - 1]; ny[i] = hgt[i + w] - hgt[i - w];
+    }
+    return { depth: hgt, nx, ny, mask };
   }
 
-  /* ---------------- plaques: colour + height canvases per keeper, built once and kept ---------------- */
-  const plates = [];   // { col: CanvasTexture, dep: CanvasTexture, ok }
-  function plinthPath(x, ctx, k, cx, cy, s) {   // the relic mark: a cut-corner shape, one per keeper kind
-    ctx.beginPath();
-    const t = k % 5;
-    if (t === 0) { ctx.moveTo(cx, cy - s); ctx.lineTo(cx + s, cy); ctx.lineTo(cx, cy + s); ctx.lineTo(cx - s, cy); }
-    else if (t === 1) { ctx.rect(cx - s * .8, cy - s * .8, s * 1.6, s * 1.6); }
-    else if (t === 2) { ctx.moveTo(cx, cy - s); ctx.lineTo(cx + s, cy + s * .8); ctx.lineTo(cx - s, cy + s * .8); }
-    else if (t === 3) { const q = s * .38; ctx.moveTo(cx - q, cy - s); ctx.lineTo(cx + q, cy - s); ctx.lineTo(cx + q, cy - q); ctx.lineTo(cx + s, cy - q); ctx.lineTo(cx + s, cy + q); ctx.lineTo(cx + q, cy + q); ctx.lineTo(cx + q, cy + s); ctx.lineTo(cx - q, cy + s); ctx.lineTo(cx - q, cy + q); ctx.lineTo(cx - s, cy + q); ctx.lineTo(cx - s, cy - q); ctx.lineTo(cx - q, cy - q); }
-    else { ctx.moveTo(cx - s, cy - s); ctx.lineTo(cx + s * .4, cy - s); ctx.lineTo(cx + s, cy - s * .4); ctx.lineTo(cx + s, cy + s); ctx.lineTo(cx - s * .4, cy + s); ctx.lineTo(cx - s, cy + s * .4); }
-    ctx.closePath();
-  }
-  function buildPlate(i, img) {
-    const [, flip, fx] = SRC[i];
-    const c = document.createElement('canvas'); c.width = TW; c.height = TH;
+  /* the plate canvas: the painting, the mirrored span, and the two redrawn nameplates */
+  function buildPlate(img) {
+    const c = document.createElement('canvas'); c.width = PW; c.height = PH;
     const x = c.getContext('2d', { willReadFrequently: true });
-    x.fillStyle = '#05050a'; x.fillRect(0, 0, TW, TH);
-    // cover-crop the square painting into the art area; fx slides the crop sideways toward the face
-    const sw = img.naturalWidth * (TW / AREA > 1 ? 1 : TW / AREA), sh = sw * (AREA / TW), sx = (img.naturalWidth - sw) * fx, sy = 0;
-    x.save();
-    if (flip) { x.translate(TW, 0); x.scale(-1, 1); }
-    x.drawImage(img, sx, sy, sw, Math.min(sh, img.naturalHeight), 0, 0, TW, AREA);
+    x.fillStyle = '#05050a'; x.fillRect(0, 0, PW, PH);
+    x.drawImage(img, 0, 0, SW, PH, 0, 0, SW, PH);   // the painting is 1800 wide; the plate keeps its top 880
+    x.save(); x.translate(SW + EXT1, 0); x.scale(-1, 1);   // mirror of x 222..625 laid to the right of the picture, so the braziers stay between statues
+    x.drawImage(img, EXT0, 0, EXT1 - EXT0, PH, EXT0, 0, EXT1 - EXT0, PH);
     x.restore();
-    const art = x.getImageData(0, 0, TW, AREA);
-    const hm = heightMap(art.data, TW, AREA);
-    const d = document.createElement('canvas'); d.width = TW; d.height = TH;
-    const dx = d.getContext('2d'), out = dx.createImageData(TW, TH);
-    for (let p = 0; p < TW * TH; p++) {
-      const y = (p / TW) | 0, xx = p % TW;
-      let v;
-      if (y < AREA) v = hm[p];
-      else { const k = (y - AREA) / PLINTH; v = 0.7 + 0.1 * Math.min(1, k * 4) * sstep(0, 6, Math.min(xx, TW - 1 - xx)); }   // the plinth is a raised block
-      out.data[p * 4] = out.data[p * 4 + 1] = out.data[p * 4 + 2] = Math.round(v * 255); out.data[p * 4 + 3] = 255;
+    for (let i = 0; i < 10; i++) {   // every plaque becomes a fresh engraved slab: the painted lettering is too small to read, the link's own label carries the name
+      const [x0, y0, x1, y1] = PLAQUE[i], g = x.createLinearGradient(0, y0, 0, y1);
+      g.addColorStop(0, '#5a361d'); g.addColorStop(1, '#341e10');
+      x.fillStyle = g; x.fillRect(x0, y0, x1 - x0, y1 - y0);
+      x.strokeStyle = '#a06a30'; x.lineWidth = 2; x.strokeRect(x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2);
     }
-    dx.putImageData(out, 0, 0);
-    // plinth colour: dark stone, gold rule, the numeral and the relic mark
-    const g = x.createLinearGradient(0, AREA, 0, TH); g.addColorStop(0, '#4a4034'); g.addColorStop(1, '#1b160f');
-    x.fillStyle = g; x.fillRect(0, AREA, TW, PLINTH);
-    x.fillStyle = '#d9b26a'; x.fillRect(0, AREA, TW, 2);
-    x.font = '700 22px ui-monospace, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.fillText(ROMAN[i], TW / 2 + 14, AREA + PLINTH / 2 + 2);
-    plinthPath(x, x, i, TW / 2 - 24, AREA + PLINTH / 2 + 1, 9); x.fill();
-    const col = new THREE.CanvasTexture(c), dep = new THREE.CanvasTexture(d);
-    col.minFilter = dep.minFilter = THREE.LinearFilter; col.generateMipmaps = dep.generateMipmaps = false;
-    plates[i] = { col, dep };
+    return c;
   }
-  function loadPlate(i) {
-    return new Promise((res) => {
-      const img = new Image();
-      img.onload = () => { try { buildPlate(i, img); } catch { /* one keeper missing, the rest stand */ } res(); };
-      img.onerror = () => res();
-      img.src = 'art/' + SRC[i][0] + '.webp';
-    });
+  function buildDepth(plate) {   // normal + depth texture: R,G = slope, B = depth, A = silhouette
+    const hc = document.createElement('canvas'); hc.width = HW; hc.height = HH;
+    const hx = hc.getContext('2d', { willReadFrequently: true });
+    hx.drawImage(plate, 0, 0, HW, HH);
+    const m = heightMap(hx.getImageData(0, 0, HW, HH).data, HW, HH);
+    const data = new Uint8Array(HW * HH * 4);
+    for (let y = 0; y < HH; y++) for (let xx = 0; xx < HW; xx++) {
+      const s = y * HW + xx, d = ((HH - 1 - y) * HW + xx) * 4;   // texture rows run bottom to top
+      data[d] = Math.max(0, Math.min(255, Math.round(128 + m.nx[s] * 900)));
+      data[d + 1] = Math.max(0, Math.min(255, Math.round(128 + m.ny[s] * 900)));
+      data[d + 2] = Math.round(Math.min(1, m.depth[s]) * 255); data[d + 3] = Math.round(m.mask[s] * 255);
+    }
+    const t = new THREE.DataTexture(data, HW, HH, THREE.RGBAFormat, THREE.UnsignedByteType);
+    t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.flipY = false; t.needsUpdate = true;
+    return t;
   }
 
-  /* ---------------- shaders ---------------- */
-  const VERT = `
-    uniform sampler2D uDep; uniform float uAmp;
-    varying vec2 vUv; varying vec3 vTx; varying vec3 vTy; varying vec3 vTz;
-    void main(){
-      vUv = uv;
-      float d = texture2D(uDep, uv).r;
-      vec3 p = position; p.z += (d - 0.35) * uAmp;
-      vTx = normalize(normalMatrix * vec3(1.,0.,0.)); vTy = normalize(normalMatrix * vec3(0.,1.,0.)); vTz = normalize(normalMatrix * vec3(0.,0.,1.));
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.);
-    }`;
+  /* ---------------- the shader ---------------- */
+  const VERT = 'void main(){ gl_Position = vec4(position.xy, 0., 1.); }';
   const FRAG = `
     precision highp float;
-    uniform sampler2D uCol, uDep, uGlyph;
-    uniform vec2 uTex, uSize; uniform float uCell, uGlyphN, uCut, uT, uLift, uDim, uMix, uReveal, uSeed, uAscii;
-    uniform vec3 uP1, uP2, uGold, uMag, uBg, uInk; uniform vec2 uTilt;
-    varying vec2 vUv; varying vec3 vTx; varying vec3 vTy; varying vec3 vTz;
-    float gEdge, gMag;
-    float hgt(vec2 uv){ return texture2D(uDep, uv).r; }
-    // the lit, graded stone colour at a texture position; also fills the edge and crystal masks
-    vec4 shade(vec2 uv){
-      vec3 src = texture2D(uCol, uv).rgb;
-      float L0 = dot(src, vec3(.3,.59,.11));
-      vec2 e = uTex;
-      float dx = hgt(uv + vec2(e.x,0.)) - hgt(uv - vec2(e.x,0.));
-      float dy = hgt(uv + vec2(0.,e.y)) - hgt(uv - vec2(0.,e.y));
-      vec3 nO = normalize(vec3(-dx * 7., -dy * 7., 1.));
-      vec3 n = normalize(nO.x * vTx + nO.y * vTy + nO.z * vTz);
-      vec3 Ld = normalize(vec3(-.5 + uTilt.x * .7, .6 + uTilt.y * .5, .75));
-      float breath = .9 + .1 * sin(uT * .9 + uSeed * 2.1);
-      float diff = max(dot(n, Ld), 0.);
-      float spec = pow(max(dot(n, normalize(Ld + vec3(0.,0.,1.))), 0.), 22.);
-      float rim = pow(1. - max(n.z, 0.), 2.4);
-      gEdge = smoothstep(.35, .9, length(vec2(dx, dy)) * 9.);
-      // crystal and scar: strong magenta in the painting
-      gMag = smoothstep(.28, .5, (src.r + src.b) * .5 - src.g * 1.15) * step(.55, src.r) * step(.5, src.b);
-      float paint = pow(L0, .85);
-      float lit = (.16 + diff * .95 * breath) * (.35 + 1.05 * paint) + spec * .35 * (.3 + paint);
-      lit = pow(clamp(lit, 0., 1.), .95) * .92 * uDim * (1. + uLift * .35);
-      vec3 stone = mix(uBg * 1.5, uInk, clamp(lit, 0., 1.));
-      vec3 tint = mix(uP1, uP2, uMix);
-      stone = mix(stone, stone * (.3 + tint * .95), .6);
-      stone = mix(stone, vec3(dot(src, vec3(.33))) * tint * 1.4 + stone * .5, .18);     // a little of the painted colour survives
-      stone += rim * mix(uP2, uGold, .35) * (.5 + .4 * uLift);
-      stone += uMag * gMag * (1.7 + .45 * sin(uT * 1.7 + uSeed));
-      return vec4(stone, clamp(lit, 0., 1.));
+    uniform sampler2D uAlb, uNrm, uGlyph;
+    uniform vec2 uRes; uniform vec4 uView; uniform vec2 uPar, uPlate;
+    uniform float uT, uCell, uGlyphN, uReveal, uAscii, uHot, uB[11], uLift[10]; uniform vec3 uTorch[8]; uniform vec4 uPq[10];
+    uniform vec3 uP1, uP2, uGold, uMag, uBg, uInk;
+    float gEdge, gEm;
+    float liftAt(float u){ float l = 0.; for (int i = 0; i < 10; i++) { float a = smoothstep(uB[i] - .004, uB[i] + .004, u) * (1. - smoothstep(uB[i+1] - .004, uB[i+1] + .004, u)); l += a * uLift[i]; } return l; }
+    vec3 grade(float v){
+      vec3 c = mix(uBg * 1.1, uP1 * .5, smoothstep(0., .3, v));
+      c = mix(c, uP1 * 1.0, smoothstep(.28, .62, v));
+      return mix(c, mix(uGold, uP1 * 1.5, .3) * .95, smoothstep(.62, 1.1, v));
+    }
+    // the lit, graded stone at a screen position (0..1); fills gEdge
+    vec4 shade(vec2 s){
+      vec2 uv = vec2(uView.x + s.x * uView.y, uView.z + s.y * uView.w);
+      vec4 n0 = texture2D(uNrm, uv);
+      float lift = liftAt(uv.x) * smoothstep(.04, .45, n0.a);   // the light follows the statue, not the column
+      vec2 pr = uPar * vec2(.0075, .011) * (1. + lift * .8);
+      uv -= pr * (n0.b - .4);
+      vec4 nm = texture2D(uNrm, uv);
+      vec3 alb = texture2D(uAlb, uv).rgb;
+      float L0 = dot(alb, vec3(.3, .59, .11));
+      vec3 N = normalize(vec3((nm.xy * 2. - 1.) * 3.2, 1.));
+      float lit = .2;
+      for (int i = 0; i < 8; i++) {
+        float fl = .9 + .1 * sin(uT * 1.7 + float(i) * 2.3) * sin(uT * .6 + float(i));
+        vec3 d = vec3((uTorch[i].xy - uv) * uPlate, 70.);
+        float a = 1. / (1. + dot(d, d) / 90000.);
+        lit += uTorch[i].z * fl * a * (.25 + max(dot(N, normalize(d)), 0.) * 1.1);
+      }
+      vec3 Ld = normalize(vec3(-.45 + uPar.x * .5, .65 - uPar.y * .4, .6));
+      lit += (.06 + .4 * max(dot(N, Ld), 0.)) * (.35 + lift);          // a cool key from above, brighter on the lit keeper
+      float rim = pow(1. - clamp(N.z, 0., 1.), 1.6);
+      float form = pow(clamp(L0 * 1.9, 0., 1.), .9);
+      float v = form * lit * (1. + lift * .7) + rim * lift * .5 + step(.5, L0) * lift * .35;
+      v *= mix(.45, 1., smoothstep(.0, .42, uv.y));                      // depth fog: the vault falls into dark
+      gEdge = smoothstep(.05, .5, length(nm.xy * 2. - 1.)) * nm.a;
+      float inq = 0.; for (int i = 0; i < 10; i++) inq = max(inq, step(uPq[i].x, uv.x) * step(uv.x, uPq[i].z) * step(uPq[i].y, uv.y) * step(uv.y, uPq[i].w));
+      gEm = inq;                                   // the glowing plaque lettering is its own light
+      v = mix(v, .2 + L0 * .5 + lift * .32 + .03 * sin(uT * 1.3 + uv.x * 40.), gEm);   // a glowing slab behind the engraved name
+      vec3 col = grade(clamp(v, 0., 1.4));
+      col += uMag * smoothstep(.28, .5, (alb.r + alb.b) * .5 - alb.g * 1.15) * step(.5, alb.b) * 1.2;   // the crystal, if the art holds one
+      return vec4(col, clamp(v, 0., 1.));
     }
     void main(){
-      vec2 px = vUv * uSize;
-      vec2 q = min(px, uSize - px);
-      if (q.x + q.y < uCut) discard;                                        // cut corners, no round shapes
-      vec2 fc = gl_FragCoord.xy / uCell;
-      vec2 cellC = (floor(fc) + .5) * uCell;
-      vec2 ddx = dFdx(vUv), ddy = dFdy(vUv);
-      vec2 uvC = vUv + ddx * (cellC.x - gl_FragCoord.x) + ddy * (cellC.y - gl_FragCoord.y);
-      vec4 smooth_ = shade(vUv); float eS = gEdge, mS = gMag;
-      vec4 cellv = shade(uvC);   float eC = gEdge, mC = gMag;
-      float L = cellv.a;
-      // glyph: density follows luminance; edges and the crystal jump a few steps up
-      float idx = floor(clamp(L * .9 + eC * .45 + mC * .5, 0., .999) * uGlyphN);
-      vec2 loc = fract(fc);
-      float cov = texture2D(uGlyph, vec2((idx + loc.x) / uGlyphN, loc.y)).r;
-      // lit areas melt into smooth engraved stone; shadow, mids and every edge stay ASCII
-      float a = clamp((1. - smoothstep(.16, .46, L)) * .9 + eC * 1.1 + mC, 0., 1.) * uAscii;
-      vec3 gcol = mix(mix(uP1, uP2, uMix) * 1.25, mix(uGold, vec3(1.), .3), clamp(eC * 1.2, 0., 1.));
-      gcol = mix(gcol, uMag * 1.6, mC);
-      vec3 cellBg = smooth_.rgb * .42;
-      vec3 ascii = mix(cellBg, gcol * (.55 + L * .9) * uDim, cov);
-      vec3 col = mix(smooth_.rgb, ascii, a);
-      // engraved frame: a thin gold bevel following the cut corners
-      float fr = min(min(q.x, q.y), (q.x + q.y - uCut) * .7071);
-      float line = 1. - smoothstep(1., 2.6, fr);
-      col = mix(col, mix(uGold, uP1, .35) * (.55 + .5 * uLift), line * .85);
-      float edgeFade = smoothstep(0., 1.2, fr);
-      gl_FragColor = vec4(col * uReveal, edgeFade);
+      vec2 fc = gl_FragCoord.xy / uCell, cellC = (floor(fc) + .5) * uCell / uRes;
+      vec4 sm = shade(gl_FragCoord.xy / uRes);
+      vec4 ce = shade(cellC); float eC = gEdge, mC = gEm;
+      float L = ce.a;
+      float idx = floor(clamp(L * .95 + eC * .35, 0., .999) * uGlyphN);
+      float cov = texture2D(uGlyph, vec2((idx + fract(fc.x)) / uGlyphN, fract(fc.y))).r;
+      float a = (uAscii * (1. - smoothstep(.22, .62, L)) * .75 + uAscii * eC * .25) * (1. - mC);
+      vec3 gcol = mix(uP1 * 1.3, mix(uGold, vec3(1.), .25), clamp(eC * 1.2, 0., 1.)) * (.5 + L);
+      vec3 col = mix(sm.rgb, mix(sm.rgb * .6, gcol, cov), a);
+      vec2 q = gl_FragCoord.xy / uRes - .5;
+      col *= 1. - .55 * dot(q, q) * 1.6;                                 // vignette
+      gl_FragColor = vec4(col * uReveal, 1.);
     }`;
 
   function glyphAtlas(n, cellPx) {   // ramp of ten glyphs, dark to dense, white on black, one row
@@ -228,81 +198,57 @@
   }
 
   /* ---------------- the stage ---------------- */
-  const S = { el: null, cv: null, rnd: null, scene: null, cam: null, meshes: [], glyph: null, spots: [], rects: [], pan: 0, panMax: 0, tx: 0, ty: 0, ax: 0, ay: 0, hov: -1, lift: [], w: 0, h: 0,
-    drag: null, suppress: false, wanted: false, raf: 0, t0: 0, last: 0, io: null, ro: null, bad: false, lost: false, legend: null, still: '', loading: null, cell: 6, bound: false, gyro: false };
+  const S = { el: null, cv: null, rnd: null, scene: null, cam: null, mat: null, glyph: null, alb: null, nrm: null, spots: [], pan: 0, panMax: 0, pw: 0, ph: 0, tx: 0, ty: 0, ax: 0, ay: 0, hov: -1, lift: new Array(10).fill(0), w: 0, h: 0,
+    drag: null, suppress: false, wanted: false, raf: 0, t0: 0, last: 0, io: null, ro: null, bad: false, lost: false, legend: null, still: '', loading: null, bound: false, gen: 0, pr: 1, nav: null, plate: null };
+  const colOf = (px) => { const u = (px - S.pan) / S.pw * PW; for (let i = 0; i < 10; i++) if (u >= BOUNDS[i] && u < BOUNDS[i + 1]) return i; return -1; };
 
-  /* layout: two ranks (back and front) so ten keepers read large; on a narrow hall they are wider than the card and pan sideways */
   function layout() {
-    const { w, h } = S, n = 10, narrow = w < 700;
-    const pw = narrow ? w * 0.5 : w * 0.185, ph = pw * (TH / TW), pitch = narrow ? pw * 0.56 : w * 0.0865;
-    const total = pitch * (n - 1) + pw, margin = narrow ? 0 : (w - (pitch * (n - 1) + pw)) / 2;
-    S.panMax = Math.max(0, total - w);
-    const rowDy = ph * 0.66, span = ph + rowDy, top0 = Math.max(6, (h - span) / 2);
-    S.rects = [];
-    for (let i = 0; i < n; i++) {
-      const front = i % 2 === 1, sc = front ? 1 : 0.92;
-      const cw = pw * sc, ch = ph * sc, left = margin + i * pitch + (pw - cw) / 2;
-      S.rects.push({ x: left, y: top0 + (front ? rowDy : 0) + (ph - ch) / 2, w: cw, h: ch, front, sc });
-    }
-    S.cell = 5;
+    const { w, h } = S, s = Math.max(w / PW, h / PH) * (w < 700 ? 1.25 : 1);   // a phone shows about three keepers, drag or buttons for the rest
+    S.pw = PW * s; S.ph = PH * s; S.panMax = Math.max(0, S.pw - w);
     S.pan = Math.max(-S.panMax, Math.min(0, S.pan));
-    applyPan();
+    S.spots.forEach((a, i) => {
+      const x0 = BOUNDS[i] * s, x1 = BOUNDS[i + 1] * s, pq = PLAQUE[i], sp = a.firstElementChild;
+      a.style.left = (x0 + S.pan) + 'px'; a.style.width = (x1 - x0) + 'px'; a.style.top = '0px'; a.style.height = '100%';
+      if (sp) { const pwid = (pq[2] - pq[0]) * s; sp.style.width = pwid + 'px'; sp.style.fontSize = Math.max(7.5, Math.min(11, pwid / ((sp.textContent || 'x').length * 0.64))) + 'px'; sp.style.left = (((pq[0] + pq[2]) / 2 * s - x0) / (x1 - x0) * 100) + '%'; sp.style.top = ((pq[1] + pq[3]) / 2 * s) + 'px'; sp.style.bottom = 'auto'; }
+    });
+    if (S.nav) S.nav.forEach((b) => { b.hidden = S.panMax < 2; });
   }
   function applyPan() {
-    S.spots.forEach((a, i) => {
-      const r = S.rects[i]; if (!r) return;
-      a.style.left = (r.x + S.pan) + 'px'; a.style.top = r.y + 'px'; a.style.width = r.w + 'px'; a.style.height = r.h + 'px';
-    });
+    const s = S.pw / PW;
+    S.spots.forEach((a, i) => { a.style.left = (BOUNDS[i] * s + S.pan) + 'px'; });
   }
-  function placeMeshes() {
-    S.meshes.forEach((m, i) => {
-      const r = S.rects[i]; if (!r) return;
-      const lift = S.lift[i] || 0;
-      m.scale.setScalar(r.w / m.userData.pw * (1 + lift * 0.05));
-      m.position.set(r.x + S.pan + r.w / 2 - S.w / 2, S.h / 2 - (r.y + r.h / 2) + lift * 9, (r.front ? 40 : 0) + lift * 45);
-      m.rotation.y = S.ax * 0.3 + (i % 2 ? -0.03 : 0.03); m.rotation.x = -S.ay * 0.16;
-      m.renderOrder = r.front ? 1 : 0;
-      m.material.uniforms.uLift.value = lift;
-    });
+  function uniforms() {
+    const U = S.mat.uniforms, { w, h } = S;
+    U.uRes.value.set(w * S.pr, h * S.pr);
+    const sy = Math.min(1, h / S.ph);
+    U.uView.value.set(-S.pan / S.pw, w / S.pw, 1 - sy, sy);
+    U.uPlate.value.set(PW, PH);
+    U.uCell.value = (w < 700 ? 5 : 6) * S.pr;
   }
-
   function buildScene() {
-    const { w, h } = S, D = 1500;
-    S.cam = new THREE.PerspectiveCamera(2 * Math.atan(h / 2 / D) * 180 / Math.PI, w / h, 100, 4000);
-    S.cam.position.set(0, 0, D);
-    S.scene = new THREE.Scene();
+    S.scene = new THREE.Scene(); S.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     S.glyph = glyphAtlas(10, 16);
-    S.meshes = [];
-    for (let i = 0; i < 10; i++) {
-      const p = plates[i]; if (!p) continue;
-      const pw = 100, ph = pw * (TH / TW);
-      const U = {
-        uCol: { value: p.col }, uDep: { value: p.dep }, uGlyph: { value: S.glyph }, uTex: { value: new THREE.Vector2(1 / TW, 1 / TH) }, uSize: { value: new THREE.Vector2(1, 1) },
-        uCell: { value: 6 }, uGlyphN: { value: 10 }, uCut: { value: 14 }, uT: { value: 0 }, uLift: { value: 0 }, uDim: { value: i % 2 ? 1 : 0.8 }, uMix: { value: [0, 1, 0.5, 0.2, 0.8][i % 5] },
-        uReveal: { value: 0 }, uSeed: { value: i }, uAscii: { value: 1 }, uAmp: { value: 0.16 * pw }, uTilt: { value: new THREE.Vector2() },
-        uP1: { value: PAL.p1 }, uP2: { value: PAL.p2 }, uGold: { value: PAL.gold }, uMag: { value: PAL.mag }, uBg: { value: PAL.bg }, uInk: { value: PAL.ink },
-      };
-      const mat = new THREE.ShaderMaterial({ uniforms: U, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: true });
-      const geo = new THREE.PlaneGeometry(pw, ph, 96, 120);
-      const m = new THREE.Mesh(geo, mat); m.userData.pw = pw; m.userData.i = i;
-      S.scene.add(m); S.meshes[i] = m;
-    }
-    stats.statues = S.meshes.filter(Boolean).length;
-    return stats.statues > 0;
+    const U = {
+      uAlb: { value: S.alb }, uNrm: { value: S.nrm }, uGlyph: { value: S.glyph }, uRes: { value: new THREE.Vector2(1, 1) }, uView: { value: new THREE.Vector4(0, 1, 0, 1) }, uPar: { value: new THREE.Vector2() }, uPlate: { value: new THREE.Vector2(PW, PH) },
+      uT: { value: 0 }, uCell: { value: 6 }, uGlyphN: { value: 10 }, uReveal: { value: 0 }, uAscii: { value: 1 }, uHot: { value: -1 },
+      uB: { value: BOUNDS.map((b) => b / PW) }, uPq: { value: PLAQUE.map(([a, b, c, d]) => new THREE.Vector4(a / PW, 1 - d / PH, c / PW, 1 - b / PH)) }, uLift: { value: new Array(10).fill(0) }, uTorch: { value: TORCH.map((x) => new THREE.Vector3(x / PW, 1 - 600 / PH, 1)) },
+      uP1: { value: PAL.p1 }, uP2: { value: PAL.p2 }, uGold: { value: PAL.gold }, uMag: { value: PAL.mag }, uBg: { value: PAL.bg }, uInk: { value: PAL.ink },
+    };
+    S.mat = new THREE.ShaderMaterial({ uniforms: U, vertexShader: VERT, fragmentShader: FRAG, depthTest: false, depthWrite: false });
+    S.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), S.mat));
+    stats.statues = 10;
+    return true;
   }
-  function sizeUniforms() {   // pixel size of a plaque so the corner cut and frame stay a fixed few pixels
-    S.meshes.forEach((m, i) => { const r = S.rects[i]; if (m && r) { m.material.uniforms.uSize.value.set(r.w, r.h); m.material.uniforms.uCut.value = Math.max(10, r.w * 0.085); m.material.uniforms.uCell.value = S.cell * (S.rnd ? S.rnd.getPixelRatio() : 1); } });
-  }
-
   function measure() {
     if (!S.el) return;
     const b = S.el.getBoundingClientRect();
     if (!b.width || !b.height) return;
     S.w = b.width; S.h = b.height;
     S.spots = [...S.el.querySelectorAll('.hof-spot')];
-    if (S.rnd) S.rnd.setSize(S.w, S.h);
-    if (S.cam) { S.cam.fov = 2 * Math.atan(S.h / 2 / 1500) * 180 / Math.PI; S.cam.aspect = S.w / S.h; S.cam.updateProjectionMatrix(); }
-    layout(); sizeUniforms(); placeMeshes();
+    S.pr = Math.min(window.devicePixelRatio || 1, 1.5);
+    if (S.rnd) { S.rnd.setPixelRatio(S.pr); S.rnd.setSize(S.w, S.h, false); }
+    layout();
+    if (S.mat) uniforms();
     if (S.rnd && S.scene) draw();
   }
   function draw() { if (S.rnd && S.scene && !S.lost) S.rnd.render(S.scene, S.cam); }
@@ -313,16 +259,13 @@
     if (!S.t0) S.t0 = now;
     const t = (now - S.t0) / 1000, dt = Math.min(0.05, (now - (S.last || now)) / 1000); S.last = now;
     readPal();
-    const k = 1 - Math.exp(-dt * 6);
+    const k = 1 - Math.exp(-dt * 5);
     S.ax += (S.tx - S.ax) * k; S.ay += (S.ty - S.ay) * k;
-    S.meshes.forEach((m, i) => {
-      const goal = i === S.hov ? 1 : 0;
-      S.lift[i] = (S.lift[i] || 0) + (goal - (S.lift[i] || 0)) * (1 - Math.exp(-dt * 9));
-      const u = m.material.uniforms;
-      u.uT.value = t; u.uTilt.value.set(S.ax, S.ay);
-      u.uReveal.value = Math.min(1, (now - S.t0) / 900);   // wall clock: a slow GPU still fades in on time
-    });
-    placeMeshes(); draw();
+    const U = S.mat.uniforms;
+    for (let i = 0; i < 10; i++) { S.lift[i] += ((i === S.hov ? 1 : 0) - S.lift[i]) * (1 - Math.exp(-dt * 8)); U.uLift.value[i] = S.lift[i]; }
+    U.uT.value = t; U.uPar.value.set(S.ax, S.ay);
+    U.uReveal.value = Math.min(1, (now - S.t0) / 900);   // wall clock: a slow GPU still fades in on time
+    draw();
     stats.frames++;
     const ms = performance.now() - t0; stats.avgMs = stats.avgMs ? stats.avgMs * 0.9 + ms * 0.1 : ms;
   }
@@ -330,6 +273,7 @@
     if (v && !S.raf && S.rnd && S.scene && !calm()) { S.last = 0; S.raf = requestAnimationFrame(frame); stats.running = true; }
     else if (!v && S.raf) { cancelAnimationFrame(S.raf); S.raf = 0; stats.running = false; }
   }
+  function mark() { S.spots.forEach((a, i) => a.classList.toggle('hf-hot', i === S.hov)); }
 
   /* ---------------- legend (same card as the default style) ---------------- */
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -366,16 +310,15 @@
   }
 
   /* ---------------- input ---------------- */
-  function hit(e) {   // front rank first: it is drawn on top
-    const order = [...S.rects.keys()].sort((a, b) => (S.rects[b].front | 0) - (S.rects[a].front | 0));
-    const r = S.el.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-    for (const i of order) { const q = S.rects[i]; if (x >= q.x + S.pan && x <= q.x + S.pan + q.w && y >= q.y && y <= q.y + q.h) return i; }
-    return -1;
+  function panTo(i) {
+    const s = S.pw / PW, mid = (BOUNDS[i] + BOUNDS[i + 1]) / 2 * s;
+    S.pan = Math.max(-S.panMax, Math.min(0, S.w / 2 - mid)); applyPan(); uniforms(); if (calm()) draw();
   }
   function bind() {
     const el = S.el;
     el.addEventListener('click', (e) => {
       if (S.suppress) { S.suppress = false; e.preventDefault(); e.stopPropagation(); return; }
+      if (e.target.closest && e.target.closest('.hf3-nav')) return;
       const a = e.target.closest && e.target.closest('.hof-spot');
       if (!a) { closeLegend(); return; }
       e.preventDefault(); e.stopPropagation();
@@ -384,43 +327,53 @@
     el.addEventListener('pointermove', (e) => {
       const r = el.getBoundingClientRect();
       S.tx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1)); S.ty = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height) * 2 - 1));
-      S.hov = hit(e); stats.hover = S.hov;
-      if (calm()) draw();
-    });
-    el.addEventListener('pointerdown', (e) => { S.hov = hit(e); stats.hover = S.hov; S.drag = { x: e.clientX, pan: S.pan, moved: false }; });   // touch has no hover: a press lifts the keeper
-    el.addEventListener('pointerleave', () => { S.tx = 0; S.ty = 0; S.hov = -1; stats.hover = -1; });
-    el.addEventListener('focusin', (e) => {
-      const a = e.target.closest && e.target.closest('.hof-spot'); if (!a) return;
-      S.hov = S.spots.indexOf(a); stats.hover = S.hov;
-      const r = S.rects[S.hov]; if (r) { S.pan = Math.max(-S.panMax, Math.min(0, S.w / 2 - (r.x + r.w / 2))); applyPan(); }   // a keeper past the edge comes to the middle
+      S.hov = colOf(e.clientX - r.left); stats.hover = S.hov; mark();
       if (calm()) still(S.hov);
     });
-    el.addEventListener('focusout', () => { S.hov = -1; stats.hover = -1; if (calm()) still(); });
+    el.addEventListener('pointerdown', (e) => { S.hov = colOf(e.clientX - el.getBoundingClientRect().left); stats.hover = S.hov; mark(); S.drag = { x: e.clientX, pan: S.pan, moved: false }; });   // touch has no hover: a press lifts the keeper
+    el.addEventListener('pointerleave', () => { S.tx = 0; S.ty = 0; S.hov = -1; stats.hover = -1; mark(); if (calm()) still(); });
+    el.addEventListener('focusin', (e) => {
+      const a = e.target.closest && e.target.closest('.hof-spot'); if (!a) return;
+      S.hov = S.spots.indexOf(a); stats.hover = S.hov; mark();
+      if (S.hov >= 0) panTo(S.hov);   // a keeper past the edge comes to the middle
+      if (calm()) still(S.hov);
+    });
+    el.addEventListener('focusout', () => { S.hov = -1; stats.hover = -1; mark(); if (calm()) still(); });
     if (S.bound) return;
     S.bound = true;
     addEventListener('pointermove', (e) => {
       if (!S.drag || !S.el) return;
       const dx = e.clientX - S.drag.x;
       if (Math.abs(dx) > 8) S.drag.moved = true;
-      if (S.drag.moved) { S.pan = Math.max(-S.panMax, Math.min(0, S.drag.pan + dx)); applyPan(); if (calm()) { placeMeshes(); draw(); } }
+      if (S.drag.moved) { S.pan = Math.max(-S.panMax, Math.min(0, S.drag.pan + dx)); applyPan(); uniforms(); if (calm()) draw(); }
     }, { passive: true });
     const up = () => { if (!S.drag) return; if (S.drag.moved) { S.suppress = true; setTimeout(() => { S.suppress = false; }, 350); } S.drag = null; };
     addEventListener('pointerup', up, { passive: true }); addEventListener('pointercancel', () => { S.drag = null; }, { passive: true });
-    addEventListener('deviceorientation', (e) => {   // a phone's own tilt turns the plaques; no permission prompt, silent where denied
+    addEventListener('deviceorientation', (e) => {   // a phone's own tilt turns the hall; no permission prompt, silent where denied
       if (e.gamma == null || !S.el || calm()) return;
       S.tx = Math.max(-1, Math.min(1, e.gamma / 30)); S.ty = Math.max(-1, Math.min(1, ((e.beta || 45) - 45) / 30));
     }, { passive: true });
   }
+  function addNav(el) {   // the row is wider than a phone: previous and next keepers by button as well as by drag
+    const mk = (cls, dir) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'hf3-nav ' + cls; b.setAttribute('aria-label', dir < 0 ? 'Previous keeper' : 'Next keeper'); b.hidden = true;
+      b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><polyline points="15,5 8,12 15,19"/></svg>';
+      b.addEventListener('click', (e) => { e.stopPropagation(); const s = S.pw / PW, mid = (-S.pan + S.w / 2) / s; let c = BOUNDS.findIndex((v, i) => i < 10 && mid >= v && mid < BOUNDS[i + 1]); c = Math.max(0, Math.min(9, c + dir)); panTo(c); });
+      el.appendChild(b); return b;
+    };
+    S.nav = [mk('hf3-prev', -1), mk('hf3-next', 1)];
+  }
 
   /* ---------------- mount / still frame ---------------- */
   function still(lit = -1) {
-    if (!S.rnd) return;
-    S.meshes.forEach((m, i) => { m.material.uniforms.uReveal.value = 1; m.material.uniforms.uT.value = 2; S.lift[i] = i === lit ? 1 : 0; });
-    S.tx = S.ty = S.ax = S.ay = 0; S.hov = lit; placeMeshes(); draw();
+    if (!S.rnd || !S.mat) return;
+    const U = S.mat.uniforms;
+    for (let i = 0; i < 10; i++) { S.lift[i] = i === lit ? 1 : 0; U.uLift.value[i] = S.lift[i]; }
+    U.uReveal.value = 1; U.uT.value = 2; U.uPar.value.set(0, 0); S.tx = S.ty = S.ax = S.ay = 0; S.hov = lit; mark(); draw();
     try {
       S.still = S.rnd.domElement.toDataURL('image/png');
       const fb = S.el.querySelector('.hof-fallback');
-      if (fb) { fb.src = S.still; fb.alt = 'The hall of the keepers: ten relief plaques of ape generals in ASCII-engraved stone.'; }
+      if (fb) fb.src = S.still;   // the alt text stays the translated one from the card
     } catch { /* no still: the card keeps its picture */ }
   }
   function applyCalm() {
@@ -432,44 +385,56 @@
       if (fb && S.still) fb.style.display = '';
     } else { if (S.cv) S.cv.hidden = false; if (fb) fb.style.display = 'none'; }
   }
+  const loadImg = () => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = ART; });
+  let PLATE = null;   // { alb, nrm } built once and kept across remounts
   async function mount(el) {
     if (S.bad || S.loading) return;
     const cv = document.createElement('canvas');
     cv.className = 'hf3'; cv.setAttribute('aria-hidden', 'true');
-    const gl = cv.getContext('webgl2', { antialias: true, alpha: true, powerPreference: 'low-power', preserveDrawingBuffer: true });
+    const gl = cv.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'default', preserveDrawingBuffer: true });
     if (!gl) { S.bad = true; return; }   // WebGL2 or the still picture
-    const rnd = new THREE.WebGLRenderer({ canvas: cv, context: gl, antialias: true, alpha: true, preserveDrawingBuffer: true });
-    rnd.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1)); rnd.setClearColor(0x000000, 0);
+    const rnd = new THREE.WebGLRenderer({ canvas: cv, context: gl, antialias: false, alpha: false, preserveDrawingBuffer: true });
+    rnd.setClearColor(0x000000, 1);
     cv.addEventListener('webglcontextlost', (e) => { e.preventDefault(); S.lost = true; setRunning(false); });
     cv.addEventListener('webglcontextrestored', () => { S.lost = false; setRunning(S.wanted); });
     S.cv = cv; S.rnd = rnd; S.el = el;
     el.insertBefore(cv, el.querySelector('.hof-spots') || null);
     const gen = ++S.gen;
     S.loading = (async () => {
-      for (let i = 0; i < 10; i++) { if (!plates[i]) { await loadPlate(i); await new Promise((r) => setTimeout(r, 0)); } if (gen !== S.gen) return; }   // one keeper per tick, never one long task
+      if (!PLATE) {
+        const img = await loadImg(); if (!img) return;
+        await new Promise((r) => setTimeout(r, 0));   // never one long task: the picture, then the depth
+        const c = buildPlate(img);
+        await new Promise((r) => setTimeout(r, 0));
+        PLATE = { c, nrm: buildDepth(c) };
+      }
     })();
     await S.loading; S.loading = null;
     if (gen !== S.gen || S.el !== el) return;
+    if (!PLATE) { S.bad = true; destroy(); return; }
+    S.alb = new THREE.CanvasTexture(PLATE.c); S.alb.minFilter = THREE.LinearMipmapLinearFilter; S.alb.generateMipmaps = true; S.alb.anisotropy = 4; S.nrm = PLATE.nrm;
     readPal();
-    bind(); measure();
-    if (!buildScene()) { S.bad = true; destroy(); return; }
+    bind(); addNav(el); el.classList.add('hf3-live');
+    buildScene(); measure();
     stats.ready = true;
-    measure(); watch(el); S.wanted = inView(el);
+    watch(el); S.wanted = inView(el);
     applyCalm();
     if (!calm()) { draw(); setRunning(S.wanted); }
   }
-  S.gen = 0;
   function destroy() {
     closeLegend(); setRunning(false);
     if (S.io) S.io.disconnect(); if (S.ro) S.ro.disconnect(); S.io = S.ro = null;
-    S.meshes.forEach((m) => { if (m) { m.geometry.dispose(); m.material.dispose(); } });
+    if (S.mat) S.mat.dispose();
     if (S.glyph) S.glyph.dispose();
+    if (S.alb) S.alb.dispose();
+    if (S.nav) S.nav.forEach((b) => b.remove());
+    if (S.el) S.el.classList.remove('hf3-live');
     if (S.cv && S.cv.parentNode) S.cv.parentNode.removeChild(S.cv);
     if (S.rnd) S.rnd.dispose();
-    Object.assign(S, { el: null, cv: null, rnd: null, scene: null, cam: null, meshes: [], glyph: null, spots: [], rects: [], lift: [], hov: -1, wanted: false, gen: S.gen + 1, loading: null });
+    Object.assign(S, { el: null, cv: null, rnd: null, scene: null, cam: null, mat: null, glyph: null, alb: null, spots: [], nav: null, hov: -1, wanted: false, gen: S.gen + 1, loading: null });
     stats.ready = false; stats.statues = 0; stats.hover = -1;
   }
-  function watch(el) {
+    function watch(el) {
     if (typeof IntersectionObserver !== 'undefined') { S.io = new IntersectionObserver((es) => { S.wanted = es.some((x) => x.isIntersecting); setRunning(S.wanted); }, { threshold: 0.05 }); S.io.observe(el); }
     if (typeof ResizeObserver !== 'undefined') { S.ro = new ResizeObserver(() => measure()); S.ro.observe(el); }
   }

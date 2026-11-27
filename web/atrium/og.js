@@ -18,7 +18,7 @@ const ogModeBanner = () => OGS.mode === 'off'
   ? `<div class="og-banner"><b>Offline</b> No network. Only installed models, local tools and your files work. The Shared Brain waits to sync.</div>`
   : OGS.mode === 'local'
     ? `<div class="og-banner"><b>Local</b> Everything runs on this device. The Shared Brain stays here. Add the VPS any time to back it up and work from other devices.</div>`
-    : `<div class="og-banner"><b>VPS · Shared Brain</b> Engine online on <b style="color:var(--text)">vps-node</b>. The Brain is backed up there and shared with your devices. Last backup 14 min ago.</div>`;
+    : `<div class="og-banner"><b>VPS · Shared Brain</b> Your paired server is the engine host. The Brain is backed up there and shared with your devices.</div>`;
 
 /* ---------- Integrations ---------- */
 function ogIntegrations() {
@@ -45,7 +45,7 @@ function ogIntegrations() {
 /* ---------- Models ---------- */
 function ogModels() {
   const lv = { Conservative: ['6.2 GB', 'K2 Horizon 3.7B'], Balanced: ['16.4 GB', 'Bonsai 2 27B'], Extreme: ['31.8 GB', 'Qwen 3.8 27B'] }[OGS.lvl];
-  const place = OGS.mtab === 'This device' ? 'This device (Lenovo) · 33 GB RAM' : OGS.mtab === 'VPS' ? 'VPS vps-node · 11 GB RAM, no GPU' : 'iPhone 15 Pro Max · 8 GB RAM';
+  const place = OGS.mtab === 'This device' ? 'This device' : OGS.mtab === 'VPS' ? 'Your VPS' : 'Your phone';
   const m = (n, mk, sz, d, tags = '', st = '') => `<div class="og-card"><div class="og-row"><h4>${n}</h4>${tags}</div><p>${mk} · ${sz}</p><p>${d}</p><div class="og-act">${st || '<span></span>'}<button class="btn ghost" style="height:28px;padding:0 10px">${st ? 'Settings' : 'Download'}</button></div></div>`;
   return `<div class="nx-view enter">${ogHead('Models', 'Download, switch and manage the models that run on each of your places.', 'Armamentarium')}
   <div class="og-wrap">${ogModeBanner()}
@@ -103,9 +103,9 @@ function ogDevices() {
   <div class="og-wrap">${ogModeBanner()}
    <div class="og-card" style="border-color:var(--accent)"><div class="og-row"><h4>Shared Brain</h4><span class="og-tag ${brainState[2]}">${brainState[0]}</span></div><p>${brainState[1]}</p><div class="og-row"><button class="btn" ${OGS.mode === 'vps' ? '' : 'disabled style="opacity:.5"'}>Back up now</button><button class="btn ghost">Restore from VPS</button><button class="btn ghost">Choose what is shared</button></div></div>
    <div class="og-sec">This device</div>
-   <div class="og-card"><div class="og-row"><h4>Lenovo · this-device</h4><span class="og-tag sig">This device</span></div><div class="og-row"><span>${ogSw('disc', true)} <span class="label">Visible to new devices</span></span><span>${ogSw('near', true)} <span class="label">Look for devices</span></span><span class="label">Pairing code on request</span></div></div>
+   <div class="og-card"><div class="og-row"><h4>This device</h4><span class="og-tag sig">This device</span></div><div class="og-row"><span>${ogSw('disc', true)} <span class="label">Visible to new devices</span></span><span>${ogSw('near', true)} <span class="label">Look for devices</span></span><span class="label">Pairing code on request</span></div></div>
    <div class="og-sec">Paired</div>
-   <div class="og-list"><div>${I('system', 16)}<span>VPS · vps-node <small>${OGS.mode === 'off' ? 'Offline' : 'Connected through the tailnet'}</small></span><span class="og-tag ${OGS.mode === 'vps' ? 'sig' : 'mut'}">${OGS.mode === 'vps' ? 'Online' : 'Idle'}</span></div><div>${I('chat', 16)}<span>iPhone 15 Pro Max <small>Last connected 2 hours ago</small></span><span class="og-tag sig">Connected</span></div><div>${I('alert', 16)}<span>Old tablet <small>This device no longer holds the pairing. Enter the code it shows to pair again.</small></span><button class="btn ghost" style="height:26px;padding:0 8px">Pair</button></div></div>
+   <div class="og-list"><div>${I('system', 16)}<span>VPS <small>${OGS.mode === 'off' ? 'Offline' : 'Connected through the tailnet'}</small></span><span class="og-tag ${OGS.mode === 'vps' ? 'sig' : 'mut'}">${OGS.mode === 'vps' ? 'Online' : 'Idle'}</span></div><div>${I('chat', 16)}<span>Your phone <small>Last connected 2 hours ago</small></span><span class="og-tag sig">Connected</span></div><div>${I('alert', 16)}<span>Old tablet <small>This device no longer holds the pairing. Enter the code it shows to pair again.</small></span><button class="btn ghost" style="height:26px;padding:0 8px">Pair</button></div></div>
   </div></div>`;
 }
 
