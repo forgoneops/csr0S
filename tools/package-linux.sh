@@ -11,15 +11,17 @@ echo "3/4 native window"; (cd src-tauri && RUSTFLAGS="${RUSTFLAGS:-} --remap-pat
 echo "4/4 files"
 cp -r web/atrium web/dist "$OUT/resources/web/"; cp -r packs skills "$OUT/resources/"; mkdir -p "$OUT/resources/core"; cp -r plugins "$OUT/resources/plugins"; rm -rf "$OUT/resources/plugins/hello"; cp -r core/modules "$OUT/resources/core/modules"; while IFS= read -r x; do case "$x" in skills/*) rm -rf "$OUT/resources/$x";; esac; done < tools/clean-exclude.txt; mkdir -p "$OUT/resources/tools/speech"; cp -r tools/speech/. "$OUT/resources/tools/speech/"; cp tools/caesar-computer-mcp.ts "$OUT/resources/tools/"
 cp LICENSE THIRD-PARTY-NOTICES.md README.md "$OUT/"
-cp src-tauri/icons/128x128.png "$OUT/caesaros.png"
-cat > "$OUT/caesaros.desktop" <<D
+cp src-tauri/icons/caesar.png "$OUT/caesaros.png"
+cat > "$OUT/caesar.desktop" <<D
 [Desktop Entry]
 Type=Application
-Name=CaesarOS
+Name=Caesar
+GenericName=AI agent workspace
+Keywords=caesar;caesaros;agent;ai;hermes;brain;
 Comment=A local-first workspace for AI agents
 Exec=@DIR@/caesaros-shell
 Icon=@DIR@/caesaros.png
-Categories=Utility;Development;
+Categories=Utility;
 Terminal=false
 D
 cat > "$OUT/install.sh" <<'I'
@@ -28,7 +30,7 @@ cat > "$OUT/install.sh" <<'I'
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; DEST="$HOME/.local/share/caesaros-app"
 rm -rf "$DEST"; mkdir -p "$DEST" "$HOME/.local/share/applications"; cp -r "$HERE"/. "$DEST"/
-sed "s#@DIR@#$DEST#g" "$HERE/caesaros.desktop" > "$HOME/.local/share/applications/caesaros.desktop"
+rm -f "$HOME/.local/share/applications/caesaros.desktop"; sed "s#@DIR@#$DEST#g" "$HERE/caesar.desktop" > "$HOME/.local/share/applications/caesar.desktop"
 echo "Installed. Find CaesarOS in the application menu, or run $DEST/caesaros-shell"
 I
 chmod +x "$OUT/install.sh" "$OUT/caesaros-shell" "$OUT/caesaros-core"
