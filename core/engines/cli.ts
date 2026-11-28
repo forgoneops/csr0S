@@ -7,20 +7,26 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENGINES, detectEngines } from "../detect";
+import { codexChoices, effectiveModel, withPick } from "../model-choices";
 import { memoFor } from "../memo";
 import type { ChatMessage, EngineAdapter, EngineEvent, EngineHealth } from "./types";
 
-type Spec = { id: string; args: string[]; model?: string };
+/** `modelArg`: the flag its CLI takes right after the subcommand (`codex exec -m …`); none means it chooses for itself. */
+type Spec = { id: string; args: string[]; modelArg?: string };
 
 /** Per tool: the non-interactive text mode, agent tools off. The prompt goes in on stdin, never in argv. */
 const SPECS: Spec[] = [
   { id: "claude", args: ["-p", "--tools", "", "--no-session-persistence", "--setting-sources", "project"] },
-  { id: "codex", args: ["exec", "--skip-git-repo-check", "--ephemeral", "--sandbox", "read-only", "--color", "never", "-"] },
+  { id: "codex", args: ["exec", "--skip-git-repo-check", "--ephemeral", "--sandbox", "read-only", "--color", "never", "-"], modelArg: "-m" },
   // UNVERIFIED: gemini is not installed on the build machine; -p is its non-interactive flag and tool calls are denied without approval there. Check on a machine that has it.
   { id: "gemini", args: ["-p"] },
 ];
 
 export const CLI_TOOLS = new Set(SPECS.map((s) => s.id));
+
+/** The argv for one run; a tool's model flag goes right after its subcommand, before the stdin marker it ends with. */
+export const argvWithModel = (path: string, spec: Spec, model: string): string[] =>
+  spec.modelArg && model ? [path, ...spec.args.slice(0, 1), spec.modelArg, model, ...spec.args.slice(1)] : [path, ...spec.args];
 
 const flatten = (m: ChatMessage[]) => m.map((x) => `${x.role === "assistant" ? "Assistant" : x.role === "system" ? "System" : "User"}: ${x.content}`).join("\n\n") + "\n\nAssistant:";
 
@@ -39,13 +45,18 @@ export function createCliEngine(spec: Spec, opts: Opts = {}): EngineAdapter {
       if (!r?.found) return { ok: false, detail: "not detected" };
       return r.probe.ok ? { ok: true, detail: null } : { ok: false, detail: `installed, sign in: ${entry.signIn}` };
     },
-    // The tool chooses its own model; one entry keeps chat's model step honest without guessing names.
-    async models() { return [{ id: "default", label: "Tool default" }]; },
-    async *stream(messages, { signal }): AsyncIterable<EngineEvent> {
+    // A tool that lists its own models offers them; one that does not chooses for itself, and no name is guessed.
+    async models() {
+      if (!spec.modelArg) return [{ id: "default", label: "Tool default" }];
+      const list = await codexChoices().catch(() => []);
+      return withPick(spec.id, list.length ? list : [{ id: "default", label: "Tool default" }]);
+    },
+    async *stream(messages, { model, signal }): AsyncIterable<EngineEvent> {
       const r = await find();
       if (!r?.path) throw new Error(`${entry.label} is not installed`);
       const cwd = mkdtempSync(join(tmpdir(), "caesaros-cli-"));
-      const proc = (opts.spawn ?? Bun.spawn)([r.path, ...spec.args], { cwd, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
+      const use = spec.modelArg ? effectiveModel(spec.id, model ?? "", await codexChoices().catch(() => [])) : "";
+      const proc = (opts.spawn ?? Bun.spawn)(argvWithModel(r.path, spec, use), { cwd, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
       const kill = () => { try { proc.kill(); } catch { /* already gone */ } };
       signal?.addEventListener("abort", kill, { once: true });
       proc.stdin.write(flatten(messages)); proc.stdin.end();

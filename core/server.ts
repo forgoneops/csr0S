@@ -69,6 +69,7 @@ import { chatExportRoutes } from "./chat-export";
 import { approvalsApi } from "./approvals";
 import { crewApi } from "./crew";
 import { adminApi } from "./admin";
+import { updateApi } from "./update";
 import { orchestrationApi } from "./orchestration";
 import { i18nApi } from "./i18n";
 import { commandsApi } from "./commands";
@@ -77,7 +78,8 @@ import { engineRun } from "./engine-run";
 import { computerApi } from "./computer";
 import { exposeApi } from "./expose";
 import { createWebGate } from "./webgate";
-import { listEngines } from "./engines";
+import { getEngine, listEngines } from "./engines";
+import { chooseModel, codexChoices, hermesChoices, pickedModel, withPick } from "./model-choices";
 import { terminalSocket, terminals, useTerminal } from "./terminal";
 import { ROOT } from "./root";
 
@@ -192,6 +194,7 @@ libraryFilesApi(app);
 crewApi(app, () => settings().localOnly, (c) => access.principal(c).kind === "operator");
 orchestrationApi(app, (c) => access.principal(c).kind === "operator");
 adminApi(app, (c) => access.principal(c).kind === "operator");
+updateApi(app, (c) => access.principal(c).kind === "operator", () => process.env.CAESAROS_UPDATE_FEED || settings().updateFeed, VERSION, { dataDir: DATA });
 commandsApi(app, (c) => access.principal(c).kind === "operator");
 hermesConfApi(app, (c) => access.principal(c).kind === "operator");
 i18nApi(app, (c) => access.principal(c).kind === "operator", () => engineRun(() => settings().localOnly));
@@ -270,11 +273,25 @@ app.get("/api/hardware", (c) => { if (isolated()) return c.json({ machine: null,
 app.get("/api/engines", async (c) => c.json({
   engines: await Promise.all(listEngines().map(async (e) => {
     const health = await e.health().catch(() => ({ ok: false, detail: "not answering" as string | null }));
-    const models = health.ok ? await e.models().catch(() => []) : [];
+    const models = health.ok ? withPick(e.id, await e.models().catch(() => [])) : [];   // the agent's own pick first
     return { id: e.id, label: e.label, health: { ok: health.ok, detail: health.detail }, models };
   })).then((all) => all.filter((e) => !(CLI_TOOLS.has(e.id) && e.health.detail === "not detected"))), // a tool that is not installed is not offered
 }));
-if (RUNS) warmMirror();
+// The model one agent answers with, kept for that agent alone (the crew member's own chat, or a coding tool): it
+// survives a reload and a restart, and a model the tool no longer offers is refused instead of stored.
+app.put("/api/models/pick", async (c) => {
+  if (access.principal(c).kind !== "operator") return c.json({ error: "operator_only" }, 403);
+  const body = await c.req.json().catch(() => ({})) as { engine?: unknown; model?: unknown };
+  const engine = typeof body.engine === "string" ? body.engine : "";
+  const model = typeof body.model === "string" ? body.model.trim() : "";
+  const adapter = getEngine(engine);
+  if (!adapter) return c.json({ error: "unknown-engine" }, 404);
+  const offered = await adapter.models().catch(() => []);
+  if (model && !offered.some((m) => m.id === model)) return c.json({ error: "not-offered", message: `${adapter.label} does not offer that model` }, 400);
+  chooseModel(engine, model);
+  return c.json({ engine, model: pickedModel(engine), models: withPick(engine, offered) });
+});
+if (RUNS) { warmMirror(); hermesChoices.warm(); codexChoices.warm(); }
 
 // Agent tokens: the operator issues one per agent; only the hash is kept and the token is shown once.
 app.get("/api/tokens", (c) => c.json(access.inventory()));

@@ -185,3 +185,11 @@ html[data-motion=off] .route-sw,html[data-motion=off] .route-sw *,html[data-moti
 #gw-root .gw-live>*+*{margin-top:10px}
 /* Mail: the grid gap stacked on top of the header's own spacing (title to subtitle read 46px); the header sets its rhythm, the post strip keeps its own margin */
 .nx-view.ml{gap:0}.nx-view.ml>.ml-post{margin:14px 0 16px}
+
+/* queued messages, above the composer */
+.cx-queue{list-style:none;margin:0 0 6px;padding:6px 8px;display:grid;gap:4px;border:1px solid var(--line,#2a2c33);background:color-mix(in srgb,var(--surface-2,#1c1e23) 80%,transparent);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.cx-queue li{display:flex;align-items:center;gap:8px;min-height:32px;font:500 12px var(--font-body,system-ui)}
+.cx-q-n{flex:none;font:600 10px var(--font-mono,monospace);letter-spacing:.14em;color:var(--muted,#9b968d)}
+.cx-q-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cx-q-t{text-align:left}
+.cx-queue .xf-cancel{margin-left:0;flex:none}

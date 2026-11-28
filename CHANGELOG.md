@@ -23,6 +23,11 @@ versions follow [Semantic Versioning](https://semver.org/). this file is the use
 
 ### Added
 
+- **Model choice per agent**: the chat's model menu offers what your signed-in accounts actually have —
+  Nous Portal and the other providers Hermes reports, the ChatGPT models of the Codex subscription, and
+  the local Ollama models — filed by provider. Picking one keeps it for that agent alone (one crew
+  member, or one coding tool) and it survives a reload and a restart; a model the tool no longer offers
+  is ignored, and a turn that names its own model still wins.
 - `CONTRIBUTING.md` with the pull request rules, `.github/PULL_REQUEST_TEMPLATE.md`, `CHANGELOG.md`,
   and `tools/pr.sh` (`start`, `ready`, `status`) which runs the gates and prints the request-pull.
 

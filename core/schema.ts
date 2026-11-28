@@ -199,6 +199,7 @@ const SettingsShape = z.object({
     name: z.string().max(60),
     url: httpUrl,
   })).max(4).default([]),
+  updateFeed: z.union([z.string().url().max(400), z.literal("")]).optional(),   // where the update check reads latest.json; no default, nothing is contacted until it is set
   localOnly: z.boolean().default(false),           // "Local only": every turn stays on local engines (core/scope.ts)
   setupDone: z.boolean().default(false),
   tourDone: z.boolean().default(false),            // the one-time label tour of the desktop shell (HUD labels)

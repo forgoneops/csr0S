@@ -3,7 +3,7 @@
 export type ChatRole = "system" | "user" | "assistant";
 export type ChatImage = { mime: string; data: string };   // base64, for this turn only
 export type ChatMessage = { role: ChatRole; content: string; images?: ChatImage[] };
-export type EngineModel = { id: string; label: string };
+export type EngineModel = { id: string; label: string; group?: string };   // group: the provider the menu files it under
 export type EngineHealth = { ok: boolean; detail: string | null };
 /** One tool call, as an engine reports it. The same id again updates the same row. approvalId ties it to an approval. */
 export type ToolCall = { id: string; name: string; status: "running" | "waiting" | "ok" | "error"; input?: string; output?: string; ms?: number; approvalId?: string };

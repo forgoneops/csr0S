@@ -168,6 +168,7 @@
 .cdk .cdk-menu { position:absolute; left:0; bottom:34px; z-index:5; margin:0; padding:4px; list-style:none; min-width:170px; max-height:190px; overflow:auto; background:var(--panel); box-shadow:inset 0 0 0 1px var(--edge),0 0 18px -4px rgba(var(--glow-r),.5); clip-path:var(--cut); }
 .cdk .cdk-menu button { display:block; width:100%; min-height:32px; padding:6px 10px; text-align:left; cursor:pointer; font:12px var(--mono); color:var(--ink); border:0; background:transparent; }
 .cdk .cdk-menu button:hover, .cdk .cdk-menu button.on { background:rgba(var(--edge-r),.18); }
+.cdk .cdk-menu .cdk-mg { position:sticky; top:0; z-index:1; padding:6px 10px 3px; font:10px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--mut); background:var(--panel); }
 .cdk .cdk-send { width:38px; height:32px; flex:none; display:grid; place-items:center; padding:0; cursor:pointer; color:var(--ink); border:0; background:rgba(var(--edge-r),.28); box-shadow:inset 0 0 0 1px var(--edge); clip-path:var(--cut); }
 .cdk .cdk-send:hover { background:rgba(var(--edge-r),.45); }
 .cdk.cdk-busy .cdk-send { opacity:.45; }

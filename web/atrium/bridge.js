@@ -63,6 +63,27 @@
   }
   async function loadEngines() { const e = await j('/api/engines'); window.ENGINES = e.engines; }
   const engineLabelOf = th => { const eng = th ? engineOf(th.a) : ''; const e = (window.ENGINES || []).find(x => x.id === eng); return { eng, label: e ? e.label : (C[th && th.a] || {}).n || '', models: e ? e.models : [] }; };
+  // Keeping a model is a per-agent choice: the core stores it under this agent's engine, every open chat with that agent
+  // follows at once (Caesar alone and Caesar are one agent), and no other agent changes. The list answers with the pick first.
+  window.xModelPick = (engine, model) => {
+    const key = engine.replace(/!alone$/, '');
+    for (const t of THREADS) if (engineOf(t.a).replace(/!alone$/, '') === key) S.perThread[t.id] = model;
+    return j('/api/models/pick', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ engine, model }) }).then(r => {
+      const e = (window.ENGINES || []).find(x => x.id === engine); if (e && Array.isArray(r.models)) e.models = r.models;
+      return r;
+    }).catch(() => null);
+  };
+  // The menu: this agent's models, filed by the provider they come from, then the other agents to start a chat with.
+  const modelMenu = (em, cur) => {
+    let at = '';
+    const own = (em.models || []).map(m => {
+      const g = m.group || em.label || 'Models';
+      const head = g === at ? '' : (at = g, `<b class="pk-group">${esc(g)}</b>`);
+      return `${head}<button class="pk-pop-b" role="menuitemradio" aria-checked="${m.id === cur}" data-model-pick="${esc(m.id)}">${esc(m.label)}</button>`;
+    }).join('');
+    const again = TARGETS.filter(t => t.ok && t.id !== em.eng).map(t => `<button class="pk-pop-b" role="menuitem" data-engine-pick="${esc(t.id)}">${esc(t.label)}</button>`).join('');
+    return `<ul class="pk-pop" role="menu">${own ? `<li>${own}</li>` : ''}${again ? `<li><b class="pk-group">Another agent</b>${again}</li>` : ''}</ul>`;
+  };
   async function loadSessions() {
     const list = await j('/api/chat/sessions');
     THREADS.splice(0, THREADS.length, ...list.filter(s => C[aOf(s.engine)]).map(s => ({ id: s.id, a: aOf(s.engine), t: s.title || 'New conversation', s: ago(s.updatedAt) })));
@@ -130,6 +151,11 @@
     if (loaded.has(id)) return; loaded.add(id);
     const got = await j('/api/chat/sessions/' + id), a = aOf(got.session.engine);
     MSG[id] = got.messages.map(m => m.role === 'user' ? { me: 1, x: m.content, at: m.createdAt || got.session.updatedAt, files: m.attachments || [] } : { a, at: m.createdAt || got.session.updatedAt, x: m.content || (m.status === 'error' ? (m.error || 'No answer.') : ''), think: m.thinking || '', tools: m.tools || [], sources: m.sources || [] });
+    const saved = loadQ(id); try { localStorage.removeItem(qKey(id)); } catch { /* best effort */ }
+    if (saved.length && !RUNNING.has(id)) for (const it of saved) {
+      const th = THR(id); MSG[id].push({ me: 1, x: it.v, at: Date.now(), files: [] }); const reply = { a: th ? th.a : a, x: '' }; MSG[id].push(reply);
+      void runTurn(id, it.v, [], reply, () => { if (S.cur === id) render(); });
+    }
     render();
   }
 
@@ -164,12 +190,13 @@
       const th = THR(id), em = engineLabelOf(th), threadModel = (S.perThread && S.perThread[id]) || '';
       const cur = threadModel && em.models.some(m => m.id === threadModel) ? threadModel : ((em.models[0] || {}).id || '');
       const curLabel = (em.models.find(m => m.id === cur) || {}).label || cur || 'default';
-      const modelChip = `<span class="pk-menu"><button class="pk-ctx" data-model-chip aria-haspopup="true" aria-expanded="${!!S.modelOpen}" title="The engine and model this conversation talks to">${I('engine', 16)}<span>${esc(em.label || 'engine')} · ${esc(curLabel)}</span>${em.models.length > 1 ? I('chevron-down', 14) : ''}</button>${S.modelOpen && em.models.length ? `<ul class="pk-pop" role="menu">${em.models.map(m => `<li><button class="pk-pop-b ${m.id === (threadModel || (em.models[0] || {}).id) ? 'on' : ''}" role="menuitemradio" data-model-pick="${esc(m.id)}">${esc(m.label)}</button></li>`).join('')}</ul>` : ''}</span>`;
+      const modelChip = `<span class="pk-menu"><button class="pk-ctx" data-model-chip aria-haspopup="true" aria-expanded="${!!S.modelOpen}" title="Choose the model this agent answers with">${I('engine', 16)}<span>${esc(em.label || 'engine')} · ${esc(curLabel)}</span>${(em.models.length > 1 || TARGETS.filter(t => t.ok).length > 1) ? I('chevron-down', 14) : ''}</button>${S.modelOpen ? modelMenu(em, cur) : ''}</span>`;
       // one slim row: [+ options] [text] [engine] [mic] [send]; the options (history, work, earlier, thinking, attach, context) sit behind the +
       const row = (cls, attrs, icon, label, state) => `<button class="xc-it ${cls} ${state ? 'on' : ''}" ${attrs}${state === undefined ? '' : ` aria-pressed="${!!state}"`} role="menuitem">${I(icon, 16)}<span>${label}</span></button>`;
       const more = `<span class="xc-more"><button class="xc-b ${S.moreOpen ? 'on' : ''}" data-more aria-haspopup="true" aria-expanded="${!!S.moreOpen}" aria-label="More options" title="Attach, thinking, context, history">${I('plus', 16)}</button>${S.moreOpen ? `<div class="xc-pop" role="menu" data-more>${row('pk-attach', 'data-attach', 'attach', 'Attach images or files')}${row('', 'data-think', 'sparkle', 'Thinking ' + (S.think ? 'on' : 'off'), S.think)}${row('', 'data-ctx', 'brain', 'Context ' + (S.ctx ? 'on' : 'off'), S.ctx)}${row('', 'data-work', 'sparkle', 'Work ' + (S.hideWork ? 'hidden' : 'shown'), !S.hideWork)}${row('', 'data-history', 'clock', 'History', S.histOpen)}${row('', 'data-hist', 'clock', 'Earlier messages')}</div>` : ''}</span>`;
       const chip = modelChip.replace('class="pk-ctx"', 'class="xc-chip"');
-      return v.replace('<div class="nx-box">', `${tray()}<div class="nx-ctx xc-ctx"></div><div class="nx-box">`).replace(/(<span id="nx-vstate"[^>]*><\/span>)/, '$1' + more).replace('<button class="nx-mic"', chip + '<button class="nx-mic"');
+      if (RUNNING.has(id)) v = v.replace(/(<textarea id="inp"[^>]*placeholder=")[^"]*"/, (m0, a0) => a0 + esc(uiText('{s} is working… (you can still type)').replace('{s}', () => (C[th.a] || {}).n || 'Caesar')) + '"');
+      return v.replace('<div class="nx-box">', `${queuePanel(id)}${tray()}<div class="nx-ctx xc-ctx"></div><div class="nx-box">`).replace(/(<span id="nx-vstate"[^>]*><\/span>)/, '$1' + more).replace('<button class="nx-mic"', chip + '<button class="nx-mic"');
     }
     const grp = (title, hint, list) => list.length ? `<section class="pk-g"><h3>${title}</h3><p>${hint}</p><div class="pk-row">${list.map(pickCard).join('')}</div></section>` : '';
     return `<div class="nx-view chat enter">${scene('chat', phone() ? 56 : 72)}<div class="nx-chat-in pk-wrap"><h2 class="pk-h">Who do you want to talk to?</h2><div class="pk-route">${window.xRouteChip('big')}</div>
@@ -206,7 +233,8 @@
   const took = ms => ms == null ? '' : ms < 1000 ? ms + ' ms' : (ms / 1000).toFixed(1) + ' s';
   window.xBefore = (x, i) => {
     let h = '';
-    if (x.queued) h += `<p class="xf-route" role="status">${I('clock', 12)}<span>${uiText('Waiting for the answer in progress.')}</span><button type="button" class="xf-cancel" data-qcancel="${i}">${uiText('Cancel')}</button></p>`;
+    if (x.queued) h += `<p class="xf-route" role="status">${I('clock', 12)}<span>${uiText('Waiting for the answer in progress.')}</span><button type="button" class="xf-cancel" data-qnow="${i}">${uiText('Send now')}</button><button type="button" class="xf-cancel" data-qcancel="${i}">${uiText('Cancel')}</button></p>`;
+    if (x.run && !x.queued) h += `<p class="xf-route" role="status">${I('clock', 12)}<span>${uiText('Working on it.')}</span><button type="button" class="xf-cancel" data-stopturn="1">${uiText('Stop')}</button></p>`;
     if (x.sw) h += `<p class="xf-route" role="status">${I('lock', 12)}<span>${esc(uiText(x.sw.reason === 'local-only' ? 'Local only is on: {s} answered, on this machine.' : x.sw.scope === 'local' ? '{s} took over on this machine. Reason:' : '{s} took over in the cloud. Reason:').replace('{s}', () => x.sw.label) + (x.sw.reason === 'local-only' ? '' : ' ' + uiText(x.sw.reason) + '.'))}</span></p>`;
     if (x.think && x.think.trim()) h += `<div class="xf-fold ${x.openThink ? 'open' : ''}"><button class="xf-head" data-fold="think" data-mi="${i}" aria-expanded="${!!x.openThink}">${I(x.openThink ? 'chevron-down' : 'chevron-right', 14)}<span>${uiText('Reasoning')}</span><em>${uiText(`${x.think.trim().split(/\s+/).length} words`)}</em></button>${x.openThink ? `<p class="xf-body">${esc(x.think)}</p>` : ''}</div>`;
     if (x.tools && x.tools.length) h += `<ul class="xf-tools">${x.tools.map((t, k) => `<li class="xf-tool ${t.status}"><button class="xf-head" data-fold="tool" data-mi="${i}" data-ti="${k}" aria-expanded="${!!t.open}">${I(t.open ? 'chevron-down' : 'chevron-right', 14)}<span>${esc(t.name)}</span><b>${uiText(({ running: 'Running', waiting: 'Waiting for your yes', ok: 'Done', error: 'Failed' })[t.status] || '')}</b><em>${took(t.ms)}</em></button>${t.open ? `<div class="xf-body">${t.input != null ? `<small>${uiText('Input')}</small><pre>${esc(t.input)}</pre>` : ''}${t.output != null ? `<small>${uiText('Result')}</small><pre>${esc(t.output)}</pre>` : ''}</div>` : ''}</li>`).join('')}</ul>`;
@@ -446,14 +474,21 @@
   // One streamed turn for a session: the chat view and the dock both send through here, so the SSE parsing exists once.
   // A message sent while an answer is still coming waits its turn instead of being refused: it shows as "waiting", can be cancelled,
   // and starts by itself when the running answer ends. shortcut: the queue lives in this tab; a reload forgets what was waiting.
-  const RUNNING = new Set(), QUEUE = {};
+  const RUNNING = new Set(), QUEUE = {}, ABORT = {};
   window.xQueued = id => (QUEUE[id] || []).length;
+  // the queue survives a reload, per conversation, as text (attached files cannot be kept: the entry says so)
+  const qKey = id => 'caesaros.queue.' + id;
+  const saveQ = id => { try { const q = (QUEUE[id] || []).map(x => ({ v: x.v, files: (x.sendFiles || []).length })); q.length ? localStorage.setItem(qKey(id), JSON.stringify(q)) : localStorage.removeItem(qKey(id)); } catch { /* storage is best effort */ } };
+  const loadQ = id => { try { const q = JSON.parse(localStorage.getItem(qKey(id)) || '[]'); return Array.isArray(q) ? q.filter(x => x && typeof x.v === 'string' && x.v.trim()) : []; } catch { return []; } };
+  // stop the answer that is running in this conversation (not every agent): its partial text stays
+  const queuePanel = id => { const q = QUEUE[id] || []; if (!q.length) return ''; return `<ol class="cx-queue" aria-label="${esc(uiText('Queued messages'))}">${q.map((x, k) => `<li><span class="cx-q-n">${k + 1}</span><span class="cx-q-t">${esc(x.v.length > 90 ? x.v.slice(0, 90) + '…' : x.v)}</span><button type="button" class="xf-cancel" data-pqnow="${k}" title="${esc(uiText('Stops the answer in progress, then sends this'))}">${uiText('Send now')}</button><button type="button" class="xf-cancel" data-pqrm="${k}" aria-label="${esc(uiText('Remove from queue'))}" title="${esc(uiText('Remove from queue'))}">${I('close', 14)}</button></li>`).join('')}</ol>`; };
+  window.xStopTurn = id => { const ac = ABORT[id]; if (!ac) return false; const cur = (MSG[id] || []).slice().reverse().find(r => r.run && !r.queued); if (cur) cur.stopped = true; ac.abort(); return true; };
   async function runTurn(id, v, sendFiles, reply, paint) {
-    if (RUNNING.has(id)) { reply.queued = true; reply.x = ''; (QUEUE[id] = QUEUE[id] || []).push({ v, sendFiles, reply, paint }); if (paint) paint(); return; }
-    RUNNING.add(id);
+    if (RUNNING.has(id)) { reply.queued = true; reply.x = ''; (QUEUE[id] = QUEUE[id] || []).push({ v, sendFiles, reply, paint }); saveQ(id); if (S.cur === id) render(); if (paint) paint(); return; }
+    RUNNING.add(id); reply.run = true; const ac = new AbortController(); ABORT[id] = ac;
     const th = THR(id);
     try {
-      const res = await fetch('/api/chat/sessions/' + id + '/turns', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content: v, model: (S.perThread && S.perThread[id]) || '', think: !!S.think, useKnowledge: !!S.ctx, attachments: sendFiles.map(({ name, mime, data }) => ({ name, mime, data })) }) });
+      const res = await fetch('/api/chat/sessions/' + id + '/turns', { signal: ac.signal, method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content: v, model: (S.perThread && S.perThread[id]) || '', think: !!S.think, useKnowledge: !!S.ctx, attachments: sendFiles.map(({ name, mime, data }) => ({ name, mime, data })) }) });
       if (!res.ok || !res.body) { const b = await res.json().catch(() => ({})); reply.x = b.error === 'attachment-refused' ? ({ 'no-vision': 'This engine cannot take images. Choose another engine or remove the image.', unsupported: (b.name || 'A file') + ' cannot be read yet.', 'too-large': (b.name || 'A file') + ' is too large.', 'bad-file': (b.name || 'A file') + ' is damaged or is not the type its name says.', 'no-text': (b.name || 'A file') + ' has no readable text. A scanned page cannot be read yet.', 'no-reader': 'This machine has no tool that can read ' + (b.name || 'that file') + '. PDF needs pdftotext; Office files need unzip.' }[b.why] || 'A file was refused.') : (b.message || b.error || 'The crew member could not answer.'); return; }
       const rd = res.body.getReader(), dec = new TextDecoder(); let buf = '';
       for (;;) {
@@ -471,15 +506,15 @@
           else if (ev === 'error') { reply.x += (reply.x ? '\n\n' : '') + (d.message || 'Failed.'); if (paint) paint(); }
         }
       }
-    } catch (e) { reply.x = reply.x || 'Connection lost.'; }
+    } catch (e) { reply.x = reply.x || (reply.stopped ? uiText('Stopped.') : 'Connection lost.'); }
     finally {
-      reply.at = Date.now();
+      reply.at = Date.now(); reply.run = false; delete ABORT[id];
       if (th) th.s = 'just now'; await Promise.all([loadCrew(), loadSessions(), loadApprovals()]).catch(() => {}); render(); if (paint) paint();
       if (window.xVoice && window.xVoice.on() && reply.x && !reply.queued) {
         Promise.resolve(window.xSpeak(reply.x)).then(() => window.xAfterSpoken && window.xAfterSpoken());
       } else if (reply.x && !reply.queued && window.xAfterSpoken) window.xAfterSpoken();
       if (!reply.queued) document.dispatchEvent(new CustomEvent('cx:turn-done', { detail: { id } }));
-      RUNNING.delete(id); const nx = (QUEUE[id] || []).shift(); if (nx) { nx.reply.queued = false; void runTurn(id, nx.v, nx.sendFiles, nx.reply, nx.paint); }
+      RUNNING.delete(id); const nx = (QUEUE[id] || []).shift(); saveQ(id); if (nx) { nx.reply.queued = false; void runTurn(id, nx.v, nx.sendFiles, nx.reply, nx.paint); }
     }
   }
 
@@ -548,8 +583,22 @@
   document.addEventListener('paste', e => { const im = [...(e.clipboardData ? e.clipboardData.files : [])].filter(f => f.type.startsWith('image/')); if (im.length && e.target.id === 'inp') { e.preventDefault(); void addFiles(im); } });
   document.addEventListener('click', e => {
     const pok = e.target.closest('[data-ph-ok]'), pno = e.target.closest('[data-ph-no]'); if (pok || pno) { e.preventDefault(); e.stopPropagation(); void approve((pok || pno).dataset.phOk || pno.dataset.phNo, !!pok); return; }
+    const pq = e.target.closest('[data-pqnow],[data-pqrm]');
+    if (pq) {
+      e.preventDefault(); e.stopPropagation();
+      const q = QUEUE[S.cur] || [], now = pq.hasAttribute('data-pqnow'), at = +(now ? pq.dataset.pqnow : pq.dataset.pqrm), it = q[at];
+      if (it) {
+        if (now) { if (at > 0) q.unshift(q.splice(at, 1)[0]); saveQ(S.cur); if (!window.xStopTurn(S.cur) && q[0]) { const nx = q.shift(); saveQ(S.cur); nx.reply.queued = false; void runTurn(S.cur, nx.v, nx.sendFiles, nx.reply, nx.paint); } }
+        else { q.splice(at, 1); it.reply.queued = false; it.reply.x = 'Cancelled before it started.'; saveQ(S.cur); }
+        render();
+      }
+      return;
+    }
+    const qn = e.target.closest('[data-qnow]'), sp = e.target.closest('[data-stopturn]');
+    if (sp) { e.preventDefault(); e.stopPropagation(); window.xStopTurn(S.cur); return; }
+    if (qn) { e.preventDefault(); e.stopPropagation(); const list = MSG[S.cur] || [], rep = list[+qn.dataset.qnow], q = QUEUE[S.cur] || []; const at = q.findIndex(x => x.reply === rep); if (at > 0) q.unshift(q.splice(at, 1)[0]); saveQ(S.cur); if (!window.xStopTurn(S.cur) && q[0]) { const nx = q.shift(); saveQ(S.cur); nx.reply.queued = false; void runTurn(S.cur, nx.v, nx.sendFiles, nx.reply, nx.paint); } return; }
     const qc = e.target.closest('[data-qcancel]');
-    if (qc) { e.preventDefault(); e.stopPropagation(); const list = MSG[S.cur] || [], i = +qc.dataset.qcancel, rep = list[i], q = QUEUE[S.cur] || []; const at = q.findIndex(x => x.reply === rep); if (at >= 0) { q.splice(at, 1); rep.queued = false; rep.x = 'Cancelled before it started.'; render(); } return; }
+    if (qc) { e.preventDefault(); e.stopPropagation(); const list = MSG[S.cur] || [], i = +qc.dataset.qcancel, rep = list[i], q = QUEUE[S.cur] || []; const at = q.findIndex(x => x.reply === rep); if (at >= 0) { q.splice(at, 1); rep.queued = false; rep.x = 'Cancelled before it started.'; saveQ(S.cur); render(); } return; }
     if (e.target.closest('[data-route-toggle]')) { e.preventDefault(); e.stopPropagation(); void toggleRoute(); return; }
     if (e.target.closest('[data-ph-chat]')) { e.preventDefault(); e.stopPropagation(); const t = THREADS[0]; if (t) { open_({ k: 'chat', id: t.id }); render(); } else void newThread(''); return; }
     if (e.target.closest('[data-think]')) { e.preventDefault(); e.stopPropagation(); S.think = !S.think; render(); return; }
@@ -558,7 +607,8 @@
     const mo = e.target.closest('button[data-more]'); if (mo) { e.preventDefault(); e.stopPropagation(); S.moreOpen = !S.moreOpen; render(); return; }
     if (S.moreOpen) { S.moreOpen = false; const pp = document.querySelector('.xc-pop'); if (pp) pp.remove(); }
     const mc = e.target.closest('[data-model-chip]'); if (mc) { e.preventDefault(); e.stopPropagation(); S.modelOpen = !S.modelOpen; render(); return; }
-    const mp = e.target.closest('[data-model-pick]'); if (mp) { e.preventDefault(); e.stopPropagation(); if (S.cur) S.perThread[S.cur] = mp.dataset.modelPick; S.modelOpen = false; render(); return; }
+    const ep = e.target.closest('[data-engine-pick]'); if (ep) { e.preventDefault(); e.stopPropagation(); void (async () => { await newThread(aOf(ep.dataset.enginePick)); S.modelOpen = false; render(); })(); return; }
+    const mp = e.target.closest('[data-model-pick]'); if (mp) { e.preventDefault(); e.stopPropagation(); const em = engineLabelOf(THR(S.cur)); if (S.cur && em.eng) void window.xModelPick(em.eng, mp.dataset.modelPick); S.modelOpen = false; render(); return; }
     if (S.modelOpen && !e.target.closest('.pk-menu')) { S.modelOpen = false; render(); }
     if (e.target.closest('[data-attach]')) { e.preventDefault(); e.stopPropagation(); picker.click(); return; }
     const rm = e.target.closest('[data-rmfile]'); if (rm) { e.preventDefault(); e.stopPropagation(); S.files.splice(+rm.dataset.rmfile, 1); attProblem = ''; render(); return; }

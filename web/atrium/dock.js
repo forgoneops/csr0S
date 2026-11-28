@@ -236,7 +236,12 @@
     chipT.textContent = em ? `${em.label || 'engine'} · ${(models.find((m) => m.id === cur) || {}).label || cur || 'default'}` : 'Caesar · default';
     const mb = q('[data-dk=model]'); mb.disabled = models.length < 2; mb.setAttribute('aria-expanded', D.menu && models.length > 1 ? 'true' : 'false');
     menu.hidden = !(D.menu && models.length > 1);
-    menu.innerHTML = models.map((m) => `<li><button type="button" role="menuitemradio" aria-checked="${m.id === cur}" class="${m.id === cur ? 'on' : ''}" data-dk="pick" data-m="${esc(m.id)}">${esc(m.label)}</button></li>`).join('');
+    let at = '';
+    menu.innerHTML = models.map((m) => {
+      const g = m.group || em.label || 'Models';
+      const head = g === at ? '' : (at = g, `<li class="cdk-mg" role="presentation">${esc(g)}</li>`);
+      return head + `<li><button type="button" role="menuitemradio" aria-checked="${m.id === cur}" class="${m.id === cur ? 'on' : ''}" data-dk="pick" data-m="${esc(m.id)}">${esc(m.label)}</button></li>`;
+    }).join('');
   }
 
   async function adopt(session, front = true) { window.xAdopt(session); addTab(session.id); if (front) D.id = session.id; save(); }
@@ -318,7 +323,7 @@
     else if (t.dataset.dk === 'attach') { if (window.xPickFiles) window.xPickFiles(); }
     else if (t.dataset.dk === 'rmfile') { S.files.splice(+t.dataset.i, 1); paint(true); }
     else if (t.dataset.dk === 'model') { D.menu = !D.menu; paint(true); }
-    else if (t.dataset.dk === 'pick') { if (D.id) { S.perThread = S.perThread || {}; S.perThread[D.id] = t.dataset.m; } D.menu = false; paint(true); }
+    else if (t.dataset.dk === 'pick') { if (D.id) { S.perThread = S.perThread || {}; S.perThread[D.id] = t.dataset.m; const em = window.xEngineOf && THR(D.id) ? window.xEngineOf(THR(D.id)) : null; if (em && em.eng && window.xModelPick) void window.xModelPick(em.eng, t.dataset.m); } D.menu = false; paint(true); }
     else if (t.dataset.dk === 'mic') {
       const b = q('[data-dk=mic]');
       if (window.xAtriumMic) void window.xAtriumMic({ done: (x) => { inp.value = (inp.value ? inp.value + ' ' : '') + x; inp.dispatchEvent(new Event('input')); inp.focus(); }, st: (txt, st) => { b.dataset.state = st || 'idle'; b.title = txt; } });

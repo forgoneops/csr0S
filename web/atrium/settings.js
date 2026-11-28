@@ -262,6 +262,7 @@
     ['hermes', 'Hermes', 'The Hermes your crew runs on: each profile, its model and where it runs. Read only.'],
     ['brain', 'Brain and memory', 'Where the Brain lives: on this machine or at an address you chose.'],
     ['backup', 'Backup and restore', 'A consistent copy of settings, chats and keys. Take one now.'],
+    ['updates', 'Updates', 'Check for a newer version, download it and restart into it. Nothing happens without you.'],
     ['notify', 'Notifications on this device', 'A system notice when a reply or an approval is waiting.'],
     ['permissions', 'Permissions', 'What this browser lets CaesarOS use, and what for.'],
     ['egress', 'Where it can connect', 'The outbound addresses this install is set up to use.'],
@@ -298,7 +299,16 @@
   const notify = () => (window.xNotify ? window.xNotify.card() : '<p class="su-note">Not loaded.</p>');
   const egress = () => (window.xEgress ? window.xEgress.card() : '<p class="su-note">Not loaded.</p>');
   const permissions = () => (window.xPermissions ? window.xPermissions.card() : '<p class="su-note">Not loaded.</p>');
-  const BODY = { permissions, egress, notify, modules, you, look, lang, help, voice, engines, hermes, brain, backup, data, credits, about };
+  const UPD_ERR = { no_feed_configured: 'No update address is set yet.', feed_must_be_https: 'The address must start with https://.', feed_url_invalid: 'That is not a valid address.', feed_unreachable: 'The address did not answer.', feed_invalid: 'The address did not return a valid update description.', checksum_mismatch: 'The download did not match its checksum and was refused.', size_mismatch: 'The download had the wrong size and was refused.', up_to_date: 'You are on the latest version.', nothing_staged: 'There is no downloaded update to install.', not_running_as_the_installed_app: 'Restarting into an update works only in the installed app.', package_paths_refused: 'The package was refused: it would unpack outside its folder.', disk_full: 'There is not enough free disk space for the update.', write_failed: 'The update could not be saved on this machine.', unpack_failed: 'The update could not be unpacked.' };
+  const updates = () => {
+    const u = D.upd || {}, feed = (D.set && D.set.updateFeed) || '';
+    const state = u.busy ? '<p class="su-note" role="status">Working…</p>' : u.error ? `<p class="su-note" role="status">${esc(UPD_ERR[u.error] || u.error)}</p>` : u.current ? (u.newer ? `<p class="su-note" role="status">A newer version is available: <b data-no-i18n>${esc(u.latest)}</b> (you have <b data-no-i18n>${esc(u.current)}</b>).</p>` : `<p class="su-note" role="status">You are on the latest version, <b data-no-i18n>${esc(u.current)}</b>.</p>`) : '';
+    return `<p class="su-note">Updates are never installed on their own. The package is checked against its checksum before anything is unpacked, and the app you have now is kept as a backup.</p>
+      <label class="su-f"><span>Where to look for updates</span><input class="su-in" data-st-feed value="${esc(feed)}" placeholder="https://…/latest.json" inputmode="url" autocomplete="off" spellcheck="false" data-no-i18n></label>
+      <div class="st-row"><button type="button" class="su-btn" data-st="upd:check" ${u.busy ? 'disabled' : ''}>Check for an update</button>${u.newer && !u.staged ? '<button type="button" class="su-btn" data-st="upd:apply">Download and verify</button>' : ''}${u.staged ? '<button type="button" class="su-btn" data-st="upd:restart">Restart to install</button>' : ''}</div>
+      ${state}${D.updMsg ? `<p class="su-note" role="status">${esc(D.updMsg)}</p>` : ''}`;
+  };
+  const BODY = { permissions, egress, notify, modules, you, look, lang, help, voice, engines, hermes, brain, backup, updates, data, credits, about };
 
   function settingsView() {
     if (!D.loaded) {
@@ -322,6 +332,16 @@
   const copy = async (btn, text) => {
     try { await navigator.clipboard.writeText(text); const s = btn.querySelector('span'); if (!s) return; s.textContent = 'Copied'; setTimeout(() => { if (s.isConnected) s.textContent = 'Copy'; }, 1400); } catch { /* clipboard refused */ }
   };
+  const postConfirm = async u => { const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) }); return { ok: r.ok, status: r.status, body: await r.json().catch(() => ({})) }; };
+  async function updAct(v) {
+    D.updMsg = '';
+    try {
+      if (v === 'check') { D.upd = { busy: true }; render(); D.upd = await get('/api/update/check').catch(() => ({ error: 'feed_unreachable' })); }
+      else if (v === 'apply') { D.upd = { ...D.upd, busy: true }; render(); const r = await postConfirm('/api/update/apply'); D.upd = await get('/api/update/check').catch(() => ({ error: 'feed_unreachable' })); D.updMsg = r.ok ? 'Downloaded and verified. Restart to install it.' : (UPD_ERR[r.body.error] || r.body.error || 'Refused.'); }
+      else if (v === 'restart') { const r = await postConfirm('/api/update/restart'); D.updMsg = r.ok ? 'Restarting into the new version…' : (UPD_ERR[r.body.error] || r.body.error || 'Refused.'); }
+    } catch { D.updMsg = 'The core did not answer.'; }
+    render();
+  }
   document.addEventListener('click', async e => {
     const c = e.target.closest('[data-st-copy]');
     if (c) { e.preventDefault(); e.stopPropagation(); void copy(c, c.dataset.stCopy); return; }
@@ -355,6 +375,7 @@
     else if (k === 'vmode') { window.xVoiceMode && window.xVoiceMode.toggle(); render(); }
     else if (k === 'mascot') { if (window.xMascot) window.xMascot.toggle(); render(); }
     else if (k === 'tour') { if (window.xTour) window.xTour.start(); }
+    else if (k === 'upd') { void updAct(v); }
     else if (k === 'rv') { if (v === 'toggle') { D.rvOpen = !D.rvOpen; D.rv = null; D.rvN = 40; render(); } else if (v === 'more') { D.rvN = (D.rvN || 40) + 40; render(); } else void reviewAct(v === 'ok' ? 'ok' : v === 'en' ? 'en' : 'save', +(t.dataset.st.split(':')[2])); }
     else if (k === 'i18n') {
       D.i18nBusy = true; D.msg.i18n = ''; render();
@@ -384,6 +405,8 @@
     if (!D.set) return;
     const r = e.target.closest('[data-st-range]');
     if (r) { void save('look', { textScale: Number(r.value) / 100 }); return; }
+    const fd = e.target.closest('[data-st-feed]');
+    if (fd) { D.upd = null; void save('updates', { updateFeed: fd.value.trim() }); return; }
     const f = e.target.closest('[data-st-prof]'), a = e.target.closest('[data-st-acct]'), b = e.target.closest('[data-st-brain-url]');
     if (!f && !a && !b) return;
     if (b) { void save('brain', { brain: { ...D.set.brain, url: b.value.trim() } }); return; }
