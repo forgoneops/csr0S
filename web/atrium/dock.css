@@ -1,20 +1,23 @@
 /* Chat dock (plan 8.10, 8.10a): light on dark, not glass. Every rule is rooted at .cdk, the module's own root.
-   neo-Roma (default) = ember-gold edge and meander; every colour comes from the palette tokens (--p1, --p2, --surface); neutral keeps a hairline.
+   Evolved look: ember (--p1) edge, second accent (--p2) glow, gold (--g3) only on the status and the "you" side; cut corners, no round shapes.
+   Every colour comes from the palette tokens; neutral gets the same layout with its own --p1/--p2.
    Shortcut: one theme pair only, add tokens here when a third theme ships. */
 .cdk {
-  --edge:var(--p1,#ff8a3d); --edge-r:var(--p1r,255,138,61); --glow:var(--p2,#33e8ff); --glow-r:var(--p2r,51,232,255);
-  --ink:var(--text,#e8ecff); --panel:color-mix(in srgb,var(--surface,#0b0d1a) 94%,transparent); --panel-2:color-mix(in srgb,var(--edge) 9%,transparent);
-  --line:rgba(var(--edge-r),.28);
+  --edge:var(--p1,#ff8a3d); --edge-r:var(--p1r,255,138,61); --glow:var(--p2,#33e8ff); --glow-r:var(--p2r,51,232,255); --gold-r:var(--g3,242,196,107);
+  --ink:var(--text,#e8ecff); --mut:var(--muted,#8b93a5); --panel:color-mix(in srgb,var(--surface,#0b0d1a) 96%,transparent);
+  --mono:var(--font-mono,"CaesarOS Mono",monospace);
+  --cut:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
   position:fixed; inset:0; z-index:95; pointer-events:none;
   font-family:var(--font-body,"CaesarOS Humanist",system-ui,sans-serif); color:var(--ink);
 }
 .cdk.cdk-simple { display:none; }
+.cdk [hidden] { display:none !important; }
+.cdk .icon { display:block; fill:none; stroke:currentColor; }
 
-/* ---- launcher: 44px, a small diamond when a reply runs or an approval waits ---- */
+/* ---- launcher (the mini button): 52px, portrait, a small diamond when a reply runs or an approval waits ---- */
 .cdk .cdk-launch {
   position:absolute; right:var(--cdk-r,24px); bottom:var(--cdk-b,40px); width:52px; height:52px; padding:0; pointer-events:auto; touch-action:none;
-  display:grid; place-items:center; color:var(--ink); cursor:pointer;
-  background:var(--panel); border:0;
+  display:grid; place-items:center; color:var(--ink); cursor:pointer; background:var(--panel); border:0;
   clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,11px 100%,0 calc(100% - 11px));
   box-shadow:0 0 0 1px rgba(var(--edge-r),.6),0 0 18px -4px rgba(var(--glow-r),.5);
 }
@@ -22,82 +25,154 @@
 .cdk .cdk-diamond { position:absolute; right:5px; top:5px; width:7px; height:7px; background:var(--glow); transform:rotate(45deg); display:none; box-shadow:0 0 8px var(--glow); }
 .cdk.cdk-busy .cdk-diamond, .cdk.cdk-wait .cdk-diamond { display:block; }
 .cdk.cdk-open .cdk-launch { display:none; }
-.cdk.cdk-dupe .cdk-launch { display:grid; }
+.cdk.cdk-dupe:not(.cdk-has-un) .cdk-launch { display:none; }   /* the same conversation is already on the page: the launcher would only sit over its composer */
+.cdk .cdk-launch img { width:46px; height:46px; object-fit:cover; display:block; pointer-events:none; }
+.cdk .cdk-launch .cdk-tag { position:absolute; left:0; right:0; bottom:0; padding:1px 0 2px; text-align:center; font:8px var(--mono); letter-spacing:.16em; background:rgba(0,0,0,.72); color:var(--edge); }
 
-/* ---- the window ---- */
+/* ---- the window: a 1px ember edge drawn by the gradient behind a slightly inset face ---- */
 .cdk .cdk-win {
-  position:absolute; right:var(--cdk-r,24px); bottom:var(--cdk-b,40px); width:380px; height:520px; display:none; pointer-events:auto;
-  background:linear-gradient(180deg,rgba(var(--edge-r),.95),rgba(var(--edge-r),.45) 55%,rgba(var(--edge-r),.2));
+  position:absolute; right:var(--cdk-wr,var(--cdk-r,24px)); bottom:var(--cdk-b,40px); width:380px; height:520px; display:none; pointer-events:auto;
+  background:linear-gradient(180deg,rgba(var(--edge-r),.9),rgba(var(--edge-r),.4) 55%,rgba(var(--edge-r),.18));
   clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));
-  filter:drop-shadow(0 0 16px rgba(var(--glow-r),.34));
+  filter:drop-shadow(0 0 14px rgba(var(--glow-r),.26));
 }
 .cdk.cdk-open .cdk-win { display:block; }
 .cdk.cdk-dupe.cdk-open .cdk-win { display:none; }
 .cdk .cdk-face {
   position:absolute; inset:1px; display:flex; flex-direction:column; overflow:hidden;
-  background:linear-gradient(180deg,rgba(var(--edge-r),.07),transparent 28%),var(--panel);
+  background:linear-gradient(180deg,rgba(var(--edge-r),.08),transparent 22%),var(--panel);
   clip-path:polygon(0 0,calc(100% - 17px) 0,100% 17px,100% 100%,17px 100%,0 calc(100% - 17px));
 }
-.cdk .cdk-face::before { content:""; position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px); }
-.cdk .cdk-corner { position:absolute; width:14px; height:14px; border:1px solid rgba(var(--edge-r),.9); pointer-events:none; }
-.cdk .cdk-c1 { left:6px; top:6px; border-right:0; border-bottom:0; }
-.cdk .cdk-c2 { right:6px; bottom:6px; border-left:0; border-top:0; }
-.cdk .cdk-meander {
-  flex:none; height:10px; margin:0 18px;
-  background:repeating-linear-gradient(90deg,rgba(var(--edge-r),.5) 0 6px,transparent 6px 8px,rgba(var(--edge-r),.5) 8px 10px,transparent 10px 14px);
-  opacity:.55; mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
-  -webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
-}
-.cdk[data-theme=neutral] .cdk-meander { height:1px; margin:6px 18px; background:linear-gradient(90deg,transparent,rgba(var(--edge-r),.6),transparent); opacity:.8; mask:none; -webkit-mask:none; }
+.cdk .cdk-face::before { content:""; position:absolute; inset:0; pointer-events:none; z-index:1; background:repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 3px); }
 
-/* ---- header ---- */
-.cdk .cdk-hd { display:flex; align-items:center; gap:10px; padding:12px 14px 8px; flex:none; }
+/* ---- header: who, state, four buttons with 32px hit areas (44px on a phone) ---- */
+.cdk .cdk-hd { display:flex; align-items:center; gap:11px; padding:12px 12px 11px 14px; flex:none; border-bottom:1px solid rgba(var(--edge-r),.22); cursor:grab; touch-action:none; position:relative; z-index:2; }
 .cdk .cdk-av { width:38px; height:38px; flex:none; overflow:hidden; background:#000; box-shadow:0 0 0 1px rgba(var(--edge-r),.7); clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px)); }
 .cdk .cdk-av img { width:100%; height:100%; object-fit:cover; display:block; }
-.cdk .cdk-id { display:grid; line-height:1.2; min-width:0; }
-.cdk .cdk-id b { font-weight:600; font-size:17px; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.cdk .cdk-id small { font:10px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
-.cdk .cdk-st { margin-left:auto; display:flex; align-items:center; gap:7px; font:10px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.14em; text-transform:uppercase; color:var(--edge); }
-.cdk .cdk-st i { width:7px; height:7px; background:var(--edge); transform:rotate(45deg); box-shadow:0 0 8px var(--edge); }
-.cdk .cdk-btns { display:flex; gap:6px; margin-left:10px; }
-.cdk .cdk-btn {
-  width:30px; height:30px; padding:0; display:grid; place-items:center; cursor:pointer;
-  border:1px solid rgba(var(--edge-r),.35); background:transparent; color:var(--muted); font-size:13px; line-height:1;
-}
-.cdk .cdk-btn:hover { border-color:var(--edge); color:var(--ink); }
+.cdk .cdk-id { display:grid; gap:3px; line-height:1.15; min-width:0; flex:1; }
+.cdk .cdk-id b { font-weight:600; font-size:16px; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cdk .cdk-st { display:flex; align-items:center; gap:7px; font:10px var(--mono); letter-spacing:.14em; text-transform:uppercase; color:rgba(var(--gold-r),.95); }
+.cdk .cdk-st i { width:6px; height:6px; flex:none; background:currentColor; transform:rotate(45deg); box-shadow:0 0 7px currentColor; }
+.cdk.cdk-busy .cdk-st { color:var(--glow); }
+.cdk.cdk-err .cdk-st { color:var(--edge); }
+.cdk .cdk-btns { display:flex; gap:4px; flex:none; }
+.cdk .cdk-btn { width:32px; height:32px; padding:0; display:grid; place-items:center; cursor:pointer; border:1px solid transparent; background:transparent; color:var(--mut); clip-path:var(--cut); }
+.cdk .cdk-btn:hover { background:rgba(var(--edge-r),.14); color:var(--ink); }
+.cdk .cdk-btn[aria-pressed=true] { color:var(--edge); background:rgba(var(--edge-r),.14); }
+.cdk .cdk-live { flex:none; height:2px; position:relative; z-index:2; background:transparent; overflow:hidden; }
+.cdk.cdk-busy .cdk-live { background:rgba(var(--edge-r),.2); }
+.cdk.cdk-busy .cdk-live::after { content:""; position:absolute; top:0; bottom:0; width:38%; background:linear-gradient(90deg,transparent,var(--edge),transparent); left:30%; }
+.cdk.cdk-anim.cdk-busy .cdk-live::after { animation:cdk-run 1.5s ease-in-out infinite; }
+.cdk.cdk-min .cdk-win { height:66px !important; }
+.cdk.cdk-min .cdk-body, .cdk.cdk-min .cdk-comp, .cdk.cdk-min .cdk-grip[data-dk-edge=n], .cdk.cdk-min .cdk-grip[data-dk-edge=s], .cdk.cdk-min .cdk-nw { display:none; }
+.cdk.cdk-min .cdk-hd { border-bottom:0; }
 
-/* ---- the conversation: the chat view's own message markup, restyled in the dock's language ---- */
-.cdk .cdk-thread { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:8px 14px 10px; display:flex; flex-direction:column; gap:10px; }
-.cdk .cdk-empty { margin:0; padding:10px 2px; color:var(--muted); font-size:13px; line-height:1.6; }
-.cdk .nx-msg { max-width:88%; display:grid; gap:4px; }
+/* ---- tabs: one per conversation; a count on the tab when a reply came while you were elsewhere ---- */
+.cdk .cdk-tabs { flex:none; display:flex; align-items:stretch; gap:4px; padding:6px 10px 0; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; position:relative; z-index:2; border-bottom:1px solid rgba(var(--edge-r),.22); }
+.cdk .cdk-tabs::-webkit-scrollbar { display:none; }
+.cdk .cdk-tab { flex:none; display:flex; align-items:center; max-width:150px; background:rgba(var(--edge-r),.06); box-shadow:inset 0 0 0 1px rgba(var(--edge-r),.22); clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,0 100%); }
+.cdk .cdk-tab.on { background:rgba(var(--edge-r),.18); box-shadow:inset 0 0 0 1px var(--edge); }
+.cdk .cdk-tabb { display:flex; align-items:center; gap:6px; min-width:0; height:30px; padding:0 4px 0 6px; cursor:pointer; border:0; background:transparent; color:var(--mut); font:11px var(--mono); letter-spacing:.04em; }
+.cdk .cdk-tab.on .cdk-tabb { color:var(--ink); }
+.cdk .cdk-tabb img { width:18px; height:18px; flex:none; object-fit:cover; display:block; clip-path:polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,0 100%); }
+.cdk .cdk-tabb span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cdk .cdk-un, .cdk .cdk-badge { flex:none; min-width:16px; padding:1px 4px; text-align:center; font:700 9px/1.3 var(--mono); font-style:normal; color:#000; background:var(--glow); clip-path:var(--cut); }
+.cdk .cdk-tabx, .cdk .cdk-tabn { width:28px; height:30px; flex:none; padding:0; display:grid; place-items:center; cursor:pointer; border:0; background:transparent; color:var(--mut); }
+.cdk .cdk-tabx { width:24px; }
+.cdk .cdk-tabx:hover, .cdk .cdk-tabn:hover { color:var(--ink); background:rgba(var(--edge-r),.18); }
+.cdk .cdk-badge { position:absolute; left:3px; top:3px; box-shadow:0 0 8px var(--glow); }
+.cdk .cdk-tabb:focus-visible, .cdk .cdk-tabx:focus-visible, .cdk .cdk-tabn:focus-visible { outline:2px solid var(--edge); outline-offset:-3px; }
+.cdk.cdk-min .cdk-tabs, .cdk.cdk-min .cdk-meter { display:none; }
+
+/* ---- size of the chat and plan warning: text and a bar, always visible ---- */
+.cdk .cdk-meter { flex:none; display:grid; gap:4px; padding:6px 14px 0; position:relative; z-index:2; }
+.cdk .cdk-mt { display:flex; align-items:center; gap:10px; font:10px var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--mut); }
+.cdk .cdk-mt-bar { flex:1; height:4px; background:rgba(var(--edge-r),.18); position:relative; }
+.cdk .cdk-mt-bar i { position:absolute; left:0; top:0; bottom:0; background:var(--glow); }
+.cdk .cdk-mt-bar.hot i { background:var(--edge); }
+.cdk .cdk-mt-w { margin:0; padding:5px 8px; font-size:12px; line-height:1.4; color:var(--ink); background:rgba(var(--edge-r),.1); box-shadow:inset 2px 0 0 var(--edge); }
+
+/* ---- the conversation: the chat view's own message markup, restyled ---- */
+.cdk .cdk-body { position:relative; flex:1; min-height:0; display:flex; z-index:2; }
+.cdk .cdk-thread { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:14px 14px 12px; display:flex; flex-direction:column; gap:14px; scrollbar-width:thin; scrollbar-color:rgba(var(--edge-r),.4) transparent; }
+.cdk .nx-msg { max-width:90%; display:grid; gap:5px; }
 .cdk .nx-msg.me { align-self:flex-end; }
-.cdk .nx-who { font:9px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
-.cdk .nx-bub { padding:9px 12px; background:var(--panel-2); border:0; border-left:2px solid rgba(var(--edge-r),.6); clip-path:none; color:var(--ink); }
-.cdk .nx-msg.me .nx-bub { background:rgba(var(--glow-r),.12); border-left:0; border-right:2px solid rgba(var(--glow-r),.7); }
-.cdk .nx-bub p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; line-height:1.5; }
-.cdk .nx-tool { border-style:solid; border-color:rgba(var(--edge-r),.3); color:var(--muted); }
-.cdk .xf-head { background:transparent; border:0; color:var(--muted); }
+.cdk .nx-who { font:9px var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--mut); }
+.cdk .nx-msg.me .nx-who { text-align:right; color:rgba(var(--gold-r),.85); }
+.cdk .nx-bub { padding:10px 13px; border:0; color:var(--ink); background:rgba(var(--edge-r),.09); box-shadow:inset 2px 0 0 rgba(var(--edge-r),.75);
+  clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,0 100%); }
+.cdk .nx-msg.me .nx-bub { background:rgba(var(--gold-r),.1); box-shadow:inset -2px 0 0 rgba(var(--gold-r),.8); clip-path:polygon(9px 0,100% 0,100% 100%,0 100%,0 9px); }
+.cdk .nx-bub p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; line-height:1.55; }
+.cdk .nx-bub p + p, .cdk .nx-bub p + pre, .cdk .nx-bub pre + p { margin-top:8px; }
+.cdk .cdk-code { margin:0; padding:9px 11px; overflow-x:auto; background:rgba(0,0,0,.45); border:1px solid rgba(var(--edge-r),.28); border-left:2px solid var(--edge); font:12px/1.55 var(--mono); color:var(--ink); white-space:pre; tab-size:2; scrollbar-width:thin; }
+.cdk .cdk-code code { font:inherit; }
+.cdk .cdk-ic { padding:1px 5px; font:12.5px var(--mono); background:rgba(0,0,0,.4); border:1px solid rgba(var(--edge-r),.25); }
+.cdk .nx-typing { display:inline-flex; gap:5px; padding:4px 0; }
+.cdk .nx-typing i { width:6px; height:6px; background:var(--edge); transform:rotate(45deg); opacity:.55; }
+.cdk.cdk-anim .nx-typing i { animation:cdk-pulse 1.2s ease-in-out infinite; }
+.cdk.cdk-anim .nx-typing i:nth-child(2) { animation-delay:.2s; } .cdk.cdk-anim .nx-typing i:nth-child(3) { animation-delay:.4s; }
+.cdk .nx-tool { border-style:solid; border-color:rgba(var(--edge-r),.3); color:var(--mut); }
+.cdk .xf-head { background:transparent; border:0; color:var(--mut); }
 .cdk .xf-body, .cdk .xf-body pre { color:var(--ink); }
-.cdk .xf-chip { color:var(--muted); }
+.cdk .xf-chip { color:var(--mut); }
 
-/* ---- the approval card, in the same language ---- */
-.cdk .cdk-ap { border:1px solid rgba(var(--edge-r),.5); background:rgba(var(--edge-r),.06); padding:10px 12px; display:grid; gap:8px; }
-.cdk .cdk-ap b { font:600 11px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.12em; text-transform:uppercase; color:var(--edge); }
-.cdk .cdk-ap p { margin:0; font-size:14px; line-height:1.45; }
+/* ---- empty state: three things worth asking ---- */
+.cdk .cdk-empty { display:grid; gap:10px; margin:auto 0; padding:6px 0; }
+.cdk .cdk-empty b { font:600 11px var(--mono); letter-spacing:.18em; text-transform:uppercase; color:var(--edge); }
+.cdk .cdk-empty p { margin:0; color:var(--mut); font-size:13px; line-height:1.55; }
+.cdk .cdk-sg { display:grid; gap:7px; margin-top:4px; }
+.cdk .cdk-sg button { display:flex; align-items:center; gap:11px; min-height:44px; padding:8px 12px; text-align:left; cursor:pointer; color:var(--ink); font:inherit; font-size:14px; border:0; background:rgba(var(--edge-r),.08);
+  box-shadow:inset 0 0 0 1px rgba(var(--edge-r),.3); clip-path:var(--cut); }
+.cdk .cdk-sg button i { font:normal 10px var(--mono); letter-spacing:.1em; color:var(--edge); }
+.cdk .cdk-sg button:hover { background:rgba(var(--edge-r),.16); box-shadow:inset 0 0 0 1px var(--edge); }
+
+/* ---- error and approval cards ---- */
+.cdk .cdk-error, .cdk .cdk-ap { display:grid; gap:7px; padding:10px 12px; background:rgba(var(--edge-r),.07); box-shadow:inset 0 0 0 1px rgba(var(--edge-r),.5); clip-path:var(--cut); }
+.cdk .cdk-error { box-shadow:inset 0 0 0 1px var(--edge), inset 3px 0 0 var(--edge); }
+.cdk .cdk-error b, .cdk .cdk-ap b { font:600 11px var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--edge); }
+.cdk .cdk-error p, .cdk .cdk-ap p { margin:0; font-size:13.5px; line-height:1.45; }
+.cdk .cdk-error button, .cdk .cdk-apb button { justify-self:start; min-height:32px; padding:6px 14px; font:600 11px var(--mono); letter-spacing:.1em; border:0; box-shadow:inset 0 0 0 1px rgba(var(--edge-r),.65); background:transparent; color:var(--ink); cursor:pointer; clip-path:var(--cut); }
 .cdk .cdk-apb { display:flex; gap:8px; }
-.cdk .cdk-apb button { padding:6px 12px; font:600 11px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.1em; border:1px solid rgba(var(--edge-r),.6); background:transparent; color:var(--ink); cursor:pointer; }
-.cdk .cdk-apb .cdk-apb-a { background:rgba(var(--edge-r),.18); }
-.cdk .cdk-apb button:hover { background:rgba(var(--edge-r),.3); }
+.cdk .cdk-apb .cdk-apb-a { background:rgba(var(--edge-r),.2); }
+.cdk .cdk-error button:hover, .cdk .cdk-apb button:hover { background:rgba(var(--edge-r),.32); }
 
-/* ---- composer: grows with the text, like the chat page's ---- */
-.cdk .cdk-comp { flex:none; padding:10px 14px 14px; }
-.cdk .cdk-box { display:flex; gap:8px; align-items:flex-end; padding:8px 8px 8px 12px; border:1px solid rgba(var(--edge-r),.4); background:rgba(0,0,0,.35); clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px)); }
-.cdk .cdk-inp { all:unset; box-sizing:border-box; flex:1; min-height:26px; max-height:160px; padding:4px 0; font:15px/1.45 var(--font-body,"CaesarOS Humanist",system-ui,sans-serif); color:var(--ink); white-space:pre-wrap; overflow-y:auto; }
-.cdk .cdk-inp::placeholder { color:var(--muted); }
-.cdk .cdk-send { width:34px; height:30px; flex:none; display:grid; place-items:center; padding:0; cursor:pointer; background:rgba(var(--edge-r),.2); border:1px solid rgba(var(--edge-r),.7); color:var(--ink); font-size:13px; }
-.cdk .cdk-send:hover { background:rgba(var(--edge-r),.35); }
+/* ---- scroll to latest ---- */
+.cdk .cdk-latest { position:absolute; right:14px; bottom:10px; display:flex; align-items:center; gap:6px; height:30px; padding:0 11px; cursor:pointer; font:600 10px var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
+  border:0; background:color-mix(in srgb,var(--surface,#0b0d1a) 92%,rgba(var(--edge-r),.3)); box-shadow:inset 0 0 0 1px var(--edge),0 0 14px -4px rgba(var(--glow-r),.5); clip-path:var(--cut); }
 
-/* ---- live resize grips ---- */
+/* ---- composer: same anatomy as the chat page's (box, then a toolbar of attach, mic, engine, send) ---- */
+.cdk .cdk-comp { flex:none; padding:4px 12px 12px; position:relative; z-index:2; }
+.cdk .cdk-tray { display:flex; flex-wrap:wrap; gap:6px; padding:0 0 8px; }
+.cdk .cdk-file { display:inline-flex; align-items:center; gap:6px; max-width:100%; padding:3px 4px 3px 8px; font:11px var(--mono); background:rgba(var(--edge-r),.1); box-shadow:inset 0 0 0 1px rgba(var(--edge-r),.35); clip-path:var(--cut); }
+.cdk .cdk-file b { font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px; }
+.cdk .cdk-file small { color:var(--mut); }
+.cdk .cdk-file button { width:22px; height:22px; padding:0; display:grid; place-items:center; border:0; background:transparent; color:var(--mut); cursor:pointer; }
+.cdk .cdk-file-e { flex-basis:100%; margin:0; font-size:12px; color:var(--edge); }
+.cdk .cdk-box { position:relative; display:grid; gap:2px; padding:9px 8px 6px 13px; background:rgba(var(--edge-r),.45); clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px)); }
+.cdk .cdk-box::before { content:""; position:absolute; inset:1px; background:color-mix(in srgb,var(--surface,#0b0d1a) 70%,#000); clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,11px 100%,0 calc(100% - 11px)); }
+.cdk .cdk-box > * { position:relative; }
+.cdk .cdk-box:focus-within { background:var(--edge); }
+.cdk .cdk-inp { all:unset; box-sizing:border-box; position:relative; display:block; background:transparent !important; border:0 !important; box-shadow:none !important; width:100%; min-height:26px; max-height:160px; padding:3px 0; font:15px/1.45 var(--font-body,"CaesarOS Humanist",system-ui,sans-serif); color:var(--ink); white-space:pre-wrap; overflow-y:auto; }
+.cdk .cdk-inp::placeholder { color:var(--mut); }
+.cdk .cdk-bar { display:flex; align-items:center; gap:4px; }
+.cdk .cdk-tb { width:32px; height:32px; padding:0; display:grid; place-items:center; cursor:pointer; border:0; background:transparent; color:var(--mut); clip-path:var(--cut); }
+.cdk .cdk-tb:hover { background:rgba(var(--edge-r),.14); color:var(--ink); }
+.cdk .cdk-tb[data-state=rec] { color:var(--edge); background:rgba(var(--edge-r),.18); }
+.cdk .cdk-tb[data-state=busy] { color:var(--glow); }
+.cdk .cdk-tb[data-state=err] { color:var(--edge); box-shadow:inset 0 0 0 1px var(--edge); }
+.cdk .cdk-pm { position:relative; min-width:0; flex:0 1 auto; margin-right:auto; }
+.cdk .cdk-chip { display:flex; align-items:center; gap:6px; max-width:100%; height:28px; padding:0 8px; cursor:pointer; font:10.5px var(--mono); letter-spacing:.06em; color:var(--mut); border:0; background:transparent; box-shadow:inset 0 0 0 1px rgba(var(--edge-r),.25); clip-path:var(--cut); }
+.cdk .cdk-chip:hover:not(:disabled) { color:var(--ink); box-shadow:inset 0 0 0 1px var(--edge); }
+.cdk .cdk-chip:disabled { cursor:default; }
+.cdk .cdk-chip-t { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cdk .cdk-menu { position:absolute; left:0; bottom:34px; z-index:5; margin:0; padding:4px; list-style:none; min-width:170px; max-height:190px; overflow:auto; background:var(--panel); box-shadow:inset 0 0 0 1px var(--edge),0 0 18px -4px rgba(var(--glow-r),.5); clip-path:var(--cut); }
+.cdk .cdk-menu button { display:block; width:100%; min-height:32px; padding:6px 10px; text-align:left; cursor:pointer; font:12px var(--mono); color:var(--ink); border:0; background:transparent; }
+.cdk .cdk-menu button:hover, .cdk .cdk-menu button.on { background:rgba(var(--edge-r),.18); }
+.cdk .cdk-send { width:38px; height:32px; flex:none; display:grid; place-items:center; padding:0; cursor:pointer; color:var(--ink); border:0; background:rgba(var(--edge-r),.28); box-shadow:inset 0 0 0 1px var(--edge); clip-path:var(--cut); }
+.cdk .cdk-send:hover { background:rgba(var(--edge-r),.45); }
+.cdk.cdk-busy .cdk-send { opacity:.45; }
+
+/* ---- resize and move: the ember corner mark at top left is the handle; edges light up under the pointer ---- */
 .cdk .cdk-grip { position:absolute; z-index:3; pointer-events:auto; }
 .cdk .cdk-grip[data-dk-edge=n] { left:18px; right:24px; top:0; height:7px; cursor:ns-resize; }
 .cdk .cdk-grip[data-dk-edge=s] { left:18px; right:6px; bottom:0; height:7px; cursor:ns-resize; }
@@ -107,33 +182,43 @@
 .cdk .cdk-grip[data-dk-edge=ne] { right:0; top:0; width:20px; height:20px; cursor:nesw-resize; }
 .cdk .cdk-grip[data-dk-edge=sw] { left:0; bottom:0; width:20px; height:20px; cursor:nesw-resize; }
 .cdk .cdk-grip[data-dk-edge=se] { right:0; bottom:0; width:16px; height:16px; cursor:nwse-resize; }
+.cdk .cdk-grip:hover { background:rgba(var(--edge-r),.35); }
 .cdk .cdk-grip:focus-visible { outline:2px solid var(--edge); outline-offset:-3px; }
-.cdk .cdk-launch:focus-visible, .cdk .cdk-btn:focus-visible, .cdk .cdk-send:focus-visible, .cdk .cdk-apb button:focus-visible, .cdk .cdk-inp:focus-visible { outline:2px solid var(--edge); outline-offset:-4px; }
+.cdk .cdk-nw { position:absolute; left:5px; top:5px; width:12px; height:12px; z-index:4; pointer-events:none; background:var(--edge); opacity:.85; clip-path:polygon(0 0,100% 0,0 100%); }
+.cdk.cdk-moving .cdk-hd, .cdk.cdk-moving .cdk-launch { cursor:grabbing; }
+.cdk .cdk-hd button { cursor:pointer; }
+.cdk .cdk-launch:focus-visible, .cdk .cdk-btn:focus-visible, .cdk .cdk-tb:focus-visible, .cdk .cdk-chip:focus-visible, .cdk .cdk-send:focus-visible, .cdk .cdk-sg button:focus-visible, .cdk .cdk-latest:focus-visible, .cdk .cdk-error button:focus-visible, .cdk .cdk-apb button:focus-visible, .cdk .cdk-menu button:focus-visible, .cdk .cdk-thread:focus-visible { outline:2px solid var(--edge); outline-offset:-3px; }
+.cdk .cdk-inp:focus-visible { outline:none; }
 
-/* ---- one light sweep when it opens; nothing moves after ---- */
-.cdk .cdk-sweep { position:absolute; left:0; right:0; top:0; height:2px; pointer-events:none; opacity:0; background:linear-gradient(90deg,transparent,rgba(var(--edge-r),.95),transparent); box-shadow:0 0 14px rgba(var(--edge-r),.7); }
+/* ---- one light sweep when it opens; nothing else moves ---- */
+.cdk .cdk-sweep { position:absolute; left:0; right:0; top:0; height:2px; pointer-events:none; opacity:0; z-index:3; background:linear-gradient(90deg,transparent,rgba(var(--edge-r),.95),transparent); box-shadow:0 0 14px rgba(var(--edge-r),.7); }
 .cdk.cdk-anim .cdk-sweep { animation:cdk-sweep 1.4s .1s 1 both; }
 .cdk.cdk-anim.cdk-busy .cdk-diamond, .cdk.cdk-anim.cdk-wait .cdk-diamond { animation:cdk-pulse 1.6s ease-in-out infinite; }
-@keyframes cdk-sweep { from { opacity:0; top:0; } 20% { opacity:1; } to { opacity:0; top:100%; } }
-@keyframes cdk-pulse { 0%,100% { opacity:.55; } 50% { opacity:1; } }
-@media (prefers-reduced-motion: reduce) { .cdk .cdk-sweep, .cdk .cdk-diamond { animation:none !important; } }
-
-/* ---- launcher portrait, label and the move handle ---- */
-.cdk .cdk-launch img { width:46px; height:46px; object-fit:cover; display:block; pointer-events:none; }
-.cdk .cdk-launch .cdk-tag { position:absolute; left:0; right:0; bottom:0; padding:1px 0 2px; text-align:center; font:8px var(--font-mono,"CaesarOS Mono",monospace); letter-spacing:.16em; background:rgba(0,0,0,.72); color:var(--edge); }
 .cdk.cdk-anim .cdk-launch { animation:cdk-ember 3.2s ease-in-out infinite; }
+@keyframes cdk-sweep { from { opacity:0; top:0; } 20% { opacity:1; } to { opacity:0; top:100%; } }
+@keyframes cdk-pulse { 0%,100% { opacity:.45; } 50% { opacity:1; } }
+@keyframes cdk-run { 0% { left:-40%; } 100% { left:100%; } }
 @keyframes cdk-ember { 0%,100% { filter:drop-shadow(0 0 4px rgba(var(--glow-r),.35)); } 50% { filter:drop-shadow(0 0 12px rgba(var(--glow-r),.75)); } }
-.cdk .cdk-hd { cursor:grab; touch-action:none; }
-.cdk .cdk-hd button { cursor:pointer; }
-.cdk.cdk-moving .cdk-hd, .cdk.cdk-moving .cdk-launch { cursor:grabbing; }
+@media (prefers-reduced-motion: reduce) { .cdk *, .cdk .cdk-launch { animation:none !important; transition:none !important; } }
 
-/* ---- phone: a sheet above the bottom bar; same conversation, no drag, no resize grips ---- */
+/* ---- phone: a full-width sheet above the bottom bar; same conversation, no drag, no resize grips, 44px targets ---- */
 @media (max-width:760px) {
   .cdk .cdk-launch { right:12px; bottom:calc(70px + env(safe-area-inset-bottom)); }
-  .cdk .cdk-win { left:8px; right:8px; bottom:calc(64px + env(safe-area-inset-bottom)); width:auto !important; height:min(74dvh,640px) !important; }
-  .cdk .cdk-grip { display:none; }
+  .cdk .cdk-win { left:0; right:0; bottom:calc(64px + env(safe-area-inset-bottom)); width:auto !important; height:min(78dvh,680px) !important; }
+  .cdk.cdk-min .cdk-win { height:66px !important; }
+  .cdk .cdk-grip, .cdk .cdk-nw { display:none; }
   .cdk .cdk-hd { cursor:default; }
-  .cdk .cdk-btn { width:44px; height:44px; }
-  .cdk .cdk-inp { min-height:44px; padding:11px 0; }
-  .cdk .cdk-send { width:44px; height:40px; }
+  .cdk .cdk-btns { gap:0; }
+  .cdk .cdk-btn, .cdk .cdk-tb { width:44px; height:44px; }
+  .cdk .cdk-btn[data-dk=split] { display:none; }
+  .cdk .cdk-tabs { -webkit-overflow-scrolling:touch; }
+  .cdk .cdk-tabb, .cdk .cdk-tabx, .cdk .cdk-tabn { height:44px; }
+  .cdk .cdk-tabx, .cdk .cdk-tabn { width:44px; }
+  .cdk .cdk-chip { height:44px; }
+  .cdk .cdk-send { width:52px; height:44px; }
+  .cdk .cdk-menu button, .cdk .cdk-error button, .cdk .cdk-apb button { min-height:44px; }
+  .cdk .cdk-latest { height:44px; }
+  .cdk .cdk-inp { min-height:44px; padding:11px 0; font-size:16px; }
+  .cdk .cdk-comp { padding-bottom:12px; }
+  .cdk .nx-msg { max-width:94%; }
 }

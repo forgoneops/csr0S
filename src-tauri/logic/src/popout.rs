@@ -18,6 +18,12 @@ pub fn is_pop_request(target: &Url, gateway_origin: Option<&str>) -> bool {
     crate::gateway::origin_of(target).as_deref() == Some(g) && target.query_pairs().any(|(k, v)| k == "pop" && is_view(&v))
 }
 
+/// A popped window asks to be closed by navigating to `?pop-close=1` on the gateway (a page cannot close a window it did not open itself).
+pub fn is_pop_close(target: &Url, gateway_origin: Option<&str>) -> bool {
+    let Some(g) = gateway_origin else { return false };
+    crate::gateway::origin_of(target).as_deref() == Some(g) && target.query_pairs().any(|(k, v)| k == "pop-close" && v == "1")
+}
+
 pub fn is_pop_label(label: &str) -> bool {
     label.strip_prefix(POP_PREFIX).is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
 }
@@ -32,6 +38,14 @@ mod tests {
     use super::*;
     const GW: Option<&str> = Some("http://127.0.0.1:4479");
     fn u(s: &str) -> Url { Url::parse(s).unwrap() }
+
+    #[test]
+    fn close_request_is_the_gateway_only() {
+        assert!(is_pop_close(&u("http://127.0.0.1:4479/?pop-close=1"), GW));
+        assert!(!is_pop_close(&u("http://127.0.0.1:4479/?pop-close=0"), GW));
+        assert!(!is_pop_close(&u("http://evil.example/?pop-close=1"), GW));
+        assert!(!is_pop_close(&u("http://127.0.0.1:4479/?pop-close=1"), None));
+    }
 
     #[test]
     fn honours_only_gateway_pop_urls() {

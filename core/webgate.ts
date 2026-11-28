@@ -16,6 +16,7 @@
 // (Tailscale encrypts it); for anything else put https in front (for example tailscale serve) and keep reach on "device".
 import type { Context, Hono, MiddlewareHandler } from "hono";
 import { networkInterfaces } from "node:os";
+import { isolated } from "./host";
 import { timingSafeEqual } from "node:crypto";
 import { throttled, noteFail, noteOk, clientAddress } from "./auth";
 import { gatewayProven } from "./principal";
@@ -58,7 +59,7 @@ function revocable(res: Response): Response {
 /** This machine's private LAN and Tailscale IPv4 addresses, read from the interfaces (no command is run). */
 export function localAddresses(): Addrs {
   const out: Addrs = { lan: null, tailnet: null };
-  for (const list of Object.values(networkInterfaces())) for (const i of list ?? []) {
+  for (const list of Object.values(isolated() ? {} : networkInterfaces())) for (const i of list ?? []) {
     if (i.family !== "IPv4" || i.internal) continue;
     const [a, b] = i.address.split(".").map(Number);
     if (a === 100 && b! >= 64 && b! <= 127) out.tailnet ??= i.address;

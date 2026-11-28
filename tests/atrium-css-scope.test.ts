@@ -36,6 +36,7 @@ const BASE: Record<string, string> = {
 const MODULES: Record<string, string> = {
   "neo.css": "html[data-skin=neo]",
   "theme-neutral.css": "html[data-skin=neo][data-theme=neutral]",
+  "theme-pack.css": "html[data-skin=neo][data-tpack]",
   "board.css": ".bd",
   "media.css": ".md",
   "dock.css": ".cdk",

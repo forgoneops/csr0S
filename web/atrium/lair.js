@@ -183,6 +183,7 @@
   };
   const cmdAdmin = () => {
     if (!L.adm) { void loadAdm(); return typeof ARTSTATE === 'function' ? ARTSTATE('loading', 'Reading the machine…') : ''; }
+    if (L.adm.hidden) return vzEmpty('Machine details are hidden', 'This copy runs on a throwaway data folder, so it does not read this computer.');
     if (L.adm.failed || !L.adm.machine) return typeof ARTSTATE === 'function' ? ARTSTATE('error', 'The machine could not be read', 'The core did not answer. Open this tab again in a moment.') : '';
     const m = L.adm.machine, tone = p => p >= 90 ? 'd' : p >= 75 ? 'g' : 'a', up = m.uptimeH < 48 ? m.uptimeH + ' h' : Math.round(m.uptimeH / 24) + ' days';
     return `${vzTiles([vzTile('Cores', m.cores, m.os, 'a'), vzTile('Memory', m.ramGb + ' GB', m.freeRamGb + ' GB free', 's'), vzTile('Load', m.load[0], '5 min ' + m.load[1] + ' · 15 min ' + m.load[2], m.load[0] > m.cores ? 'd' : 'g'), vzTile('Up for', up, 'since the last start', 'm')])}

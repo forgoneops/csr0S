@@ -64,3 +64,10 @@
     else void run(act);
   }, true);
 })();
+
+// The time under every message: HH:MM, with the date once it is older than a day. `at` is the message's own createdAt (the thread's updatedAt for old rows).
+window.xTime = at => {
+  if (!at) return '';
+  const d = new Date(at), loc = uiLocale([]), t = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+  return `<time class="nx-time" datetime="${d.toISOString()}"> · ${Date.now() - at < 864e5 ? t : d.toLocaleDateString(loc, { day: 'numeric', month: 'short' }) + ' ' + t}</time>`;
+};

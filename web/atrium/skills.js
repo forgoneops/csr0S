@@ -55,7 +55,7 @@
       <p data-no-i18n>${E(s.description)}</p><div class="sk-meta">${stPill(s)}${tagPills(s)}</div><div class="sk-meta">${agentsOf(s.agents)}</div>
       <p class="sk-small">Group: ${E(s.group)} · Install gate: ${gate || (s.agents.includes('Installed') ? 'installed through the gate' : 'not added through the gate')}</p>
       ${s.flags.length ? `<div class="og-card"><h4>Worth a second look</h4><ul>${s.flags.map(f => `<li>${E(f)}</li>`).join('')}</ul></div>` : ''}
-      <div class="sk-body" data-no-i18n>${body === undefined ? ARTSKEL(2, 'Loading SKILL.md') : body === null ? '<p>SKILL.md could not be read.</p>' : md(body)}</div></aside>`;
+      <div class="sk-body" data-no-i18n>${body === undefined ? ARTSKEL(2, uiText('Loading SKILL.md')) : body === null ? `<p>${uiText('SKILL.md could not be read.')}</p>` : md(body)}</div></aside>`;
   };
   const main = () => {
     if (SK.skills === null) return ARTSTATE('loading', 'Reading skills on this computer…');
@@ -63,7 +63,7 @@
     if (!SK.skills.length) return ARTSTATE('empty', 'No skills found yet', 'Add a skill folder to an agent, or review a package in the Marketplace.');
     const all = SK.skills, L = list(), agents = [...new Set(all.flatMap(s => s.agents))].sort(), groups = [...new Set(all.map(s => s.group))].sort();
     const n = (f) => all.filter(f).length;
-    return `<div class="sk-stats">${[['Skills', all.length, 'on this computer'], ['Agents', agents.length, agents.join(', ')], ['Groups', groups.length, 'by purpose'], ['To review', n(s => s.st === 'review'), 'static scan findings'], ['Disabled', n(s => s.st === 'disabled'), 'enabled: false']].map(([l, v, d]) => `<div class="pg-tile"><small>${l}</small><b>${v}</b><i data-no-i18n>${E(d)}</i></div>`).join('')}</div>
+    return `<div class="sk-stats">${[['Skills', all.length, 'on this computer'], ['Agents', agents.length, agents.join(', ')], ['Groups', groups.length, 'by purpose'], ['To review', n(s => s.st === 'review'), 'static scan findings'], ['Disabled', n(s => s.st === 'disabled'), 'enabled: false']].map(([l, v, d]) => `<div class="pg-tile"><small>${l}</small><b>${v}</b><i data-no-i18n>${E(uiText(d))}</i></div>`).join('')}</div>
     <div class="sk-bar"><div class="og-seg">${[['map', 'Map'], ['tree', 'Tree'], ['cards', 'Cards']].map(([k, l]) => `<button type="button" class="${SK.view === k ? 'on' : ''}" data-sk="view:${k}">${l}</button>`).join('')}</div><span class="sk-count">${L.length} of ${all.length}</span></div>
     <div class="sk-filters" role="group" aria-label="Filters"><span class="label">Tag</span>${TAGS.map(t => chip('tag', t, t === 'all' ? 'All' : t, SK.tag, t === 'all' ? undefined : n(s => s.tags.includes(t)))).join('')}
       <span class="label">Agent</span>${['all', ...agents].map(a => chip('agent', a, a === 'all' ? 'All' : a, SK.agent, a === 'all' ? undefined : n(s => s.agents.includes(a)))).join('')}

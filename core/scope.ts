@@ -2,9 +2,9 @@
 // (plan 7.8) keeps every turn on local engines. An engine says it itself; an unknown one counts as cloud, never the other way round.
 // A Hermes profile is local when its own config points at a local provider or a private address (the same rule the old header chip used).
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { EngineAdapter } from "./engines/types";
+import { hermesHome } from "./host";
 
 export type Scope = "local" | "cloud";
 const LOCAL_PROVIDERS = /^(ollama|lmstudio|lm-studio|llama\.?cpp|llamacpp|vllm|local)$/i;
@@ -33,7 +33,7 @@ export function modelBlock(yaml: string): Record<string, string> {
   return out;
 }
 
-export function hermesScope(profile: string, home = process.env.HERMES_HOME ?? join(homedir(), ".hermes")): Scope {
+export function hermesScope(profile: string, home = hermesHome()): Scope {
   const f = profile && profile !== "default" ? join(home, "profiles", profile, "config.yaml") : join(home, "config.yaml");
   let yaml = ""; try { yaml = existsSync(f) ? readFileSync(f, "utf8") : ""; } catch { /* unreadable counts as cloud */ }
   const b = modelBlock(yaml);

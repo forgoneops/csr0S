@@ -31,3 +31,11 @@ test("the global rules and the grip, canvas and board rules are in place", () =>
   for (const k of ["--cur-ns)", "--cur-ew)", "--cur-nwse)", "--cur-nesw)", "--cur-grab)", "--cur-no)"]) expect(css).toContain(`cursor:var(${k}!important`);
   for (const sel of [".cdk-grip", ".nt-gc", ".bd-wall", ".md-stage"]) expect(css).toContain(sel);
 });
+
+test("the shell's hotspots are the ones the cursor source draws to", () => {
+  const src = join(import.meta.dir, "..", "tools", "cursors", "make-cursors.py");
+  const run = Bun.spawnSync(["python3", "-B", "-c", "import json,runpy,sys; print(json.dumps(runpy.run_path(sys.argv[1])['HOT']))", src]);
+  const hot = JSON.parse(run.stdout.toString()) as Record<string, [number, number]>;
+  expect(Object.keys(hot).sort()).toEqual(defs.map((d) => d[1]!).sort());
+  for (const [, n, , x, y] of defs) expect([n, +x!, +y!]).toEqual([n, ...hot[n!]!]);
+});

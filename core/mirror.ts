@@ -4,11 +4,11 @@ import type { Context, Hono } from "hono";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { hermesAllowed, hermesHome } from "./host";
 import { listCrew } from "./crew";
 import { swrFor } from "./memo";
 
 export type MirrorRow = { id: string; name: string; memoryBytes: number; memoryAt: number | null; userBytes: number; skills: number };
-const HOME = () => process.env.HERMES_HOME ?? join(homedir(), ".hermes");
 const size = (p: string) => { try { const s = statSync(p); return s.isFile() ? { bytes: s.size, at: Math.round(s.mtimeMs) } : { bytes: 0, at: null }; } catch { return { bytes: 0, at: null as number | null }; } };
 
 function countSkills(dir: string, depth = 0): number {
@@ -20,7 +20,7 @@ function countSkills(dir: string, depth = 0): number {
 
 export function mirror(): MirrorRow[] {
   return listCrew().map((m) => {
-    const dir = join(HOME(), "profiles", m.id), mem = size(join(dir, "memories", "MEMORY.md")), user = size(join(dir, "memories", "USER.md"));
+    const dir = join(hermesHome(), "profiles", m.id), mem = size(join(dir, "memories", "MEMORY.md")), user = size(join(dir, "memories", "USER.md"));
     return { id: m.id, name: m.name, memoryBytes: mem.bytes, memoryAt: mem.at, userBytes: user.bytes, skills: countSkills(join(dir, "skills")) };
   });
 }
@@ -28,7 +28,7 @@ export function mirror(): MirrorRow[] {
 /** Run a read-only Hermes command and return its text; empty when Hermes is missing or slow. */
 async function hermes(args: string[]): Promise<string> {
   const bin = Bun.which("hermes") ?? join(homedir(), ".local", "bin", "hermes");
-  if (!existsSync(bin)) return "";
+  if (!hermesAllowed() || !existsSync(bin)) return "";
   try { const p = Bun.spawn([bin, ...args], { stdin: "ignore", stdout: "pipe", stderr: "ignore" }); const t = setTimeout(() => p.kill(), 15_000); const out = await new Response(p.stdout as ReadableStream).text(); clearTimeout(t); return out; } catch { return ""; }
 }
 

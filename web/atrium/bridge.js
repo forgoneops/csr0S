@@ -129,7 +129,7 @@
   async function loadMessages(id) {
     if (loaded.has(id)) return; loaded.add(id);
     const got = await j('/api/chat/sessions/' + id), a = aOf(got.session.engine);
-    MSG[id] = got.messages.map(m => m.role === 'user' ? { me: 1, x: m.content, files: m.attachments || [] } : { a, x: m.content || (m.status === 'error' ? (m.error || 'No answer.') : ''), think: m.thinking || '', tools: m.tools || [], sources: m.sources || [] });
+    MSG[id] = got.messages.map(m => m.role === 'user' ? { me: 1, x: m.content, at: m.createdAt || got.session.updatedAt, files: m.attachments || [] } : { a, at: m.createdAt || got.session.updatedAt, x: m.content || (m.status === 'error' ? (m.error || 'No answer.') : ''), think: m.thinking || '', tools: m.tools || [], sources: m.sources || [] });
     render();
   }
 
@@ -165,7 +165,11 @@
       const cur = threadModel && em.models.some(m => m.id === threadModel) ? threadModel : ((em.models[0] || {}).id || '');
       const curLabel = (em.models.find(m => m.id === cur) || {}).label || cur || 'default';
       const modelChip = `<span class="pk-menu"><button class="pk-ctx" data-model-chip aria-haspopup="true" aria-expanded="${!!S.modelOpen}" title="The engine and model this conversation talks to">${I('engine', 16)}<span>${esc(em.label || 'engine')} · ${esc(curLabel)}</span>${em.models.length > 1 ? I('chevron-down', 14) : ''}</button>${S.modelOpen && em.models.length ? `<ul class="pk-pop" role="menu">${em.models.map(m => `<li><button class="pk-pop-b ${m.id === (threadModel || (em.models[0] || {}).id) ? 'on' : ''}" role="menuitemradio" data-model-pick="${esc(m.id)}">${esc(m.label)}</button></li>`).join('')}</ul>` : ''}</span>`;
-      return v.replace('<div class="nx-box">', `${tray()}<div class="nx-ctx">${modelChip}<button class="pk-ctx ${S.histOpen ? 'on' : ''}" data-history aria-pressed="${S.histOpen}" title="Show or hide this conversation's history">${I('clock', 16)}<span>History</span></button><button class="pk-ctx ${S.hideWork ? 'on' : ''}" data-work aria-pressed="${S.hideWork}" title="Show or hide the steps the model takes while it works (files read, tools used)">${I('sparkle', 16)}<span>Work ${S.hideWork ? 'hidden' : 'shown'}</span></button><button class="pk-ctx" data-hist title="Bring back what you sent before (Arrow up and down do the same)">${I('clock', 16)}<span>Earlier</span></button><button class="pk-ctx ${S.think ? 'on' : ''}" data-think aria-pressed="${S.think}" title="Ask the model to reason before it answers (engines that support it)">${I('sparkle', 16)}<span>Thinking ${S.think ? 'on' : 'off'}</span></button><button class="pk-ctx pk-attach" data-attach title="Add images or text files. You can also drop them on the conversation or paste an image.">${I('attach', 16)}<span>Attach</span></button><button class="pk-ctx ${S.ctx ? 'on' : ''}" data-ctx aria-pressed="${S.ctx}" title="Context: your documents are searched and the best passages go to the agent. Off: a clean conversation.">${I('brain', 16)}<span>Context ${S.ctx ? 'on' : 'off'}</span></button></div><div class="nx-box">`);
+      // one slim row: [+ options] [text] [engine] [mic] [send]; the options (history, work, earlier, thinking, attach, context) sit behind the +
+      const row = (cls, attrs, icon, label, state) => `<button class="xc-it ${cls} ${state ? 'on' : ''}" ${attrs}${state === undefined ? '' : ` aria-pressed="${!!state}"`} role="menuitem">${I(icon, 16)}<span>${label}</span></button>`;
+      const more = `<span class="xc-more"><button class="xc-b ${S.moreOpen ? 'on' : ''}" data-more aria-haspopup="true" aria-expanded="${!!S.moreOpen}" aria-label="More options" title="Attach, thinking, context, history">${I('plus', 16)}</button>${S.moreOpen ? `<div class="xc-pop" role="menu" data-more>${row('pk-attach', 'data-attach', 'attach', 'Attach images or files')}${row('', 'data-think', 'sparkle', 'Thinking ' + (S.think ? 'on' : 'off'), S.think)}${row('', 'data-ctx', 'brain', 'Context ' + (S.ctx ? 'on' : 'off'), S.ctx)}${row('', 'data-work', 'sparkle', 'Work ' + (S.hideWork ? 'hidden' : 'shown'), !S.hideWork)}${row('', 'data-history', 'clock', 'History', S.histOpen)}${row('', 'data-hist', 'clock', 'Earlier messages')}</div>` : ''}</span>`;
+      const chip = modelChip.replace('class="pk-ctx"', 'class="xc-chip"');
+      return v.replace('<div class="nx-box">', `${tray()}<div class="nx-ctx xc-ctx"></div><div class="nx-box">`).replace(/(<span id="nx-vstate"[^>]*><\/span>)/, '$1' + more).replace('<button class="nx-mic"', chip + '<button class="nx-mic"');
     }
     const grp = (title, hint, list) => list.length ? `<section class="pk-g"><h3>${title}</h3><p>${hint}</p><div class="pk-row">${list.map(pickCard).join('')}</div></section>` : '';
     return `<div class="nx-view chat enter">${scene('chat', phone() ? 56 : 72)}<div class="nx-chat-in pk-wrap"><h2 class="pk-h">Who do you want to talk to?</h2><div class="pk-route">${window.xRouteChip('big')}</div>
@@ -202,13 +206,13 @@
   const took = ms => ms == null ? '' : ms < 1000 ? ms + ' ms' : (ms / 1000).toFixed(1) + ' s';
   window.xBefore = (x, i) => {
     let h = '';
-    if (x.queued) h += `<p class="xf-route" role="status">${I('clock', 12)}<span>Waiting for the answer in progress.</span><button type="button" class="xf-cancel" data-qcancel="${i}">Cancel</button></p>`;
-    if (x.sw) h += `<p class="xf-route" role="status">${I('lock', 12)}<span>${x.sw.reason === 'local-only' ? `Local only is on: ${esc(x.sw.label)} answered, on this machine.` : `${esc(x.sw.label)} took over (${esc(x.sw.reason)}) ${x.sw.scope === 'local' ? 'on this machine' : 'in the cloud'}.`}</span></p>`;
-    if (x.think && x.think.trim()) h += `<div class="xf-fold ${x.openThink ? 'open' : ''}"><button class="xf-head" data-fold="think" data-mi="${i}" aria-expanded="${!!x.openThink}">${I(x.openThink ? 'chevron-down' : 'chevron-right', 14)}<span>Reasoning</span><em>${x.think.trim().split(/\s+/).length} words</em></button>${x.openThink ? `<p class="xf-body">${esc(x.think)}</p>` : ''}</div>`;
-    if (x.tools && x.tools.length) h += `<ul class="xf-tools">${x.tools.map((t, k) => `<li class="xf-tool ${t.status}"><button class="xf-head" data-fold="tool" data-mi="${i}" data-ti="${k}" aria-expanded="${!!t.open}">${I(t.open ? 'chevron-down' : 'chevron-right', 14)}<span>${esc(t.name)}</span><b>${({ running: 'Running', waiting: 'Waiting for your yes', ok: 'Done', error: 'Failed' })[t.status] || ''}</b><em>${took(t.ms)}</em></button>${t.open ? `<div class="xf-body">${t.input != null ? `<small>Input</small><pre>${esc(t.input)}</pre>` : ''}${t.output != null ? `<small>Result</small><pre>${esc(t.output)}</pre>` : ''}</div>` : ''}</li>`).join('')}</ul>`;
+    if (x.queued) h += `<p class="xf-route" role="status">${I('clock', 12)}<span>${uiText('Waiting for the answer in progress.')}</span><button type="button" class="xf-cancel" data-qcancel="${i}">${uiText('Cancel')}</button></p>`;
+    if (x.sw) h += `<p class="xf-route" role="status">${I('lock', 12)}<span>${esc(uiText(x.sw.reason === 'local-only' ? 'Local only is on: {s} answered, on this machine.' : x.sw.scope === 'local' ? '{s} took over on this machine. Reason:' : '{s} took over in the cloud. Reason:').replace('{s}', () => x.sw.label) + (x.sw.reason === 'local-only' ? '' : ' ' + uiText(x.sw.reason) + '.'))}</span></p>`;
+    if (x.think && x.think.trim()) h += `<div class="xf-fold ${x.openThink ? 'open' : ''}"><button class="xf-head" data-fold="think" data-mi="${i}" aria-expanded="${!!x.openThink}">${I(x.openThink ? 'chevron-down' : 'chevron-right', 14)}<span>${uiText('Reasoning')}</span><em>${uiText(`${x.think.trim().split(/\s+/).length} words`)}</em></button>${x.openThink ? `<p class="xf-body">${esc(x.think)}</p>` : ''}</div>`;
+    if (x.tools && x.tools.length) h += `<ul class="xf-tools">${x.tools.map((t, k) => `<li class="xf-tool ${t.status}"><button class="xf-head" data-fold="tool" data-mi="${i}" data-ti="${k}" aria-expanded="${!!t.open}">${I(t.open ? 'chevron-down' : 'chevron-right', 14)}<span>${esc(t.name)}</span><b>${uiText(({ running: 'Running', waiting: 'Waiting for your yes', ok: 'Done', error: 'Failed' })[t.status] || '')}</b><em>${took(t.ms)}</em></button>${t.open ? `<div class="xf-body">${t.input != null ? `<small>${uiText('Input')}</small><pre>${esc(t.input)}</pre>` : ''}${t.output != null ? `<small>${uiText('Result')}</small><pre>${esc(t.output)}</pre>` : ''}</div>` : ''}</li>`).join('')}</ul>`;
     return h;
   };
-  window.xAfter = (x, i) => x.sources && x.sources.length ? `<div class="xf-fold ${x.openSrc ? 'open' : ''}"><button class="xf-head" data-fold="src" data-mi="${i}" aria-expanded="${!!x.openSrc}">${I(x.openSrc ? 'chevron-down' : 'chevron-right', 14)}<span>Sources</span><em>${x.sources.length}</em></button>${x.openSrc ? `<ol class="xf-src">${x.sources.map(s => `<li><b>[${s.n}] ${esc(s.name)}</b><span>${esc(s.passage)}</span></li>`).join('')}</ol>` : ''}</div>` : '';
+  window.xAfter = (x, i) => x.sources && x.sources.length ? `<div class="xf-fold ${x.openSrc ? 'open' : ''}"><button class="xf-head" data-fold="src" data-mi="${i}" aria-expanded="${!!x.openSrc}">${I(x.openSrc ? 'chevron-down' : 'chevron-right', 14)}<span>${uiText('Sources')}</span><em>${x.sources.length}</em></button>${x.openSrc ? `<ol class="xf-src">${x.sources.map(s => `<li><b>[${s.n}] ${esc(s.name)}</b><span>${esc(s.passage)}</span></li>`).join('')}</ol>` : ''}</div>` : '';
 
   // ---- the real terminal: one xterm and one shell for the life of the page, moved into whichever pane shows it ----
   const RT = { term: null, fit: null, el: null, ws: null, sid: null, tries: 0, opening: false, state: 'idle' };
@@ -295,7 +299,7 @@
     const d = new Date(), h = d.getHours(), g = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
     const who = (window.SETTINGS && SETTINGS.profile && SETTINGS.profile.callMe) || '';
     const wait = S.waiting.map(w => `<li class="ph-w"><button class="ph-w-t" data-rd="orchgo:${esc(w.th || '')}" ${w.th ? '' : 'disabled'}>${esc(w.t)}</button><div class="ph-wb"><button class="su-btn go" data-ph-ok="${esc(w.k)}">${I('check', 16)}<span>Approve</span></button><button class="su-btn" data-ph-no="${esc(w.k)}"><span>Not now</span></button></div></li>`).join('');
-    const rows = THREADS.slice(0, 12).map(t => `<li><button class="ph-row" data-ses="${esc(t.id)}"><img src="${(C[t.a] || {}).img || 'art/caesaros-caesar-neo.webp'}" alt=""><span class="ph-rt"><b>${esc(t.t)}</b><small>${esc((C[t.a] || {}).n || '')} · ${esc(t.s)}</small></span><i class="nx-dot ${stDot((C[t.a] || {}).st)}"></i></button></li>`).join('');
+    const rows = THREADS.slice(0, 12).map(t => `<li><button class="ph-row" data-ses="${esc(t.id)}"><img src="${(C[t.a] || {}).img || 'art/caesaros-caesar-neo.webp'}" alt=""><span class="ph-rt"><b>${esc(t.t === 'New conversation' ? uiText(t.t) : t.t)}</b><small>${esc((C[t.a] || {}).n || '')} · ${esc(uiText(t.s))}</small></span><i class="nx-dot ${stDot((C[t.a] || {}).st)}"></i></button></li>`).join('');
     const crew = CREW.map(m => `<button class="ph-av" data-ns="crew:${esc(m.id)}" aria-label="${esc(m.n)}, ${esc(m.r)}"><img src="${m.img}" alt=""><i class="nx-dot ${stDot(m.st)}"></i><span>${esc(m.n)}</span></button>`).join('');
     const now = FEED.map(f => `<li class="ph-n"><div><small>${esc(f[0])}</small><b${/^(Today|Board|Inbox)$/.test(f[0]) ? ' data-no-i18n' : ''}>${esc(f[1])}</b></div><button class="su-btn" data-open-app="${esc(f[3] || 'Start')}"><span>${esc(f[4] || 'Open')}</span></button></li>`).join('');
     return `<div class="nx-view enter ph" id="v-ws"><header class="ph-head"><small data-no-i18n>${d.toLocaleDateString(uiLocale('en'), { weekday: 'long', day: 'numeric', month: 'long' })}</small><h1>${g}${who ? ', ' + esc(who) : ''}</h1></header>
@@ -327,7 +331,10 @@
   let voiceMode = vls(VK.mode) === '1';
   const micBtn = () => document.querySelector('[data-nx="mic"]');
   const vstate = () => document.querySelector('#nx-vstate');
+  let micSink = null;   // the dock's mic: { done(text), st(text, state) } for one recording
   const micStatus = (text, state) => {
+    if (micSink && micSink.st) micSink.st(text, state);
+    if (state === 'err') micSink = null;
     const b = micBtn(); if (b) { b.title = text; b.dataset.state = state || 'idle'; b.dataset.mode = voiceMode ? 'on' : 'off'; }
     const s = vstate(); if (s) { s.textContent = state === 'rec' || state === 'err' || state === 'busy' ? text : ''; s.dataset.state = state || ''; }
   };
@@ -391,7 +398,7 @@
       const j = await resp.json().catch(() => ({}));
       if (resp.ok && j.text) {
         micStatus('Microphone · speak instead of typing', 'idle');
-        if (window.xVoiceMsg) window.xVoiceMsg(j.text); else { const box = $('#inp'); if (box) { box.value = j.text; box.focus(); } }
+        if (micSink) { const k = micSink; micSink = null; k.done(j.text); } else if (window.xVoiceMsg) window.xVoiceMsg(j.text); else { const box = $('#inp'); if (box) { box.value = j.text; box.focus(); } }
       } else {
         micStatus(j.error === 'not_installed' ? 'Speech to text is not installed' : 'Not understood. Try again', 'err');
       }
@@ -399,7 +406,7 @@
     busy = false;
   }
 
-  window.xAtriumMic = async () => (rec ? stopRec() : startRec('click'));
+  window.xAtriumMic = async (sink) => { micSink = sink && typeof sink.done === 'function' ? sink : null; return rec ? stopRec() : startRec('click'); };
   window.xVoiceMode = {
     get on() { return voiceMode; },
     set(v) { voiceMode = !!v; vls(VK.mode, v ? '1' : '0'); const b = micBtn(); if (b) b.dataset.mode = v ? 'on' : 'off'; micStatus(v ? 'Voice mode on. I listen after each answer' : 'Microphone · speak instead of typing', 'idle'); return voiceMode; },
@@ -431,7 +438,7 @@
   send = function () {
     const i = $('#inp'); if (!i) return; const v = i.value.trim(); const id = S.cur; if (!v || !id || !THR(id)) return;
     const th = THR(id), list = (MSG[id] = MSG[id] || []);
-    const sendFiles = S.files.slice(); list.push({ me: 1, x: v, files: sendFiles.map(f => ({ name: f.name, kind: f.kind, size: f.size })) }); S.files = []; S.draft = ''; attProblem = ''; const reply = { a: th.a, x: '' }; list.push(reply); i.value = ''; C[th.a].st = 'work'; render();
+    const sendFiles = S.files.slice(); list.push({ me: 1, x: v, at: Date.now(), files: sendFiles.map(f => ({ name: f.name, kind: f.kind, size: f.size })) }); S.files = []; S.draft = ''; attProblem = ''; const reply = { a: th.a, x: '' }; list.push(reply); i.value = ''; C[th.a].st = 'work'; render();
     let raf = 0; const paint = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (S.cur === id) { const m = $('#msgs'); const t = document.createElement('div'); t.innerHTML = chatView(id); const n = t.querySelector('#msgs'); if (m && n) { m.innerHTML = n.innerHTML; m.scrollTop = m.scrollHeight; } else render(); } }); };
     void runTurn(id, v, sendFiles, reply, paint);
   };
@@ -466,6 +473,7 @@
       }
     } catch (e) { reply.x = reply.x || 'Connection lost.'; }
     finally {
+      reply.at = Date.now();
       if (th) th.s = 'just now'; await Promise.all([loadCrew(), loadSessions(), loadApprovals()]).catch(() => {}); render(); if (paint) paint();
       if (window.xVoice && window.xVoice.on() && reply.x && !reply.queued) {
         Promise.resolve(window.xSpeak(reply.x)).then(() => window.xAfterSpoken && window.xAfterSpoken());
@@ -526,7 +534,7 @@
     if (!MSG[session.id]) MSG[session.id] = [];
     return THR(session.id);
   }
-  window.xAdopt = adopt; window.xLoad = loadMessages; window.xTurn = runTurn;   // the chat dock speaks through the bridge, never its own stream
+  window.xAdopt = adopt; window.xLoad = loadMessages; window.xTurn = runTurn; window.xEngineOf = engineLabelOf; window.xPickFiles = () => picker.click(); window.xAttProblem = () => attProblem;   // the chat dock speaks through the bridge, never its own stream
 
   approve = async function (k, ok) {
     const w = S.waiting.find(x => x.k === k);
@@ -547,6 +555,8 @@
     if (e.target.closest('[data-think]')) { e.preventDefault(); e.stopPropagation(); S.think = !S.think; render(); return; }
     if (e.target.closest('[data-history]')) { e.preventDefault(); e.stopPropagation(); S.histOpen = !S.histOpen; render(); return; }
     if (e.target.closest('[data-work]')) { e.preventDefault(); e.stopPropagation(); S.hideWork = !S.hideWork; try { localStorage.setItem('caesaros-hidework', S.hideWork ? '1' : '0'); } catch { /* private window */ } render(); return; }
+    const mo = e.target.closest('button[data-more]'); if (mo) { e.preventDefault(); e.stopPropagation(); S.moreOpen = !S.moreOpen; render(); return; }
+    if (S.moreOpen) { S.moreOpen = false; const pp = document.querySelector('.xc-pop'); if (pp) pp.remove(); }
     const mc = e.target.closest('[data-model-chip]'); if (mc) { e.preventDefault(); e.stopPropagation(); S.modelOpen = !S.modelOpen; render(); return; }
     const mp = e.target.closest('[data-model-pick]'); if (mp) { e.preventDefault(); e.stopPropagation(); if (S.cur) S.perThread[S.cur] = mp.dataset.modelPick; S.modelOpen = false; render(); return; }
     if (S.modelOpen && !e.target.closest('.pk-menu')) { S.modelOpen = false; render(); }

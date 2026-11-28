@@ -17,7 +17,7 @@
         host.innerHTML = `${data.carriable ? '<button class="goals-carry" type="button">Carry unfinished goals forward</button>' : ''}<div class="goals-grid">${rows}</div>${old ? `<div class="goals-history">${ARTFOLD('Past goals (' + old + ')', `<ul>${data.goals.filter(g => data.today > g.end).slice().reverse().map(g => `<li><span data-no-i18n>${esc(g.title)}</span><small>${g.status === 'done' ? 'Done' : 'Not done'} · ${g.start} — ${g.end}</small></li>`).join('')}</ul>`)}</div>` : ''}`;
         host.querySelectorAll('[data-tick]').forEach(b => b.onclick = async () => { const g = data.goals.find(x => x.id === b.dataset.tick); await request('/' + encodeURIComponent(g.id), 'POST', {status:g.status === 'done' ? 'active' : 'done'}); await render(); });
         host.querySelectorAll('[data-remove]').forEach(b => b.onclick = async () => { await request('/' + encodeURIComponent(b.dataset.remove), 'DELETE'); await render(); });
-        host.querySelectorAll('[data-edit]').forEach(b => b.onclick = async () => { const g = data.goals.find(x => x.id === b.dataset.edit), title = prompt('Goal title', g.title); if (title === null) return; const notes = prompt('Notes', g.notes || ''); if (notes === null) return; await request('/' + encodeURIComponent(g.id), 'POST', {title, notes}); await render(); });
+        host.querySelectorAll('[data-edit]').forEach(b => b.onclick = async () => { const g = data.goals.find(x => x.id === b.dataset.edit), title = await askText('Goal title', g.title); if (title === null) return; const notes = await askText('Notes', g.notes || ''); if (notes === null) return; await request('/' + encodeURIComponent(g.id), 'POST', {title, notes}); await render(); });
         host.querySelectorAll('form[data-add]').forEach(f => f.onsubmit = async e => { e.preventDefault(); const title = new FormData(f).get('title'); await request('/', 'POST', {horizon:f.dataset.add,title}); await render(); });
         host.querySelector('.goals-carry')?.addEventListener('click', async () => { await request('/carry','POST'); await render(); });
       } catch (err) { host.innerHTML = `<p class="goals-error" role="alert">${esc(err.message)}</p>`; }
@@ -37,7 +37,7 @@
         if (tick) { const g = await request(); const item = g.goals.find(x => x.id === tick.dataset.tick); await request('/' + encodeURIComponent(item.id), 'POST', {status:item.status === 'done' ? 'active' : 'done'}); }
         else if (remove) await request('/' + encodeURIComponent(remove.dataset.remove), 'DELETE');
         else if (carry) await request('/carry','POST');
-        else if (edit) { const current = await request(), g = current.goals.find(x => x.id === edit.dataset.edit), title = prompt('Goal title', g.title); if (title === null) return; const notes = prompt('Notes', g.notes || ''); if (notes === null) return; await request('/' + encodeURIComponent(g.id), 'POST', {title,notes}); }
+        else if (edit) { const current = await request(), g = current.goals.find(x => x.id === edit.dataset.edit), title = await askText('Goal title', g.title); if (title === null) return; const notes = await askText('Notes', g.notes || ''); if (notes === null) return; await request('/' + encodeURIComponent(g.id), 'POST', {title,notes}); }
         else return;
         await paint(host);
       } catch (err) { host.textContent = err.message; }

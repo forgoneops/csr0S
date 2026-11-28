@@ -81,7 +81,7 @@
       </section>
 
       <section class="su-card"><h3><span>4</span>Work offline</h3>
-        <p class="su-note"><span>Local models run on this machine with no internet.</span> <span>Memory: ${D.hw.machine.ramGb} GB</span> · <span>Free disk: ${D.hw.machine.freeDiskGb} GB</span>${D.hw.machine.gpu !== 'none' ? ` · <span>${D.hw.machine.gpu.toUpperCase()} graphics</span>` : ''}</p>
+        <p class="su-note"><span>Local models run on this machine with no internet.</span> ${D.hw.machine ? `<span>Memory: ${D.hw.machine.ramGb} GB</span> · <span>Free disk: ${D.hw.machine.freeDiskGb} GB</span>${D.hw.machine.gpu !== 'none' ? ` · <span>${D.hw.machine.gpu.toUpperCase()} graphics</span>` : ''}` : '<span>Machine details are hidden</span>'}</p>
         ${olReady ? '' : `<div class="su-warn"><b>Ollama is not installed.</b> It runs the local models. Install it once, then come back and download.<code>${esc(TOOLS.ollama[2])}</code><button class="su-btn" data-su="copy" data-v="${esc(TOOLS.ollama[2])}">${I('copy', 16)}<span>Copy command</span></button><button class="su-btn" data-su="recheck">${I('refresh', 16)}<span>Check again</span></button></div>`}
         <div class="su-tiers">${D.hw.advice.map(pullBox).join('')}</div>
       </section>

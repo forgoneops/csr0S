@@ -3,8 +3,8 @@
 // a second look, not a verdict. Nothing is installed, copied or run from here.
 import type { Context, Hono } from "hono";
 import { existsSync, lstatSync, readdirSync, realpathSync } from "node:fs";
-import { homedir } from "node:os";
 import { join, relative } from "node:path";
+import { hermesHome } from "./host";
 import { readRegularFileNoFollow } from "./safe-file";
 
 export type Skill = { id: string; name: string; description: string; category: string; flags: string[]; agents: string[]; tags: string[]; enabled: boolean };
@@ -33,7 +33,7 @@ const FLAGS: [string, RegExp][] = [
 const MAX_FILES = 600, MAX_BYTES = 200_000;
 
 /** Folders to scan, in order: CAESAROS_SKILLS_DIR may hold several separated by ":" (a skill found earlier wins). */
-export const skillsDirs = (): string[] => (process.env.CAESAROS_SKILLS_DIR ?? join(homedir(), ".hermes", "skills")).split(":").filter((d) => d && existsSync(d));
+export const skillsDirs = (): string[] => (process.env.CAESAROS_SKILLS_DIR ?? join(hermesHome(), "skills")).split(":").filter((d) => d && existsSync(d));
 export const skillsDir = (): string | null => skillsDirs()[0] ?? null;
 
 /** The first `key: value` of a YAML-ish header; quotes are dropped. */
@@ -61,7 +61,7 @@ function scanOne(dir: string, out: Skill[], seen: Set<string>): void {
       else if (n === "SKILL.md" && st.size <= MAX_BYTES) {
         let text: string; try { text = readRegularFileNoFollow(p, st, root, MAX_BYTES).toString("utf8"); } catch { continue; }
         const head = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
-        const rel = relative(dir, d), id = rel || n;
+        const rel = relative(root, d), id = rel || n;   // against the realpath the walk uses: a linked skills folder would give "../.." ids
         const agent = agentOfDir(dir), name = field(head, "name") || id.split("/").pop()!;
         if (seen.has(id)) { const first = out.find((x) => x.id === id); if (first && !first.agents.includes(agent)) first.agents.push(agent); continue; }
         seen.add(id);

@@ -20,7 +20,8 @@ function fake(): any {
       if (k === "then") return undefined;
       if (k === Symbol.toPrimitive) return () => "";
       if (k === "classList") return { add: noop, remove: noop, toggle: noop, contains: () => false };
-      if (k === "dataset" || k === "style") return {};
+      if (k === "dataset") return {};
+      if (k === "style") return { setProperty: noop, removeProperty: noop };   // CSSStyleDeclaration calls the scripts make
       if (k === "textContent" || k === "value" || k === "innerHTML" || k === "href") return "";
       if (k === "length") return 0;
       return f;

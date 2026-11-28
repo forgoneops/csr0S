@@ -58,8 +58,8 @@
   function schedule() { if (lang !== 'pl' || timer) return; timer = setTimeout(() => { timer = 0; walk(document.body); }, 120); }
   window.I18N = {
     missing: 0,
-    /** The Polish for one interface string when the page is Polish, else the string itself (the command palette matches on it). */
-    t: s => (lang === 'pl' && cat[keyOf(s)]) || s,
+    /** The Polish for one interface string when the page is Polish, else the string itself. Reads the loaded catalog only: nothing is queued or sent. */
+    t: s => { const tr = lang === 'pl' && cat[keyOf(s)]; return tr ? fill(tr, s) : s; },
     async setLanguage(l) { root.lang = l === 'pl' ? 'pl' : 'en'; await setLang(); if (l === 'pl') walk(document.body); },
     /** Ask the core to translate what is queued (one batch), then apply it. Returns { done, left, error? }. */
     async translateNow(all) { const r = await fetch('/api/i18n/pl/translate' + (all ? '?all=1' : ''), { method: 'POST' }); const j = await r.json().catch(() => ({})); await load().catch(() => {}); walk(document.body); return j; },

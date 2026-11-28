@@ -8,6 +8,9 @@
   let bc = null; try { bc = new BroadcastChannel('caesaros-pop'); } catch { /* no channel: pop out still works, the notice just never clears */ }
   const send = m => { try { bc && bc.postMessage(m); } catch { /* closed */ } };
   const keyOf = () => mine === 'chat' ? 'chat:' + q.get('thread') : mine === 'app' ? 'app:' + q.get('app') : 'term:undefined';
+  // A window the shell opened cannot be closed by its own script: window.close() does nothing there, so it asks the shell
+  // (a navigation to ?pop-close=1 that the shell turns into a close). In a browser window.close() works and the fallback never runs.
+  const closeMe = () => { window.close(); setTimeout(() => { location.href = location.origin + '/?pop-close=1'; }, 200); };
   const PO = {};   // keys of tabs that live in another window (main window only)
 
   if (mine) {   // ---- the popped window
@@ -16,10 +19,10 @@
     S.tabs = [tab]; S.act = 0; S.layout = 'hybrid';
     document.body.classList.add('popped'); const b = document.getElementById('boot'); if (b) b.remove(); document.body.classList.add('booted');
     const btn = document.createElement('button'); btn.className = 'btn pop-return'; btn.textContent = 'Return'; btn.title = 'Put this back in the main window';
-    btn.onclick = () => { send({ t: 'gone', key: keyOf() }); window.close(); };
+    btn.onclick = () => { send({ t: 'gone', key: keyOf() }); closeMe(); };
     document.body.appendChild(btn);
     addEventListener('pagehide', () => send({ t: 'gone', key: keyOf() }));
-    if (bc) bc.onmessage = e => { if (e.data && e.data.t === 'close' && e.data.key === keyOf()) { send({ t: 'gone', key: keyOf() }); window.close(); } };
+    if (bc) bc.onmessage = e => { if (e.data && e.data.t === 'close' && e.data.key === keyOf()) { send({ t: 'gone', key: keyOf() }); closeMe(); } };
     send({ t: 'hello', key: keyOf() }); render();
     return;
   }

@@ -9,6 +9,7 @@ import { buildIdOf } from "./build-id";
 import { join, relative, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 import { DATA, kv } from "./db";
+import { isolated, userHome } from "./host";
 import { isolationStatus } from "./sandbox";
 import { stream } from "./events";
 import { loadPlugins } from "./plugins";
@@ -45,6 +46,8 @@ import { boardApi } from "./board";
 import { driftApi } from "./drift";
 import { hudApi } from "./windowinfo";
 import { createTts, ttsApi, ttsPaths, type Tts } from "./tts";
+import { withFish } from "./fish";
+import { getKey } from "./service-keys";
 import { createMail, mailApi, type Mail } from "./mail";
 import { calendarApi } from "./calendar";
 import { usageApi } from "./usage";
@@ -174,7 +177,9 @@ app.get("/api/detect", async (c) => {
   else if (Date.now() - detectCache.at > 10_000) void refreshDetect().catch(() => {});
   return c.json({ ...detectCache!.body, gateways: s.gateways.map((g) => ({ id: g.id, name: g.name, kind: g.kind })) });
 });
-if (import.meta.main) void refreshDetect().catch(() => {});
+/** True when this file is the program, or when the compiled entry (tools/compile-entry.ts) started it. */
+const RUNS = import.meta.main || !!(globalThis as { __CAESAROS_EMBEDDED?: unknown }).__CAESAROS_EMBEDDED;
+if (RUNS) void refreshDetect().catch(() => {});
 
 // Chat and the engines behind it. Engines are adapters; health first, models only for one that answers.
 chatExportRoutes(app);
@@ -202,7 +207,7 @@ try { writeFileSync(join(DATA, "board-token"), access.issueScoped("agent", ["boa
 driftApi(app, (c) => access.principal(c).kind === "operator");
 hudApi(app, (c) => access.principal(c).kind === "operator");
 let ttsSvc: Tts | undefined;
-ttsApi(app, (c) => access.principal(c).kind === "operator", () => (ttsSvc ??= createTts(ttsPaths())));
+ttsApi(app, (c) => access.principal(c).kind === "operator", () => (ttsSvc ??= withFish(createTts(ttsPaths()), () => getKey(DATA, "fish"))));
 // Mail: its own SQLite file and its own secrets folder under DATA/mail, so a backup of the core never carries mail or passwords; created on first use
 let mailSvc: Mail | undefined;
 mailApi(app, (c) => access.principal(c).kind === "operator", () => (mailSvc ??= createMail({ dir: join(DATA, "mail") })));
@@ -227,11 +232,13 @@ const insideAgentHome = (configured: string | undefined, fallback: string): stri
   const candidate = resolve(configured), rel = relative(agentHome, candidate);
   return rel === "" || (rel !== ".." && !rel.startsWith(".." + sep)) ? candidate : fallback;
 };
-const agentRoots = {
-  hermes: insideAgentHome(process.env.CAESAROS_SKILLS_DIR?.split(":")[0], join(agentHome, ".hermes", "skills")),
-  "claude-code": join(insideAgentHome(process.env.CLAUDE_CONFIG_DIR, join(agentHome, ".claude")), "skills"),
-  codex: join(insideAgentHome(process.env.CODEX_HOME, join(agentHome, ".agents")), "skills"),
+const agentRoots: Partial<Record<"hermes" | "claude-code" | "codex", string>> = {
+  hermes: insideAgentHome(process.env.CAESAROS_SKILLS_DIR?.split(":")[0] ?? (process.env.HERMES_HOME && join(process.env.HERMES_HOME, "skills")), join(userHome(), ".hermes", "skills")),
+  "claude-code": join(insideAgentHome(process.env.CLAUDE_CONFIG_DIR, join(userHome(), ".claude")), "skills"),
+  codex: join(insideAgentHome(process.env.CODEX_HOME, join(userHome(), ".agents")), "skills"),
 };
+// a throwaway copy offers no install target it was not pointed at
+for (const [k, v] of Object.entries(agentRoots)) if (v.startsWith("/dev/null/")) delete agentRoots[k as keyof typeof agentRoots];
 skillsApi(app, (c) => access.principal(c).kind === "operator", [join(DATA, "marketplace", "installed", "skills"), ...Object.values(agentRoots)]);
 app.route("/api/install-gate", installGateApi({ root: join(DATA, "marketplace"), store: kv("install-gate"), isOperator: (c) => access.principal(c).kind === "operator", agentRoots, agentBoundary: agentHome }));
 runningApi(app, (c) => access.principal(c).kind === "operator");
@@ -259,7 +266,7 @@ egressApi(app, (c) => access.principal(c).kind === "operator", {
   tools: async () => (await Promise.all(listEngines().filter((e) => e.id !== "ollama" && !e.id.startsWith("server-") && scopeOf(e) === "cloud").map(async (e) => ((await e.health().catch(() => ({ ok: false }))).ok ? e.label : null)))).filter((x): x is string => !!x),
 }, () => settings().localOnly);
 storageApi(app, (c) => access.principal(c).kind === "operator", { dataDir: DATA, busy: previewsBusy, engines: () => [{ name: "Speech engine and voices", dir: speechDir() }, { name: "Image engine", dir: imageDir() }], voicesDir: () => ttsPaths().voices });
-app.get("/api/hardware", (c) => { const machine = readMachine(process.env.CAESAROS_DATA ?? "."); return c.json({ machine, advice: advise(machine) }); });
+app.get("/api/hardware", (c) => { if (isolated()) return c.json({ machine: null, advice: [], hidden: true }); const machine = readMachine(process.env.CAESAROS_DATA ?? "."); return c.json({ machine, advice: advise(machine) }); });
 app.get("/api/engines", async (c) => c.json({
   engines: await Promise.all(listEngines().map(async (e) => {
     const health = await e.health().catch(() => ({ ok: false, detail: "not answering" as string | null }));
@@ -267,7 +274,7 @@ app.get("/api/engines", async (c) => c.json({
     return { id: e.id, label: e.label, health: { ok: health.ok, detail: health.detail }, models };
   })).then((all) => all.filter((e) => !(CLI_TOOLS.has(e.id) && e.health.detail === "not detected"))), // a tool that is not installed is not offered
 }));
-if (import.meta.main) warmMirror();
+if (RUNS) warmMirror();
 
 // Agent tokens: the operator issues one per agent; only the hash is kept and the token is shown once.
 app.get("/api/tokens", (c) => c.json(access.inventory()));
@@ -332,7 +339,7 @@ if (!dev) {
   void PACKS;
 }
 
-if (import.meta.main) {
+if (RUNS) {
   startNoteSync();
   startChatSync();
   webgate.restore();

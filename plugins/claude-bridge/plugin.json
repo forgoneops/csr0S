@@ -1,0 +1,15 @@
+{
+  "id": "claude-bridge",
+  "name": "Claude Bridge",
+  "version": "0.1.0",
+  "description": "Two or more Claude Code accounts: when one reaches its usage limit, the next one takes over. Accounts are added by hand.",
+  "group": "dev",
+  "tags": ["claude", "accounts", "limits", "failover"],
+  "nav": [],
+  "settings": [
+    { "id": "accounts", "title": "Claude accounts", "label": "one takes over from another at the limit" }
+  ],
+  "permissions": ["shell:claude", "fs:claude-config-dirs"],
+  "kind": "Crew",
+  "edition": "owner"
+}

@@ -1,0 +1,5 @@
+# Names that match one of a person's note names but are public vocabulary of this repo (a Hermes plugin id, a doc path).
+# Add a name only if it says nothing about the person. One per line.
+hermes-reading
+mobile-pwa-audit-2026-11-22
+orchestrator

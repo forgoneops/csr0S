@@ -3,13 +3,13 @@
 // browser's own voice. Text goes to a local process only; nothing is sent anywhere. The route is the operator's own.
 import type { Context, Hono } from "hono";
 import { existsSync, readdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./root";
+import { userHome } from "./host";
 
 export type TtsPaths = { python: string; worker: string; voices: string };
 /** Next to the speech-to-text home (`CAESAROS_SPEECH_DIR`, default ~/.local/share/caesaros-speech): tts/venv holds Piper, tts/voices the voice files. */
-const speechDir = () => process.env.CAESAROS_SPEECH_DIR ?? join(homedir(), ".local", "share", "caesaros-speech");
+const speechDir = () => process.env.CAESAROS_SPEECH_DIR ?? join(userHome(), ".local", "share", "caesaros-speech");
 // The worker ships in resources/tools/speech next to an installed app; ROOT is the source tree or that resource folder.
 export const ttsPaths = (repo: string = ROOT): TtsPaths => ({
   python: process.env.CAESAROS_TTS_PYTHON ?? join(speechDir(), "tts", "venv", "bin", "python"),

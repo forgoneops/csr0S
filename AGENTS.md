@@ -13,3 +13,9 @@ Look: cut corners, theme tokens, own icons, no round shapes. Every function work
 
 ## Brain and memory saving (every agent)
 What you save to the Brain or memory from a session is the decisions taken and the reasoning behind them (the owner's words, constraint, trade-off, rejected alternative). Not activity logs or file lists; git and handoffs hold those.
+
+## Your data never enters the repo (owner rule, 2026-11-28)
+- The person's data lives in the data dir (`~/.local/share/caesaros`, or `CAESAROS_DATA`), never in a repo. Agents test on temp dirs, not on it.
+- Never copy real notes, mail, vault files, client names, keys or hosts into tests, fixtures, docs, handoffs or commit messages. Use invented sample data.
+- Screenshots of the real app go to `~/caesaros-evidence`, outside the repo.
+- `tools/data-guard.ts` runs before every push and every export; `tools/backup-data.sh` backs the data dir up outside every repo.

@@ -7,8 +7,8 @@ const CSDATE = (id, value) => {
   return `<div class="cs-date" data-cs-date><input type="hidden" id="${id}" value="${v}"><button type="button" class="cs-date-cur" aria-haspopup="dialog" aria-expanded="false" aria-label="Pick a date">${I('calendar', 16)}<span>${v}</span>${I('chevron-down', 14)}</button><div class="cs-date-pop" role="dialog" aria-label="Choose a date" hidden></div></div>`;
 };
 (() => {
-  const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const DOW = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  const say = (d, o) => d.toLocaleDateString(uiLocale('en-GB'), o);
+  const dow = () => Array.from({ length: 7 }, (_, i) => say(new Date(2024, 0, 1 + i), { weekday: 'short' }).slice(0, 3));   // 1 January 2024 was a Monday
   const iso = (y, m, d) => y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
   const today = () => { const t = new Date(); return iso(t.getFullYear(), t.getMonth(), t.getDate()); };
   const close = (root, back) => { const p = root.querySelector('.cs-date-pop'), b = root.querySelector('.cs-date-cur'); p.hidden = true; b.setAttribute('aria-expanded', 'false'); if (back) b.focus(); };
@@ -16,8 +16,8 @@ const CSDATE = (id, value) => {
     const pop = root.querySelector('.cs-date-pop'), val = root.querySelector('input').value, t = today();
     root.dataset.y = y; root.dataset.m = m;
     const first = (new Date(y, m, 1).getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
-    const cells = Array.from({ length: first }, () => '<i></i>').concat(Array.from({ length: days }, (_, i) => { const d = iso(y, m, i + 1); return `<button type="button" class="cs-d${d === val ? ' on' : ''}${d === t ? ' now' : ''}" data-d="${d}" aria-pressed="${d === val}" aria-label="${i + 1} ${MON[m]} ${y}">${i + 1}</button>`; }));
-    pop.innerHTML = `<div class="cs-date-hd"><button type="button" class="cs-nav" data-cs-m="-1" aria-label="Previous month">${I('chevron-right', 14)}</button><b aria-live="polite">${MON[m]} ${y}</b><button type="button" class="cs-nav r" data-cs-m="1" aria-label="Next month">${I('chevron-right', 14)}</button></div><div class="cs-date-dow" aria-hidden="true">${DOW.map(x => `<span>${x}</span>`).join('')}</div><div class="cs-date-grid">${cells.join('')}</div><div class="cs-date-ft"><button type="button" class="cs-today" data-d="${t}">Today</button></div>`;
+    const cells = Array.from({ length: first }, () => '<i></i>').concat(Array.from({ length: days }, (_, i) => { const d = iso(y, m, i + 1); return `<button type="button" class="cs-d${d === val ? ' on' : ''}${d === t ? ' now' : ''}" data-d="${d}" aria-pressed="${d === val}" aria-label="${say(new Date(y, m, i + 1), { day: 'numeric', month: 'long', year: 'numeric' })}">${i + 1}</button>`; }));
+    pop.innerHTML = `<div class="cs-date-hd"><button type="button" class="cs-nav" data-cs-m="-1" aria-label="Previous month">${I('chevron-right', 14)}</button><b aria-live="polite">${say(new Date(y, m, 1), { month: 'long', year: 'numeric' })}</b><button type="button" class="cs-nav r" data-cs-m="1" aria-label="Next month">${I('chevron-right', 14)}</button></div><div class="cs-date-dow" aria-hidden="true">${dow().map(x => `<span>${x}</span>`).join('')}</div><div class="cs-date-grid">${cells.join('')}</div><div class="cs-date-ft"><button type="button" class="cs-today" data-d="${t}">Today</button></div>`;
     if (focus) { const f = pop.querySelector(focus === 'sel' ? '.cs-d.on, .cs-d.now, .cs-d' : `[data-d="${focus}"]`) || pop.querySelector('.cs-d'); if (f) f.focus(); }
   };
   const pick = (root, d) => { root.querySelector('input').value = d; root.querySelector('.cs-date-cur span').textContent = d; close(root, true); };

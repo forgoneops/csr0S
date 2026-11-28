@@ -33,7 +33,7 @@ for t in "${TARGETS[@]}"; do
   rsync -a --delete "${EX[@]}" "$EXP/" "$DIR/"
   git add -A
   if git diff --cached --quiet; then echo "$r: nothing to publish"; git checkout -q main; continue; fi
-  bun tools/leak-check.ts
+  bun tools/leak-check.ts; bun "$ROOT/tools/data-guard.ts"
   author commit -q -m "$TITLE"
   git push -q -f origin "$BR"
   PR="$(gh pr list -R "$OWNER/$r" --head "$BR" --json number -q '.[0].number' || true)"

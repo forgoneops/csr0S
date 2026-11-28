@@ -1,0 +1,10 @@
+{
+  "id": "jev",
+  "kind": "Crew",
+  "name": "Jev",
+  "version": "0.1.0",
+  "description": "A decision service (TypeSafe Jev): it sorts and chooses, it does not write. Needs your own Jev key; off without one. Sends the text of what you ask it to decide to the provider, so each feature that uses it is opt-in.",
+  "group": "dev",
+  "tags": ["routing", "classification", "optional"],
+  "permissions": ["net:api.typesafe.ai (only when a key is set and a feature asks)", "fs:data/keys/jev.key (mode 600)"]
+}
