@@ -5,6 +5,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, w
 import { tmpdir } from "node:os";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { hermesAllowed, hermesHome } from "./host";
 import type { Context, Hono } from "hono";
 import { ENGINES, detectEngines } from "./detect";
 import type { EngineAdapter, EngineEvent } from "./engines/types";
@@ -13,7 +14,7 @@ import { memoFor } from "./memo";
 import { hermesScope, scopeOf } from "./scope";
 import { change, cleanLine, ID_RE, readRoster, writeRoster } from "./roster";
 
-const PROFILES = () => join(process.env.HERMES_HOME ?? join(homedir(), ".hermes"), "profiles");
+const PROFILES = () => join(hermesHome(), "profiles");
 
 /** What each known crew member is for. A profile not listed here is still a crew member, with a plain role. */
 const KNOWN: Record<string, { name: string; role: string; does: string; img: string }> = {
@@ -58,7 +59,7 @@ const flatten = (m: { role: string; content: string }[]) =>
 
 /** One chat engine per profile. `hermes -p <id> -z <prompt>` answers once and exits; the crew member keeps its own tools. */
 /** Caesar on his own: the same profile with delegation and the kanban switched off, so he works without the crew. */
-const SOLO_TOOLSETS = "web,browser,terminal,file,code_execution,vision,skills,todo,memory,session_search,connections,clarify";
+const SOLO_TOOLSETS = "web,browser,terminal,file,code_execution,vision,skills,todo,memory,session_search,connections,clarify,caesar-brain,caesar-computer,klieg,omh,image_gen,tts,computer_use";
 export const SOLO_ID = "hermes:caesar!alone";
 
 /** One line of `hermes chat --format stream-json` as engine events. Text becomes deltas, a tool_use opens a row and its tool_result closes it
@@ -77,14 +78,14 @@ export function stripMemoryTail(acc: string): number { const i = acc.indexOf("\n
 
 export function hermesCrewEngines(): EngineAdapter[] {
   const entry = ENGINES.find((e) => e.id === "hermes")!;
-  const find = memoFor(10_000, () => detectEngines({ engines: [entry] }).then((r) => r[0]));   // one probe shared by every crew engine
+  const find = memoFor(60_000, () => detectEngines({ engines: [entry] }).then((r) => r[0]));   // one probe shared by every crew engine
   const crew = listCrew();
   const variants = [...crew.map((m) => ({ m, solo: false })), ...crew.filter((m) => m.id === "caesar").map((m) => ({ m, solo: true }))];
   return variants.map(({ m, solo }): EngineAdapter => ({
     id: solo ? SOLO_ID : `hermes:${m.id}`,
     label: solo ? "Caesar (alone)" : m.name,
     scope: () => hermesScope(m.id),
-    async health() { const r = await find(); return r?.found ? (r.probe.ok ? { ok: true, detail: null } : { ok: false, detail: `installed, sign in: ${entry.signIn}` }) : { ok: false, detail: "Hermes is not installed" }; },
+    async health() { const r = await find(); return r?.found ? (r.probe.ok || r.probe.error === "timeout" ? { ok: true, detail: null } : { ok: false, detail: `installed, sign in: ${entry.signIn}` }) : { ok: false, detail: "Hermes is not installed" }; },
     async models() { return [{ id: "default", label: m.model || "profile default" }]; },
     async *stream(messages, { signal }): AsyncIterable<EngineEvent> {
       const r = await find();
@@ -174,7 +175,7 @@ export async function chatTargets(localOnly = false): Promise<Target[]> {
 /** Run `hermes profile create` for a new member; the error is a short word, never the profile's contents. */
 async function hermesCreate(id: string): Promise<"ok" | "hermes_missing" | "failed"> {
   const bin = Bun.which("hermes") ?? join(homedir(), ".local", "bin", "hermes");
-  if (!existsSync(bin)) return "hermes_missing";
+  if (!hermesAllowed() || !existsSync(bin)) return "hermes_missing";
   try {
     const p = Bun.spawn([bin, "profile", "create", "--no-alias", id], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
     const t = setTimeout(() => p.kill(), 60_000); const code = await p.exited; clearTimeout(t);

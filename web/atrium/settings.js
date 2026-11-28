@@ -47,6 +47,7 @@
     root.style.fontSize = (16 * (s.textScale || 1)) + 'px';
     try { localStorage.setItem('caesaros-textscale', String(s.textScale || 1)); } catch (_) {}
     const theme = (D.packs.themes || []).find(t => t.id === s.theme);
+    void applyPack(theme);
     // a one-letter palette is the shell's own (top bar picker, plain CSS rules): it wins until Settings picks a pack colour
     let kept = ''; try { kept = localStorage.getItem('cx-pal') || ''; } catch (_) {}
     if (window.__palURL) { root.dataset.pal = window.__palURL; return; }   // ?pal= wins for this page load only
@@ -58,6 +59,25 @@
     root.style.setProperty('--p1', pal.p1); root.style.setProperty('--p1r', rgb(pal.p1));
     root.style.setProperty('--p2', pal.p2); root.style.setProperty('--p2r', rgb(pal.p2));
   }
+  // Cinder and Lumen are token-only packs: read their :root tokens and map them onto the Atrium's own names; theme-pack.css dresses the materials.
+  // Neo Roma is the Atrium's own skin (neo.css + palettes), so it clears the pack. A stale answer (the person clicked again) is dropped.
+  const PACK_MAP = { bg: 'bg', surface: 'surface', 'surface-2': 'surface-2', 'surface-3': 'surface-3', line: 'line', ink: 'text', 'ink-2': 'muted', accent: 'accent', 'accent-ink': 'accent-ink', 'accent-2': 'signal' };
+  let packSeq = 0;
+  async function applyPack(theme) {
+    const my = ++packSeq, own = !theme || theme.id === 'neo-roma' || !theme.url;
+    if (own) { delete root.dataset.tpack; try { localStorage.removeItem('caesaros-tpack'); } catch (_) {} return clearPack(); }
+    let css = ''; try { css = await (await fetch(theme.url)).text(); } catch (_) { return; }
+    if (my !== packSeq) return;
+    const t = {}; for (const m of (css.match(/:root\s*\{[^}]*\}/) || [''])[0].matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) t[m[1]] = m[2].trim();
+    const v = {}; for (const [k, to] of Object.entries(PACK_MAP)) if (t[k]) v['--' + to] = t[k];
+    const hex = /^#[0-9a-f]{6}$/i;
+    if (hex.test(t.accent || '') && hex.test(t['accent-2'] || '')) {
+      Object.assign(v, { '--tp1': t.accent, '--tp1r': rgb(t.accent), '--tp2': t['accent-2'], '--tp2r': rgb(t['accent-2']), '--cx-mag': t.accent, '--cx-gold': t['accent-hi'] || t.accent, '--g1': rgb(t.accent), '--g2': rgb(t['accent-2']) });
+    }
+    clearPack(); root.dataset.tpack = theme.id; for (const k in v) root.style.setProperty(k, v[k]);
+    try { localStorage.setItem('caesaros-tpack', JSON.stringify({ id: theme.id, v })); } catch (_) {}
+  }
+  function clearPack() { for (const k of [...Object.values(PACK_MAP).map(x => '--' + x), '--tp1', '--tp1r', '--tp2', '--tp2r', '--cx-mag', '--cx-gold', '--g1', '--g2']) root.style.removeProperty(k); }
   const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(',');
 
   async function save(card, patch) {
@@ -167,12 +187,12 @@
   }
   function backup() {
     const b = (D.backups || [])[0];
-    return `<div class="st-rowline"><span class="st-tool"><b>${b ? esc(b.name) : 'No backup yet'}</b><small>${b ? `${b.sizeMb} MB · ${new Date(b.at).toLocaleString('en', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : 'Take the first copy of settings, chats and keys.'}</small></span><span style="flex:1"></span>
+    return `<div class="st-rowline"><span class="st-tool"><b>${b ? esc(b.name) : 'No backup yet'}</b><small>${b ? `${b.sizeMb} MB · ${new Date(b.at).toLocaleString(uiLocale('en'), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : 'Take the first copy of settings, chats and keys.'}</small></span><span style="flex:1"></span>
       <button type="button" class="su-btn go" data-st="backup">${I('download', 16)}<span>Back up now</span></button></div>
       <p class="su-note">A consistent copy in the core's own backup folder. This card only takes copies; it never replaces your data.</p>`;
   }
   function data() {
-    const rows = (D.audit || []).slice(0, 12).map(r => `<div class="st-rowline"><span class="st-tool"><b>${esc(r.claim)}</b><small>${esc(r.actor)} · ${esc(r.subject_kind)} · ${esc(r.confidence)} · ${new Date(r.at).toLocaleString('en', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small></span></div>`).join('');
+    const rows = (D.audit || []).slice(0, 12).map(r => `<div class="st-rowline"><span class="st-tool"><b>${esc(r.claim)}</b><small>${esc(r.actor)} · ${esc(r.subject_kind)} · ${esc(r.confidence)} · ${new Date(r.at).toLocaleString(uiLocale('en'), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small></span></div>`).join('');
     return `<p class="su-note">Nothing leaves this machine unless an engine or server you added is used. The ledger below records private reads and refusals; it holds the claim, never the data.</p>
       ${rows ? `<div class="st-list">${rows}</div>` : '<p class="su-note">Nothing has been read or refused yet.</p>'}`;
   }

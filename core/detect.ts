@@ -85,13 +85,16 @@ export type ProbeRunResult = { code: number | null; out: string; err: string; ti
 /** How a probe process is started. Injected in tests so no real process runs. May answer sync or async. */
 export type ProbeRun = (argv: string[], timeoutMs: number) => ProbeRunResult | Promise<ProbeRunResult>;
 
+/** A slow start is not a broken tool: Hermes (Python) needs 3 to 5 s to print its version on a modest or busy machine. */
+export const PROBE_MS = 15_000;
+
 /**
  * Runs one probe argv directly (no shell) with a short timeout. In tests `run` is injected.
  * argv[0] must be the absolute path the PATH walk found: a bare name would let the process PATH
  * (a planted binary in cwd or a relative entry) choose what runs. Async so the server loop stays free.
  */
 export async function runProbe(argv: string[], opts: { timeoutMs?: number; run?: ProbeRun } = {}): Promise<Probe> {
-  const timeoutMs = opts.timeoutMs ?? 2000;
+  const timeoutMs = opts.timeoutMs ?? PROBE_MS;
   const run = opts.run ?? defaultRun;
   if (argv.length === 0) return { ran: false, ok: false, version: null, error: "empty command" };
   if (!opts.run && !isAbsolute(argv[0])) {
@@ -198,7 +201,7 @@ if (import.meta.main) {
   }
   const timeoutMs = (() => {
     const at = args.indexOf("--timeout");
-    if (at < 0) return 2000;
+    if (at < 0) return PROBE_MS;
     const n = Number(args[at + 1]);
     if (!Number.isFinite(n) || n <= 0) {
       process.stderr.write("detect: --timeout needs a positive number of milliseconds\n");

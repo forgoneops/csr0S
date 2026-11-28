@@ -3,6 +3,7 @@
 import { ENGINES, detectEngines } from "../detect";
 import type { ChatMessage, EngineAdapter, EngineEvent, EngineHealth, EngineModel } from "./types";
 import { isLocalUrl } from "../scope";
+import { isolated } from "../host";
 
 export const DEFAULT_URL = "http://127.0.0.1:11434";
 
@@ -13,7 +14,8 @@ export function normalizeBase(raw: string | undefined): string {
   return (/^[a-z][a-z0-9+.-]*:\/\//i.test(v) ? v : `http://${v}`).replace(/\/+$/, "");
 }
 
-const envBase = () => normalizeBase(process.env.CAESAROS_OLLAMA_URL ?? process.env.OLLAMA_HOST);
+/** The address the person set, else the local default. A throwaway copy has no default (port 0 refuses): the models there are this computer's. */
+export const envBase = () => normalizeBase(process.env.CAESAROS_OLLAMA_URL ?? process.env.OLLAMA_HOST ?? (isolated() ? "http://127.0.0.1:0" : undefined));
 
 const isAbort = (e: unknown) => (e as { name?: string } | null)?.name === "AbortError";
 

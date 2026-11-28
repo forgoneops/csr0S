@@ -4,9 +4,9 @@ use crate::Shared;
 use shell_logic::geometry::{clamp, Geometry, MIN_HEIGHT, MIN_WIDTH};
 use shell_logic::gateway::gateway_origin;
 use shell_logic::navpolicy::{allow_navigation, platform_shell_origin};
-use shell_logic::popout::{is_pop_label, is_pop_request, next_label, MAX_POPS};
+use shell_logic::popout::{is_pop_close, is_pop_label, is_pop_request, next_label, MAX_POPS};
 use std::sync::Arc;
-use tauri::webview::NewWindowResponse;
+use tauri::webview::{NewWindowResponse, PermissionKind, PermissionResponse};
 use tauri::{AppHandle, Manager, PhysicalPosition, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 pub const MAIN_LABEL: &str = "main";
@@ -24,11 +24,27 @@ pub fn create_main(app: &AppHandle, saved: Option<Geometry>, shared: Arc<Shared>
         .visible(false) // shown once the gateway answers, so the picker page never flashes at launch
         .inner_size(g.width, g.height)
         .min_inner_size(MIN_WIDTH, MIN_HEIGHT);
-    b = guard_navigation(b, app, shared);
+    b = guard_navigation(b, app, shared, None);
     if let (Some(x), Some(y)) = (g.x, g.y) {
         b = b.position(x, y);
     }
-    b.build()
+    let w = b.build()?;
+    enable_media(&w);
+    Ok(w)
+}
+
+/// WebKitGTK ships with enable-media-stream off, so getUserMedia fails before any permission prompt. No-op elsewhere.
+fn enable_media(w: &WebviewWindow) {
+    #[cfg(target_os = "linux")]
+    let _ = w.with_webview(|pw| {
+        use webkit2gtk::{SettingsExt, WebViewExt};
+        if let Some(s) = pw.inner().settings() {
+            s.set_enable_media_stream(true);
+            s.set_enable_mediasource(true);
+        }
+    });
+    #[cfg(not(target_os = "linux"))]
+    let _ = w;
 }
 
 pub fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
@@ -87,17 +103,33 @@ type Builder<'a> = WebviewWindowBuilder<'a, tauri::Wry, AppHandle>;
 
 /// The navigation policy for every shell window, plus the pop-out hook: a guest page may only ask for a
 /// new window with a gateway `?pop=` URL (no IPC needed); the shell opens it itself and always denies the default.
-pub(crate) fn guard_hud<'a>(b: Builder<'a>, app: &AppHandle, shared: Arc<Shared>) -> Builder<'a> { guard_navigation(b, app, shared) }
+pub(crate) fn guard_hud<'a>(b: Builder<'a>, app: &AppHandle, shared: Arc<Shared>) -> Builder<'a> { guard_navigation(b, app, shared, None) }
 
-fn guard_navigation<'a>(b: Builder<'a>, app: &AppHandle, shared: Arc<Shared>) -> Builder<'a> {
-    let (app, shared2) = (app.clone(), shared.clone());
+fn guard_navigation<'a>(b: Builder<'a>, app: &AppHandle, shared: Arc<Shared>, pop_label: Option<String>) -> Builder<'a> {
+    let (app, shared2, shared3, app_nav) = (app.clone(), shared.clone(), shared.clone(), app.clone());
     b.on_navigation(move |url| {
+        if let Some(label) = &pop_label {
+            if is_pop_close(url, shared.selected_origin().as_deref()) {
+                // The page asked to be closed (it cannot close a window it did not open): the shell does it, off this callback's thread.
+                let (app, label) = (app_nav.clone(), label.clone());
+                std::thread::spawn(move || { if let Some(w) = app.get_webview_window(&label) { let _ = w.close(); } });
+                return false;
+            }
+        }
         let ok = allow_navigation(url, shared.selected_origin().as_deref(), platform_shell_origin());
         if !ok {
             // Denied, and never handed to the OS browser.
             eprintln!("caesaros-shell: navigation denied to {}", url.origin().ascii_serialization());
         }
         ok
+    })
+    // Microphone only, and only for the shell page or the selected gateway; camera, screen, location, the rest are denied.
+    .on_permission_request(move |wv, kind| {
+        let from_ours = wv.url().map(|u| allow_navigation(&u, shared3.selected_origin().as_deref(), platform_shell_origin())).unwrap_or(false);
+        match kind {
+            PermissionKind::Microphone if from_ours => PermissionResponse::Allow,
+            _ => PermissionResponse::Deny,
+        }
     })
     .on_new_window(move |url, _features| {
         if is_pop_request(&url, shared2.selected_origin().as_deref()) {
@@ -137,12 +169,15 @@ pub fn open_pop(app: &AppHandle, url: Url, saved: Option<Geometry>, label: Optio
         .title("CaesarOS")
         .inner_size(g.width, g.height)
         .min_inner_size(MIN_WIDTH, MIN_HEIGHT);
-    b = guard_navigation(b, app, shared.inner().clone());
+    b = guard_navigation(b, app, shared.inner().clone(), Some(label.clone()));
     if let (Some(x), Some(y)) = (g.x, g.y) {
         b = b.position(x, y);
     }
     match b.build() {
-        Ok(_) => shared.pop_set(&label, url.as_str(), saved),
+        Ok(w) => {
+            enable_media(&w);
+            shared.pop_set(&label, url.as_str(), saved)
+        }
         Err(e) => eprintln!("caesaros-shell: cannot open {label}: {e}"),
     }
 }

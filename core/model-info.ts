@@ -2,7 +2,7 @@
 // Only names that Ollama itself lists are ever asked about; the answer is cached for a minute.
 import type { Hono } from "hono";
 import { listInstalled } from "./model-pull";
-import { normalizeBase } from "./engines/ollama";
+import { envBase } from "./engines/ollama";
 
 export type ModelInfo = { name: string; capabilities: string[]; maxContext: number | null; setContext: number | null };
 
@@ -20,7 +20,7 @@ export function shapeInfo(name: string, show: unknown): ModelInfo {
 }
 
 export function createModelInfo(opts: { baseUrl?: () => string; fetchImpl?: typeof fetch; ttlMs?: number } = {}) {
-  const base = opts.baseUrl ?? (() => normalizeBase(process.env.CAESAROS_OLLAMA_URL ?? process.env.OLLAMA_HOST));
+  const base = opts.baseUrl ?? envBase;
   const doFetch = opts.fetchImpl ?? fetch;
   let cache: { at: number; list: ModelInfo[] } | null = null;
   return async function modelInfo(): Promise<ModelInfo[]> {

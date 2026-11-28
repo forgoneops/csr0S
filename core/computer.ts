@@ -11,6 +11,7 @@ import type { Context, Hono } from "hono";
 import { DATA } from "./db";
 import { ROOT } from "./root";
 import { isLocal } from "./webgate";
+import { isolated } from "./host";
 
 export type SessionEnv = { XDG_RUNTIME_DIR: string; WAYLAND_DISPLAY: string; HYPRLAND_INSTANCE_SIGNATURE: string };
 export type ExecResult = { code: number; out: string; err: string };
@@ -90,6 +91,7 @@ export function pngSize(b: Uint8Array): { width: number; height: number } {
 }
 
 export const spawnExec: Exec = async (file, args, env, signal) => {
+  if (isolated()) return { code: 1, out: "", err: "not available in a throwaway copy" };
   const p = Bun.spawn([file, ...args], { env: { ...process.env, ...env }, stdout: "pipe", stderr: "pipe" });
   const abort = () => p.kill();
   signal?.addEventListener("abort", abort, { once: true });

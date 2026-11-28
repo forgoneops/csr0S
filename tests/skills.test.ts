@@ -50,3 +50,14 @@ test("skills from the app-managed registry appear in the Marketplace list", asyn
   expect(response.status).toBe(200);
   expect(await response.json()).toContainEqual(expect.objectContaining({ name: "Managed", description: "Caesar registry skill" }));
 });
+
+test("a symlinked skills folder gives the same ids, categories, bodies and merging as the real one", async () => {
+  const real = make(), link = join(mkdtempSync(join(tmpdir(), "skills-link-")), "deep", "skills");
+  mkdirSync(join(link, ".."), { recursive: true }); symlinkSync(real, link);
+  const s = scanSkills(link);
+  expect(s.map((x) => [x.id, x.category])).toEqual([["devops/deploy", "devops"], ["notes", "notes"]]);
+  expect(scanSkills([link, make()]).map((x) => x.id)).toEqual(["devops/deploy", "notes"]);
+  const app = new Hono(); skillsApi(app, () => true, [link]);
+  const body = await app.request("/api/skills/body?id=" + encodeURIComponent(s[0]!.id));
+  expect(body.status).toBe(200);
+});

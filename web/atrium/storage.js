@@ -31,7 +31,7 @@
     const { sto, models, m, ver } = ST.d, GB = 1024 ** 3;
     const modelBytes = models.reduce((n, x) => n + x.sizeGb * GB, 0) + sum(sto.engines);
     const data = sum(sto.areas), cache = sum(sto.caches), all = data + cache;
-    const used = m.diskTotalGb ? (m.diskTotalGb - m.freeDiskGb) / m.diskTotalGb * 100 : 0;
+    const used = m && m.diskTotalGb ? (m.diskTotalGb - m.freeDiskGb) / m.diskTotalGb * 100 : 0;
     const modelRows = [
       ...models.map(x => row('engine', x.name, 'Chat model in Ollama', `${x.sizeGb} GB`)),
       ...sto.engines.map(x => row('system', x.name, 'Whole engine folder', size(x.bytes))),
@@ -40,16 +40,17 @@
     const caches = sto.caches.map(c => `<div class="og-card"><div class="og-row"><h4>${E(c.name)}</h4><span class="og-tag ${c.bytes ? 'sig' : 'mut'}">${c.bytes ? size(c.bytes) : 'Empty'}</span></div><p>${E(c.note)}</p>${ST.sure === c.id
       ? `<div role="group" aria-label="Confirm clearing"><p><b>Clear ${size(c.bytes)} of ${E(c.name.toLowerCase())}?</b></p><div class="og-row">${btn('go:' + c.id, ST.busy ? 'Clearing…' : 'Yes, clear', ST.busy ? 'disabled' : '')}${btn('keep', 'Keep them', ST.busy ? 'disabled' : '')}</div></div>`
       : `<div class="og-row">${btn('ask:' + c.id, 'Clear', c.bytes ? '' : 'disabled style="opacity:.5"')}</div>`}</div>`).join('');
+    const unread = !m && !modelRows;   // a throwaway copy never looked for models, so it shows no count of them
     return frame(`
-      ${vzTiles([vzTile('Local models', size(modelBytes), models.length === 1 ? '1 chat model' : `${models.length} chat models`, 'a'), vzTile('App data', size(data), 'yours, never cleared here', 's'), vzTile('Cache', size(cache), cache ? 'can be made again' : 'nothing to clear', 'g'), vzTile('Free disk', `${m.freeDiskGb} GB`, m.diskTotalGb ? `of ${m.diskTotalGb} GB` : '', 'm')])}
-      ${m.diskTotalGb ? vzBars([['Disk used', used, `${Math.round(used)}%`, used > 90 ? 'd' : 's']]) : ''}
-      ${sec('Local models')}${modelRows ? `<div class="og-list">${modelRows}</div>` : vzEmpty('No local model found', 'If you use Ollama, start it and press Refresh. Models you download are listed here with their size.')}
-      ${typeof ogEnabled !== 'function' || ogEnabled('Models') ? `<div class="og-row">${btn('models', 'Manage models')}</div>` : ''}
+      ${vzTiles([...(unread ? [] : [vzTile('Local models', size(modelBytes), models.length === 1 ? '1 chat model' : `${models.length} chat models`, 'a')]), vzTile('App data', size(data), 'yours, never cleared here', 's'), vzTile('Cache', size(cache), cache ? 'can be made again' : 'nothing to clear', 'g'), ...(m ? [vzTile('Free disk', `${m.freeDiskGb} GB`, m.diskTotalGb ? `of ${m.diskTotalGb} GB` : '', 'm')] : [])])}
+      ${m && m.diskTotalGb ? vzBars([['Disk used', used, `${Math.round(used)}%`, used > 90 ? 'd' : 's']]) : ''}
+      ${unread ? '' : `${sec('Local models')}${modelRows ? `<div class="og-list">${modelRows}</div>` : vzEmpty('No local model found', 'If you use Ollama, start it and press Refresh. Models you download are listed here with their size.')}
+      ${typeof ogEnabled !== 'function' || ogEnabled('Models') ? `<div class="og-row">${btn('models', 'Manage models')}</div>` : ''}`}
       ${sec('App data by area')}${vzBars(sto.areas.map((a, i) => [a.name, data ? a.bytes / data * 100 : 0, size(a.bytes), ['a', 's', 'g', 'm'][i % 4]]))}
       ${sec('Cache')}${caches}
       ${ST.msg ? `<p role="status">${E(ST.msg)}</p>` : ''}
       ${sec('This device')}
-      ${vzTiles([vzTile('System', OSN[m.os] || m.os, m.arch || '', 'a'), vzTile('Processors', m.cores, 'logical CPUs', 's'), vzTile('Memory', `${m.ramGb} GB`, 'installed', 'g'), vzTile('Graphics', m.gpu === 'unknown' ? 'Unknown' : m.gpu === 'none' ? 'None found' : m.gpu.toUpperCase(), '', 'm'), vzTile('CaesarOS', ver.version, `#${ver.build}`, 'a', true)])}
+      ${!m ? vzEmpty('Machine details are hidden', 'This copy runs on a throwaway data folder, so it does not read this computer.') : vzTiles([vzTile('System', OSN[m.os] || m.os, m.arch || '', 'a'), vzTile('Processors', m.cores, 'logical CPUs', 's'), vzTile('Memory', `${m.ramGb} GB`, 'installed', 'g'), vzTile('Graphics', m.gpu === 'unknown' ? 'Unknown' : m.gpu === 'none' ? 'None found' : m.gpu.toUpperCase(), '', 'm'), vzTile('CaesarOS', ver.version, `#${ver.build}`, 'a', true)])}
       <div class="og-row">${btn('refresh', ST.loading ? 'Reading…' : 'Refresh', ST.loading ? 'disabled' : '')}</div>`);
   }
 

@@ -200,3 +200,6 @@ describe("no owner default", () => {
     expect(src).not.toContain("https://");
   });
 });
+
+import { PROBE_MS } from "../core/detect";
+test("the default probe waits long enough for a slow Python start (Hermes needs 3 to 5 s)", () => expect(PROBE_MS).toBeGreaterThanOrEqual(10_000));

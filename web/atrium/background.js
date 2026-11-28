@@ -47,7 +47,7 @@
     };
     // WebGL layer: traces, nodes and pulses as shader glow (diamond-shaped halos, no round shapes); the 2D canvas keeps the static stone layer.
     const glc = document.createElement("canvas"); glc.className = "bg-gl"; glc.setAttribute("aria-hidden", "true"); canvas.after(glc);
-    // Code-glyph layer (ascii.js) sits under the lines and is lit by them.
+    // ASCII picture (ascii.js) sits under the lines (DOM order canvas, ascii, glc; all z-index 0) and is lit by them.
     let ac = document.createElement("canvas"); ac.className = "bg-gl bg-ascii"; ac.setAttribute("aria-hidden", "true"); canvas.after(ac);
     let ascii = window.caesarosAscii?.(ac) || null; // null when WebGL2 is missing: a 2D glyph layer is swapped in below
     const paintAscii = (animating) => { if (!ascii) return; const cs = getComputedStyle(document.documentElement); ascii.render({ net, phase, pointAt, animating, rich: document.documentElement.dataset.bg !== "subtle", on: document.documentElement.dataset.theme === "caesaros" && document.documentElement.dataset.bg !== "off", accent: cs.getPropertyValue("--p1") || cs.getPropertyValue("--accent") || "#ff8a3d", signal: cs.getPropertyValue("--p2") || cs.getPropertyValue("--signal") || "#33e8ff" }); };
@@ -75,7 +75,8 @@
       } catch (e) { console.warn("CaesarOS background: WebGL unavailable, using 2D", e); useGL = false; glc.remove(); }
     } else glc.remove();
     // No WebGL (blocked, software-less, or the context was lost): the 2D canvas carries the lines at a visible strength, and the glyphs get a 2D layer.
-    const swapAscii2d = () => { if (!window.caesarosAscii) return; const n = document.createElement("canvas"); n.className = ac.className; n.setAttribute("aria-hidden", "true"); ac.replaceWith(n); ac = n; ascii = window.caesarosAscii(n, { force2d: true }); if (ascii) ascii.resize(w, h, net); else n.remove(); };
+    // 2D lines live on `canvas`, so in the fallback the picture is inserted below it
+    const swapAscii2d = () => { if (!window.caesarosAscii) return; const n = document.createElement("canvas"); n.className = ac.className; n.setAttribute("aria-hidden", "true"); if (useGL) ac.replaceWith(n); else { ac.remove(); canvas.before(n); } ac = n;  ascii = window.caesarosAscii(n, { force2d: true }); if (ascii) ascii.resize(w, h, net); else n.remove(); };
     const to2d = () => { useGL = false; glc.remove(); canvas.classList.add("bg-2d"); swapAscii2d(); };
     if (!ascii) swapAscii2d();
     if (!useGL) canvas.classList.add("bg-2d");

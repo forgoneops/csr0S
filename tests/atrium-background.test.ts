@@ -1,4 +1,4 @@
-// The fixed line field (background.js) and the code layer (ascii.js) must always reach the page: both scripts are
+// The fixed line field (background.js) and the ASCII picture (ascii.js) must always reach the page: both scripts are
 // loaded before the inline shell script, the shell attaches the canvas, and with NO WebGL the 2D fallback still
 // attaches a visible canvas plus a glyph layer. Runs the real files against a tiny DOM stub.
 import { describe, expect, test } from "bun:test";
@@ -31,7 +31,7 @@ describe("background and ASCII layers in the page", () => {
     const made: any[] = [], ctx2d: string[] = [];
     const mk = (tag: string) => {
       const el: any = { tag, className: "", width: 0, height: 0, classList: { add(c: string) { el.className += " " + c; } }, attrs: {},
-        setAttribute(k: string, v: string) { el.attrs[k] = v; }, after(n: any) { made.push(n); }, remove() {}, replaceWith() {}, addEventListener() {},
+        setAttribute(k: string, v: string) { el.attrs[k] = v; }, after(n: any) { made.push(n); }, before(n: any) { n.beforeLines = true; made.push(n); }, remove() {}, replaceWith() {}, addEventListener() {},
         getContext: (t: string) => { if (t !== "2d") { el.poisoned = true; return null; } return el.poisoned ? null : // like Chrome: a canvas that refused webgl2 gives no 2d either
           (ctx2d.push(el.className), new Proxy({}, { get: (_o, k) => (k === "measureText" ? () => ({ width: 6 }) : () => {}), set: () => true })); } };
       return el;
@@ -48,6 +48,7 @@ describe("background and ASCII layers in the page", () => {
       expect(canvas.className).toContain("bg-2d");
       expect(made.some((c) => c.className.includes("bg-ascii"))).toBe(true);
       expect(ctx2d.some((c) => c.includes("bg-ascii"))).toBe(true); // the glyph layer got a working 2D context
+      expect(made.find((c) => c.className.includes("bg-ascii") && c.beforeLines)).toBeTruthy(); // 2D lines are on `canvas`: the picture goes below it
     } finally { Object.assign(g, keep); }
   });
 

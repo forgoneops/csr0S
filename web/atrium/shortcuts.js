@@ -10,13 +10,15 @@
       ['dock', 'Ctrl+J / ⌘+J', 'Quick ask: open or minimise'],
       ['terminal', 'Ctrl+`', 'Show or hide the terminal'],
       ['pin', 'Ctrl+B', 'Keep the left menu open'],
-      ['tab', 'Alt+1 to 9', 'Switch to that open tab'],
-      ['workspace', 'Alt+1 / Alt+2', 'First workspace / next workspace'],
-      ['close', 'Esc', 'Close menus and pop-ups'],
+      ['tab', 'Ctrl+Tab / Ctrl+Shift+Tab', 'Next / previous open tab'],
+      ['workspace', 'Alt+1 to 6', 'Jump to that workspace'],
+      ['close', 'Esc', 'Close menus and pop-ups, and leave the split'],
+      ['split-resize', 'Arrow keys on a split edge', 'Resize the split windows (Shift for bigger steps)'],
     ]],
     ['Find anything and dialogs', [
       ['palette-move', '↑ / ↓', 'Move through results'],
       ['palette-run', 'Enter', 'Run the selected result'],
+      ['ask', 'Enter, Esc', 'Rename and confirm boxes: accept, cancel'],
       ['palette-trap', 'Tab / Shift+Tab', 'Move around inside the open dialog (Esc closes it)'],
     ]],
     ['Chat message box', [
@@ -28,7 +30,8 @@
     ['Quick ask window', [
       ['dock-send', 'Enter', 'Send (Shift+Enter for a new line)'],
       ['dock-close', 'Esc', 'Minimise'],
-      ['dock-size', '↑ ↓ ← →', 'Resize from a focused edge (Shift for bigger steps)'],
+      ['dock-size', '↑ ↓ ← → Home', 'Resize from a focused edge (Shift for bigger steps, Home resets)'],
+      ['dock-move', 'Shift + ↑ ↓ ← →', 'Move the chat launcher'],
     ]],
     ['Voice', [
       ['talk', 'Alt+Space', 'Hold to talk, release to send'],

@@ -18,7 +18,7 @@ const ogModeBanner = () => OGS.mode === 'off'
   ? `<div class="og-banner"><b>Offline</b> No network. Only installed models, local tools and your files work. The Shared Brain waits to sync.</div>`
   : OGS.mode === 'local'
     ? `<div class="og-banner"><b>Local</b> Everything runs on this device. The Shared Brain stays here. Add the VPS any time to back it up and work from other devices.</div>`
-    : `<div class="og-banner"><b>VPS · Shared Brain</b> Engine online on <b style="color:var(--text)">vps-node</b>. The Brain is backed up there and shared with your devices. Last backup 14 min ago.</div>`;
+    : `<div class="og-banner"><b>VPS · Shared Brain</b> Your paired server is the engine host. The Brain is backed up there and shared with your devices.</div>`;
 
 /* ---------- Integrations ---------- */
 function ogIntegrations() {
@@ -45,7 +45,7 @@ function ogIntegrations() {
 /* ---------- Models ---------- */
 function ogModels() {
   const lv = { Conservative: ['6.2 GB', 'K2 Horizon 3.7B'], Balanced: ['16.4 GB', 'Bonsai 2 27B'], Extreme: ['31.8 GB', 'Qwen 3.8 27B'] }[OGS.lvl];
-  const place = OGS.mtab === 'This device' ? 'This device (Lenovo) · 33 GB RAM' : OGS.mtab === 'VPS' ? 'VPS vps-node · 11 GB RAM, no GPU' : 'iPhone 15 Pro Max · 8 GB RAM';
+  const place = OGS.mtab === 'This device' ? 'This device' : OGS.mtab === 'VPS' ? 'Your VPS' : 'Your phone';
   const m = (n, mk, sz, d, tags = '', st = '') => `<div class="og-card"><div class="og-row"><h4>${n}</h4>${tags}</div><p>${mk} · ${sz}</p><p>${d}</p><div class="og-act">${st || '<span></span>'}<button class="btn ghost" style="height:28px;padding:0 10px">${st ? 'Settings' : 'Download'}</button></div></div>`;
   return `<div class="nx-view enter">${ogHead('Models', 'Download, switch and manage the models that run on each of your places.', 'Armamentarium')}
   <div class="og-wrap">${ogModeBanner()}
@@ -103,9 +103,9 @@ function ogDevices() {
   <div class="og-wrap">${ogModeBanner()}
    <div class="og-card" style="border-color:var(--accent)"><div class="og-row"><h4>Shared Brain</h4><span class="og-tag ${brainState[2]}">${brainState[0]}</span></div><p>${brainState[1]}</p><div class="og-row"><button class="btn" ${OGS.mode === 'vps' ? '' : 'disabled style="opacity:.5"'}>Back up now</button><button class="btn ghost">Restore from VPS</button><button class="btn ghost">Choose what is shared</button></div></div>
    <div class="og-sec">This device</div>
-   <div class="og-card"><div class="og-row"><h4>Lenovo · this-device</h4><span class="og-tag sig">This device</span></div><div class="og-row"><span>${ogSw('disc', true)} <span class="label">Visible to new devices</span></span><span>${ogSw('near', true)} <span class="label">Look for devices</span></span><span class="label">Pairing code on request</span></div></div>
+   <div class="og-card"><div class="og-row"><h4>This device</h4><span class="og-tag sig">This device</span></div><div class="og-row"><span>${ogSw('disc', true)} <span class="label">Visible to new devices</span></span><span>${ogSw('near', true)} <span class="label">Look for devices</span></span><span class="label">Pairing code on request</span></div></div>
    <div class="og-sec">Paired</div>
-   <div class="og-list"><div>${I('system', 16)}<span>VPS · vps-node <small>${OGS.mode === 'off' ? 'Offline' : 'Connected through the tailnet'}</small></span><span class="og-tag ${OGS.mode === 'vps' ? 'sig' : 'mut'}">${OGS.mode === 'vps' ? 'Online' : 'Idle'}</span></div><div>${I('chat', 16)}<span>iPhone 15 Pro Max <small>Last connected 2 hours ago</small></span><span class="og-tag sig">Connected</span></div><div>${I('alert', 16)}<span>Old tablet <small>This device no longer holds the pairing. Enter the code it shows to pair again.</small></span><button class="btn ghost" style="height:26px;padding:0 8px">Pair</button></div></div>
+   <div class="og-list"><div>${I('system', 16)}<span>VPS <small>${OGS.mode === 'off' ? 'Offline' : 'Connected through the tailnet'}</small></span><span class="og-tag ${OGS.mode === 'vps' ? 'sig' : 'mut'}">${OGS.mode === 'vps' ? 'Online' : 'Idle'}</span></div><div>${I('chat', 16)}<span>Your phone <small>Last connected 2 hours ago</small></span><span class="og-tag sig">Connected</span></div><div>${I('alert', 16)}<span>Old tablet <small>This device no longer holds the pairing. Enter the code it shows to pair again.</small></span><button class="btn ghost" style="height:26px;padding:0 8px">Pair</button></div></div>
   </div></div>`;
 }
 
@@ -121,14 +121,13 @@ document.addEventListener('click', e => {
 
 /* ---------- workspace widgets ---------- */
 function ogWBrain() {
-  const on = OGS.mode === 'vps';
-  return `<div style="display:grid;gap:8px;padding:2px"><div class="og-row"><span class="og-tag ${on ? 'sig' : OGS.mode === 'off' ? 'mut' : ''}">${on ? 'Synced' : OGS.mode === 'off' ? 'Waiting' : 'Local only'}</span><span class="label">${on ? 'VPS vps-node' : 'This device'}</span></div><div style="font:500 26px var(--font-display)">2,418 <small style="font:11px var(--font-mono);color:var(--muted)">NOTES</small></div><div class="og-kv"><span>Last backup</span><span>${on ? '14 min ago' : 'Never'}</span><span>Devices</span><span>Lenovo, iPhone${on ? ', VPS' : ''}</span></div></div>`;
+  return `<div style="display:grid;gap:8px;padding:2px"><p class="label">Your notes and memory live on this device. Open Memory to see them.</p><div class="og-row"><button class="btn ghost" style="height:28px;padding:0 10px" data-open-app="Memory">Open Memory</button></div></div>`;
 }
 function ogWModels() {
-  return `<div style="display:grid;gap:8px;padding:2px"><div class="og-row"><span class="og-tag sig">Active</span><b style="font:13px var(--font-body)">Bonsai 2 27B</b></div><div class="og-kv"><span>Fast pick</span><span>K2 Horizon 3.7B</span><span>Best pick</span><span>Qwen 3.8 27B</span><span>Place</span><span>This device · 33 GB</span></div><div class="og-row"><button class="btn ghost" style="height:28px;padding:0 10px" data-og="mtab:This device">Configure it for me</button></div></div>`;
+  return `<div style="display:grid;gap:8px;padding:2px"><p class="label">Models are picked from what this machine can hold. Open Models to see what fits.</p><div class="og-row"><button class="btn ghost" style="height:28px;padding:0 10px" data-open-app="Models">Open Models</button></div></div>`;
 }
 function ogWGateway() {
-  return `<div style="display:grid;gap:8px;padding:2px"><div class="og-row"><span class="og-tag sig">Loopback only</span><span class="og-tag">Key required</span></div><div class="og-kv"><span>Calls today</span><span>1,842</span><span>Tokens</span><span>2.1 M</span><span>Cost</span><span>${OGS.mode === 'vps' ? '$0.84 on the VPS' : 'free, local'}</span></div></div>`;
+  return `<div style="display:grid;gap:8px;padding:2px"><p class="label">The gateway serves this app to your other devices, always behind a key.</p><div class="og-row"><button class="btn ghost" style="height:28px;padding:0 10px" data-open-app="Gateway">Open Gateway</button></div></div>`;
 }
 
 /* ---------- start bare, add and add: modules, groups, setup ---------- */
@@ -183,7 +182,7 @@ document.addEventListener('click', e => {
   const t = e.target.closest('[data-og]'); if (!t) return;
   const [k, v] = t.dataset.og.split(/:(.*)/s);
   if (k === 'src') { OGS.msrc = v; render(); }
-  else if (k === 'mod') { const enable = !OGS.mods.has(v); OGS.mods.has(v) ? OGS.mods.delete(v) : OGS.mods.add(v); OGS.setup.apps = OGS.mods.size > 0; if (v === 'Scheduling') { fetch('/api/plugins/scheduling/enabled', {method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({enabled:enable})}).then(r=>r.json()).then(d=>{ if (d.error) throw Error(d.error); if (d.applied === 'restart') alert('Saved. Restart CaesarOS to load Scheduling.'); }).catch(()=>alert('Could not change Scheduling. Use Settings → Optional modules.')); } render(); }
+  else if (k === 'mod') { const enable = !OGS.mods.has(v); OGS.mods.has(v) ? OGS.mods.delete(v) : OGS.mods.add(v); OGS.setup.apps = OGS.mods.size > 0; if (v === 'Scheduling') { fetch('/api/plugins/scheduling/enabled', {method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({enabled:enable})}).then(r=>r.json()).then(d=>{ if (d.error) throw Error(d.error); if (d.applied === 'restart') askConfirm('Saved. Restart CaesarOS to load Scheduling.',{info:true}); }).catch(()=>askConfirm('Could not change Scheduling. Use Settings → Optional modules.',{info:true})); } render(); }
   else if (k === 'fresh') { OGS.mods = new Set(); OGS.setup = { where: true, models: false, brain: false, tool: false, apps: false, device: false }; render(); }
 });
 
@@ -198,6 +197,11 @@ const OGLAY = {
 const OGAREA = ['a', 'b', 'c', 'd'];
 OGS.sp = { on: false, layout: '2col', panes: [], act: 0, ratio: 55, menu: null, max: null, saved: [{ n: 'Review', layout: '2col', panes: [{ k: 'chat', id: 't3' }, { k: 'app', id: 'Board' }] }, { n: 'Build', layout: 'main', panes: [{ k: 'chat', id: 't2' }, { k: 'term' }, { k: 'app', id: 'Builds' }] }], drag: null };
 
+const OGSK = 'caesaros-split-v1';
+try { const u = JSON.parse(localStorage.getItem(OGSK) || 'null'); if (u && u.ratio >= 20 && u.ratio <= 80) OGS.sp.ratio = Math.round(u.ratio); if (u && OGLAY[u.layout]) OGS.sp.layout = u.layout; } catch (_) {}
+const ogPersist = () => { try { localStorage.setItem(OGSK, JSON.stringify({ ratio: OGS.sp.ratio, layout: OGS.sp.layout })); } catch (_) {} };
+/* one entry for every way into the split (toolbar, dock, a restored S.split): the simple two-pane flag is folded in, so there is a single state and a single exit */
+function ogEnter() { const sp = OGS.sp; S.split = false; sp.on = true; sp.panes = []; sp.max = null; sp.menu = null; ogFill(); }
 const ogName = x => x.k === 'ws' ? 'Workspace · ' + WSN[S.ws] : x.k === 'chat' ? (C[(THR(x.id)||{}).a].n + ' · ' + (THR(x.id)||{t:"New conversation"}).t.slice(0, 26)) : x.k === 'term' ? 'Terminal' : x.k === 'app' ? x.id : 'Empty';
 const ogDefaults = () => { const cur = S.tabs[S.act] || { k: 'ws' }; const a = cur.k === 'chat' ? { k: 'ws' } : cur; return [a, { k: 'chat', id: S.cur }, { k: 'app', id: 'Board' }, { k: 'term' }]; };
 function ogFill() { const sp = OGS.sp, L = OGLAY[sp.layout], d = ogDefaults(); sp.panes = sp.panes.slice(0, L.n); for (let i = sp.panes.length; i < L.n; i++) sp.panes.push(d[i] || { k: 'empty' }); if (sp.act >= L.n) sp.act = 0; }
@@ -220,13 +224,14 @@ function ogSplitHtml() {
   const frac = L.gut.includes('col') ? sp.ratio / 100 : L.cols.split(' ').length === 3 ? .33 : L.cols.split(' ').length === 2 ? .5 : 1;
   const panes = sp.max != null ? [sp.max] : sp.panes.map((_, i) => i);
   const body = panes.map(i => { const x = sp.panes[i]; return `<section class="og-pane ${sp.act === i ? 'act' : ''}" data-spi="${i}" style="grid-area:${sp.max != null ? 'a' : OGAREA[i]}"><header class="og-ph" draggable="true" data-spdrag="${i}"><b data-sp="menu:${i}">${I(x.k === 'term' ? 'terminal' : x.k === 'chat' ? 'chat' : x.k === 'ws' ? 'home' : 'folder', 14)} ${OGE(ogName(x))} <span style="opacity:.6">▾</span></b><span class="sp"></span><button data-sp="swap:${i}" title="Swap with the next window">⇄</button><button data-sp="max:${i}" title="${sp.max != null ? 'Restore' : 'Maximise'}">${sp.max != null ? '▭' : '⤢'}</button><button data-sp="close:${i}" title="Close window">×</button></header>${sp.menu === i ? ogMenuHtml(i) : ''}<div class="og-pb">${ogPaneBody(x, sp.max != null ? 1 : frac)}</div></section>`; }).join('');
-  const gut = sp.max == null ? L.gut.map(g => `<div class="og-gut ${g}" data-gut="${g}" style="${g === 'col' ? `left:calc(${sp.ratio}% + 0px)` : `top:calc(${sp.ratio}% + 0px)`}"></div>`).join('') : '';
-  const style = sp.max != null ? 'grid-template-columns:1fr;grid-template-areas:\'a\'' : `grid-template-columns:${L.cols.replace('var(--r,62%)', sp.ratio + '%')};${sp.layout === 'rows' ? `grid-template-rows:${sp.ratio}% 1fr;` : ''}grid-template-areas:${L.areas}`;
-  return `<div class="og-splitwrap"><div class="og-spbar"><span class="label">Windows</span>${lay}<span class="label" style="margin-left:6px">Mine</span>${sp.saved.map((s, i) => `<button class="og-chip" data-sp="load:${i}">${OGE(s.n)}</button>`).join('')}<button class="og-chip" data-sp="save:1">+ Save this layout</button><span style="flex:1"></span><span class="label">Drag a title to swap · drag the edge to resize</span><button class="btn ghost" style="height:28px;padding:0 10px" data-sp="off:1">Close split</button></div><div class="nx-views og-split" id="ogsplit" style="${style}">${body}${gut}</div></div>`;
+  const gut = sp.max == null ? L.gut.map(g => `<div class="og-gut ${g}" data-gut="${g}" role="separator" tabindex="0" aria-orientation="${g === 'col' ? 'vertical' : 'horizontal'}" aria-label="Resize the windows" aria-valuemin="20" aria-valuemax="80" aria-valuenow="${sp.ratio}"></div>`).join('') : '';
+  const pct = 'calc(var(--r)*1%) minmax(0,1fr)';
+  const style = sp.max != null ? 'grid-template-columns:1fr;grid-template-areas:\'a\'' : `--r:${sp.ratio};grid-template-columns:${L.gut.includes('col') ? pct : L.cols};${sp.layout === 'rows' ? `grid-template-rows:${pct};` : ''}grid-template-areas:${L.areas}`;
+  return `<div class="og-splitwrap"><div class="og-spbar"><span class="label">Windows</span>${lay}<span class="label" style="margin-left:6px">Mine</span>${sp.saved.map((s, i) => `<button class="og-chip" data-sp="load:${i}">${OGE(s.n)}</button>`).join('')}<button class="og-chip" data-sp="save:1">+ Save this layout</button><span style="flex:1"></span><span class="label">Drag a title to swap · drag the edge to resize</span><button class="btn og-exit" data-sp="off:1" title="Leave the split (Esc)" aria-label="Exit split">✕ Exit split <small>Esc</small></button></div><div class="nx-views og-split" id="ogsplit" style="${style}">${body}${gut}</div></div>`;
 }
 document.addEventListener('click', e => {
   const sp0 = e.target.closest('[data-nx="split"]');
-  if (sp0) { e.preventDefault(); e.stopImmediatePropagation(); const sp = OGS.sp; sp.on = !sp.on; if (sp.on) { sp.panes = []; sp.max = null; sp.menu = null; ogFill(); } render(); return; }
+  if (sp0) { e.preventDefault(); e.stopImmediatePropagation(); if (OGS.sp.on || S.split) { OGS.sp.on = false; S.split = false; } else ogEnter(); render(); return; }
   const pn = e.target.closest('.og-pane'); const t = e.target.closest('[data-sp]');
   if (!t) { if (pn) { OGS.sp.act = +pn.dataset.spi; if (OGS.sp.menu != null && !e.target.closest('[data-menu]')) { OGS.sp.menu = null; render(); } } else if (OGS.sp.menu != null && !e.target.closest('[data-menu]')) { OGS.sp.menu = null; render(); } return; }
   const sp = OGS.sp, [k, a, b, c] = t.dataset.sp.split(':');
@@ -238,17 +243,29 @@ document.addEventListener('click', e => {
   else if (k === 'close') { const i = +a; sp.panes[i] = { k: 'empty' }; if (sp.max != null) sp.max = null; }
   else if (k === 'load') { const s = sp.saved[+a]; sp.layout = s.layout; sp.panes = JSON.parse(JSON.stringify(s.panes)); sp.max = null; ogFill(); }
   else if (k === 'save') { sp.saved.push({ n: 'Mine ' + (sp.saved.length - 1), layout: sp.layout, panes: JSON.parse(JSON.stringify(sp.panes)) }); }
-  else if (k === 'off') { sp.on = false; }
-  e.stopPropagation(); render();
+  else if (k === 'off') { sp.on = false; S.split = false; }
+  ogPersist(); e.stopPropagation(); render();
 }, true);
-/* resize by dragging the edge */
-document.addEventListener('mousedown', e => {
-  const g = e.target.closest('.og-gut'); if (!g) return; e.preventDefault(); g.classList.add('drag');
-  const box = $('#ogsplit').getBoundingClientRect(), col = g.dataset.gut === 'col';
-  const mv = ev => { const r = Math.min(80, Math.max(20, ((col ? ev.clientX - box.left : ev.clientY - box.top) / (col ? box.width : box.height)) * 100)); OGS.sp.ratio = Math.round(r); const el = $('#ogsplit'); if (OGS.sp.layout === 'rows') el.style.gridTemplateRows = r + '% 1fr'; else el.style.gridTemplateColumns = r + '% 1fr'; g.style[col ? 'left' : 'top'] = r + '%'; };
-  const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); render(); };
-  document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+/* resize by dragging the edge: pointer events (mouse, pen, touch), the ratio lives in --r so a re-render keeps it */
+const ogRatio = (g, ev, box) => { const col = g.dataset.gut === 'col'; const len = (col ? box.width : box.height) - 16; const at = (col ? ev.clientX - box.left : ev.clientY - box.top) - 12; return Math.round(Math.min(80, Math.max(20, (at / len) * 100))); };
+const ogSetRatio = (g, r) => { const el = $('#ogsplit'); if (!el) return; OGS.sp.ratio = r; el.style.setProperty('--r', r); g.setAttribute('aria-valuenow', r); };
+document.addEventListener('pointerdown', e => {
+  const g = e.target.closest('.og-gut'); if (!g || e.button) return; e.preventDefault(); g.classList.add('drag'); $('#ogsplit').classList.add('dragging');
+  try { g.setPointerCapture(e.pointerId); } catch (_) {}
+  const box = $('#ogsplit').getBoundingClientRect();
+  const mv = ev => ogSetRatio(g, ogRatio(g, ev, box));
+  const up = () => { g.removeEventListener('pointermove', mv); g.removeEventListener('pointerup', up); g.removeEventListener('pointercancel', up); g.classList.remove('drag'); $('#ogsplit')?.classList.remove('dragging'); ogPersist(); };
+  g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
 });
+/* Esc leaves the split (unless a menu or pop-up has it first); arrow keys on a focused edge resize */
+document.addEventListener('keydown', e => {
+  const sp = OGS.sp; if (!sp.on) return;
+  const g = e.target.closest && e.target.closest('.og-gut');
+  if (g && /^Arrow/.test(e.key)) { const col = g.dataset.gut === 'col', d = (col ? { ArrowLeft: -1, ArrowRight: 1 } : { ArrowUp: -1, ArrowDown: 1 })[e.key]; if (!d) return; e.preventDefault(); ogSetRatio(g, Math.min(80, Math.max(20, sp.ratio + d * (e.shiftKey ? 10 : 2)))); ogPersist(); return; }
+  if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('#nxov.open,#nxpop.open,#nxmotion.open,#nxview.open,dialog[open]')) return;
+  if (sp.menu != null) sp.menu = null; else sp.on = false;
+  render();
+}, true);
 /* drag a window title onto another to swap */
 document.addEventListener('dragstart', e => { const h = e.target.closest('[data-spdrag]'); if (!h) return; OGS.sp.drag = +h.dataset.spdrag; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', 'pane'); } catch (_) {} });
 document.addEventListener('dragover', e => { const p = e.target.closest('.og-pane'); if (p && OGS.sp.drag != null) { e.preventDefault(); $$('.og-pane.dragover').forEach(x => x.classList.remove('dragover')); p.classList.add('dragover'); } });

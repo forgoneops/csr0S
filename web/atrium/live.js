@@ -81,7 +81,7 @@
     const body = L.state === 'loading' ? '<div class="lv-skel"></div><div class="lv-skel"></div><div class="lv-skel"></div>'
       : L.state === 'error' ? '<p class="lv-note">Could not read notifications. <button class="lv-btn" data-lv="retry">Retry</button></p>'
       : !L.items.length ? '<p class="lv-note">All clear. Nothing needs you.</p>'
-      : L.items.map((x, i) => `<button class="lv-row ${L.read.has(x.id) ? '' : 'new'}" data-lv="go" data-i="${i}"><i class="lv-sq" aria-hidden="true"></i><span class="lv-k">${E(x.kind)}</span><b>${E(x.title)}</b><small${x.own ? ' data-no-i18n' : ''}>${E([x.sub, ago(x.at)].filter(Boolean).join(' · '))}</small></button>`).join('');
+      : L.items.map((x, i) => `<button class="lv-row ${L.read.has(x.id) ? '' : 'new'}" data-lv="go" data-i="${i}"><i class="lv-sq" aria-hidden="true"></i><span class="lv-k">${E(x.kind)}</span><b>${E(x.title)}</b><small${x.own ? ' data-no-i18n' : ''}>${E([x.own ? x.sub.replace(/^From /, () => uiText('From') + ' ') : uiText(x.sub), uiText(ago(x.at))].filter(Boolean).join(' · '))}</small></button>`).join('');
     sheet.innerHTML = `<div class="lv-art" aria-hidden="true">${art}</div><header class="lv-hd"><b>Notifications</b><span class="lv-count">${n ? n + ' unread' : 'all read'}</span><button class="lv-btn" data-lv="all" ${n ? '' : 'disabled'}>Mark all read</button><button class="lv-btn" data-lv="close" aria-label="Close">Close</button></header><div class="lv-list">${body}</div>`;
   }
   function setOpen(on) {

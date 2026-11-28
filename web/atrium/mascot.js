@@ -25,6 +25,8 @@
     const s = decide(), w = SAY[lang()], line = s === 'wait' ? w.wait(M.waiting) : w[s];
     M.host.dataset.state = s; M.host.querySelector('.mc-say').textContent = line;
     M.host.setAttribute('aria-label', lang() === 'pl' ? 'Maskotka Caesar: ' + line : 'Caesar the mascot: ' + line);
+    const off = M.host.querySelector('.mc-off'), pl = lang() === 'pl';
+    off.title = pl ? 'Ukryj (wróci przez Ustawienia > Pomoc)' : 'Hide (back under Settings > Help)'; off.setAttribute('aria-label', pl ? 'Ukryj maskotkę (wróci przez Ustawienia > Pomoc)' : 'Hide the mascot (back under Settings > Help)');
     M.host.hidden = !!document.getElementById('tour');           // the tour has its own chibi
     M.state = s;
   }

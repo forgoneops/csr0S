@@ -40,7 +40,7 @@
   const btn = (act, label, id = '', extra = '') => `<button type="button" class="btn ghost" data-cv="${act}" data-id="${esc(id)}" ${extra}>${label}</button>`;
   const icon = (act, ic, label, id, name, extra = '') => `<button type="button" class="gx-ico" data-i18n-own="${esc(name)}" data-cv="${act}" data-id="${esc(id)}" aria-label="${esc(label)}" title="${esc(label)}" ${extra}>${I(ic, 18)}</button>`;
   function row(s) {
-    const title = s.title || 'New conversation', t = `${nameOf(s)} · ${Date.now() - s.updatedAt < 864e5 ? clock(s.updatedAt) : new Date(s.updatedAt).toLocaleDateString(uiLocale())}`;
+    const title = s.title || uiText('New conversation'), t = `${nameOf(s)} · ${Date.now() - s.updatedAt < 864e5 ? clock(s.updatedAt) : new Date(s.updatedAt).toLocaleDateString(uiLocale())}`;
     if (L.edit === s.id) return `<li class="gx-row"><form class="gx-edit" data-cvform="${esc(s.id)}"><input id="gx-ct" class="og-input" maxlength="200" value="${esc(title)}" aria-label="New name"><button type="submit" class="btn">Save name</button>${btn('cancel', 'Cancel')}</form></li>`;
     const acts = L.sure === s.id
       ? `<span class="gx-sure" role="group" aria-label="Confirm delete"><b>Delete for good?</b>${btn('delgo', 'Delete', s.id)}${btn('cancel', 'Keep')}</span>`

@@ -56,8 +56,8 @@
     if (move) {
       event.preventDefault(); event.stopPropagation();
       const lane = move.dataset.ideaLane, payload = { lane };
-      if (lane === 'dropped') { payload.reason = prompt('Why are you dropping this idea?') || ''; if (!payload.reason.trim()) return; }
-      if (lane === 'parked') { payload.trigger = prompt('What would make you revisit this?') || ''; if (!payload.trigger.trim()) return; }
+      if (lane === 'dropped') { payload.reason = await askText('Why are you dropping this idea?') || ''; if (!payload.reason.trim()) return; }
+      if (lane === 'parked') { payload.trigger = await askText('What would make you revisit this?') || ''; if (!payload.trigger.trim()) return; }
       try { await request(`/ideas/${encodeURIComponent(move.dataset.ideaMove)}/move`, payload); await load(); render(); }
       catch (error) { state.error = error.message; render(); }
       return;

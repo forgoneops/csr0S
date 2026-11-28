@@ -6,6 +6,7 @@ import type { PluginContext } from "../../core/plugins";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { DATA } from "../../core/db";
+import { isolated } from "../../core/host";
 import { ROOT } from "../../core/root";
 
 export type Server = { id: string; name: string; url: string };
@@ -19,6 +20,7 @@ export function cleanUrl(raw: unknown): string | null {
 }
 
 export function selfStats(version: string) {
+  if (isolated()) return { version };   // a throwaway copy tells no one about this computer
   const s = statfsSync(DATA), total = s.blocks * s.bsize, free = s.bavail * s.bsize;
   return { version, diskPct: total ? Math.round((1 - free / total) * 100) : 0, memPct: Math.round((1 - freemem() / totalmem()) * 100), load: Math.round((loadavg()[0] ?? 0) / Math.max(1, cpus().length) * 100) / 100 };
 }

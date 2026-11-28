@@ -5,6 +5,7 @@
 // computer.ts; every write goes to the named VPS over the person's own SSH key, never another host.
 import type { Context, Hono } from "hono";
 import { isLocal } from "./webgate";
+import { isolated } from "./host";
 
 export type ForwardStatus = {
   configured: boolean;
@@ -146,6 +147,7 @@ export function createExpose(rdr: Runner = defaultRunner, io: { state: () => { h
 const defaultRunner: Runner = {
   calls: [],
   exec: async (a) => {
+    if (isolated()) return { code: 1, out: "", err: "not available in a throwaway copy" };   // tailnet address and ssh keys are this computer's
     const p = Bun.spawn(a, { stdout: "pipe", stderr: "pipe", env: { ...process.env } });
     const [out, err] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text()]);
     return { code: await p.exited, out, err };

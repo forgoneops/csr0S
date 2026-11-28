@@ -3,12 +3,12 @@
 // never through a shell. Pictures are kept as PNG files with a small JSON beside each in the data home.
 import type { Context, Hono } from "hono";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { DATA } from "./db";
+import { userHome } from "./host";
 
 const SIZES = [256, 384, 512] as const;
-export const imageDir = () => process.env.CAESAROS_IMAGE_DIR ?? join(homedir(), ".local", "share", "caesaros-image");
+export const imageDir = () => process.env.CAESAROS_IMAGE_DIR ?? join(userHome(), ".local", "share", "caesaros-image");
 const OUT = () => join(DATA, "images");
 export const imageReady = () => existsSync(join(imageDir(), ".venv", "bin", "python")) && existsSync(join(imageDir(), "generate.py"));
 
