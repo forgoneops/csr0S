@@ -3275,5 +3275,8 @@
  "Resize from a focused edge (Shift for bigger steps, Home resets)": "Zmień rozmiar z aktywnej krawędzi (Shift dla większych kroków, Home przywraca)",
  "Move the chat launcher": "Przesuń przycisk czatu",
  "Attach, thinking, context, history": "Załączniki, myślenie, kontekst, historia",
- "More options": "Więcej opcji"
+ "More options": "Więcej opcji",
+ "Send now": "Wyślij teraz",
+ "Working on it.": "Pracuję nad tym.",
+ "Stopped.": "Zatrzymano."
 }

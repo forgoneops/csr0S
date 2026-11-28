@@ -62,6 +62,29 @@ const flatten = (m: { role: string; content: string }[]) =>
 const SOLO_TOOLSETS = "web,browser,terminal,file,code_execution,vision,skills,todo,memory,session_search,connections,clarify,caesar-brain,caesar-computer,klieg,omh,image_gen,tts,computer_use";
 export const SOLO_ID = "hermes:caesar!alone";
 
+/** Names a Hermes install knows, read from `hermes tools list` (built-in and plugin toolsets, enabled or not, and MCP server names). */
+export function parseToolsetNames(out: string): Set<string> {
+  const names = new Set<string>();
+  for (const l of out.split("\n")) {
+    const m = /^\s*[✓✗]\s+(?:enabled|disabled)\s+(\S+)/.exec(l) ?? /^\s{2}([\w-]+)\s{2,}(?:all tools|\d+ tool)/.exec(l);
+    if (m) names.add(m[1]);
+  }
+  return names;
+}
+/** The solo list without the names this Hermes does not know: an older Hermes answers `-t klieg` with invalid_params and no reply at all. */
+export const knownToolsets = (list: string, known: Set<string>) => (known.size ? list.split(",").filter((t) => known.has(t)).join(",") : list);
+const toolsetCache = new Map<string, { at: number; set: Set<string> }>();
+async function hermesToolsets(path: string, id: string): Promise<Set<string>> {
+  const key = `${path}:${id}`, hit = toolsetCache.get(key);
+  if (hit && Date.now() - hit.at < 600_000) return hit.set;
+  try {
+    const p = Bun.spawn([path, "-p", id, "tools", "list"], { stdin: "ignore", stdout: "pipe", stderr: "ignore" });
+    const t = setTimeout(() => { try { p.kill(); } catch { /* done */ } }, 8000);
+    const out = await new Response(p.stdout).text(); clearTimeout(t);
+    const set = parseToolsetNames(out); toolsetCache.set(key, { at: Date.now(), set }); return set;
+  } catch { return new Set(); }   // unknown: send the full list as before
+}
+
 /** One line of `hermes chat --format stream-json` as engine events. Text becomes deltas, a tool_use opens a row and its tool_result closes it
  *  (with the time Hermes measured); the first "Session:" line, the final summary and anything not JSON produce nothing. */
 export function streamLine(line: string): EngineEvent[] {
@@ -93,7 +116,7 @@ export function hermesCrewEngines(): EngineAdapter[] {
       const prompt = flatten(messages);
       // The prompt goes through a private file (not argv), and the answer comes back as stream-json so tool calls are seen.
       const dir = mkdtempSync(join(tmpdir(), "caesaros-hermes-")), qf = join(dir, "q.txt"); writeFileSync(qf, prompt, { mode: 0o600 });
-      const proc = Bun.spawn([r.path, "-p", m.id, ...(solo ? ["-t", SOLO_TOOLSETS] : []), "chat", "-Q", "--oneshot", "--format", "stream-json", "--query-file", qf], { stdin: "ignore", stdout: "pipe", stderr: "pipe" });
+      const proc = Bun.spawn([r.path, "-p", m.id, ...(solo ? ["-t", knownToolsets(SOLO_TOOLSETS, await hermesToolsets(r.path, m.id))] : []), "chat", "-Q", "--oneshot", "--format", "stream-json", "--query-file", qf], { stdin: "ignore", stdout: "pipe", stderr: "pipe" });
       const kill = () => { try { proc.kill(); } catch { /* already gone */ } };
       signal?.addEventListener("abort", kill, { once: true });
       const jobs = working.get(m.id) ?? []; jobs.push({ doing: prompt.slice(0, 80), at: Date.now() }); working.set(m.id, jobs);
